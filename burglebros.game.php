@@ -39,7 +39,12 @@ class burglebros extends Table
             //    "my_first_game_variant" => 100,
             //    "my_second_game_variant" => 101,
             //      ...
-        ) );        
+        ) ); 
+
+        $this->cards = self::getNew( "module.common.deck" );
+        $this->cards->init( "card" );
+        $this->tiles = self::getNew( "module.common.deck" );
+        $this->tiles->init( "tile" );     
 	}
 	
     protected function getGameName( )
@@ -87,7 +92,40 @@ class burglebros extends Table
         //self::initStat( 'table', 'table_teststat1', 0 );    // Init a table statistics
         //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
 
-        // TODO: setup the initial game situation here
+        // Create cards
+        
+        foreach ( $this->card_types as $type => $desc ) {
+            $cards = array ();
+            foreach ( $desc as $index => $value ) {
+                $nbr = isset($value['nbr']) ? $value['nbr'] : 1;
+                $cards [] = array('type' => $type, 'type_arg' => $index, 'nbr' => $nbr);
+            }
+            $this->cards->createCards( $cards, $type.'_deck' );
+
+            // Shuffle deck
+            $this->cards->shuffle($type.'_deck');
+        }
+
+        $patrol = array();
+        for ($index = 0; $index < 16; $index++) { 
+            $patrol [] = array('type' => 'patrol', 'type_arg' => $index, 'nbr' => 1);
+        }
+        for ($floor=0; $floor < 3; $floor++) {
+            $this->cards->createCards( $patrol, 'patrol'.($floor + 1) );
+            $this->cards->shuffle( 'patrol'.($floor + 1) );
+        }
+
+        $tiles = array ();
+        $index = 0;
+        foreach ( $this->tile_types as $type => $nbr ) {
+            $tiles [] = array('type' => $type, 'type_arg' => $index, 'nbr' => $nbr);
+            $index++;
+        }
+        $this->tiles->createCards( $tiles, 'tile_deck' );
+
+        $this->setupTiles();
+
+        // $plan_cards = $this->plan_cards->pickCardsForLocation(3, 'deck', 'plan_supply');
        
 
         // Activate first player (which is in general a good idea :) )
@@ -117,6 +155,18 @@ class burglebros extends Table
         $result['players'] = self::getCollectionFromDb( $sql );
   
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
+        foreach ( $this->card_types as $type => $desc ) {
+            $result[$type.'_deck'] = $this->cards->getCardsInLocation( $type.'_deck' );
+        }
+
+        // TODO: Remove this debug info
+        $result['patrol1'] = $this->cards->getCardsInLocation('patrol1');
+        $result['patrol2'] = $this->cards->getCardsInLocation('patrol2');
+        $result['patrol3'] = $this->cards->getCardsInLocation('patrol3');
+
+        $result['floor1'] = $this->tiles->getCardsInLocation('floor1');
+        $result['floor2'] = $this->tiles->getCardsInLocation('floor2');
+        $result['floor3'] = $this->tiles->getCardsInLocation('floor3');
   
         return $result;
     }
@@ -146,6 +196,24 @@ class burglebros extends Table
     /*
         In this space, you can put any utility methods useful for your game logic
     */
+    function setupTiles() {
+        $safes = $this->tiles->getCardsOfType('safe');
+        $stairs = $this->tiles->getCardsOfType('stairs');
+        
+        // Grab a safe and stair for each floor, and move to the floor "deck"
+        for ($floor=0; $floor < 3; $floor++) { 
+            $safe = array_shift($safes);
+            $stair = array_shift($stairs);
+            $card_ids = array($safe['id'], $stair['id']);
+            $this->tiles->moveCards($card_ids, 'floor'.($floor + 1));
+        }
+        $this->tiles->shuffle('tile_deck');
+        // Grab 14 more tiles per floor "deck" and shuffle
+        for ($floor=0; $floor < 3; $floor++) { 
+            $this->tiles->pickCardsForLocation(14, 'tile_deck', 'floor'.($floor + 1));
+            $this->tiles->shuffle('floor'.($floor + 1));
+        }
+    }
 
 
 

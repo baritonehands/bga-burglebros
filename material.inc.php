@@ -32,6 +32,40 @@ $this->card_types = array(
 
 */
 
+$this->card_types = array(
+  'tools' => array(
+    array('name'=>'dynamite'),
+  ),
+  'loot' => array(
+    array('name'=>'isotope'),
+    array('name'=>'gold-bar','nbr'=>2),
+  ),
+  'events' => array(
+    array('name'=>'throw-voice'),
+    array('name'=>'buddy-system')
+  )
+  // Patrol cards are created programmatically
+);
 
-
-
+$this->tile_types = array(
+  'safe' => 3,
+  'stairs' => 3,
+  'walkway' => 3,
+  'laboratory' => 2,
+  'lavatory' => 1,
+  'service-duct' => 2,
+  'secret-door' => 2,
+  'fingerprint-computer' => 1,
+  'laser-computer' => 1,
+  'motion-computer' => 1,
+  'camera' => 4,
+  'laser' => 3,
+  'motion' => 3,
+  'detector' => 3,
+  'fingerprint' => 3,
+  'thermo' => 3,
+  'keypad' => 3,
+  'deadbolt' => 3,
+  'foyer' => 2,
+  'atrium' => 2
+);

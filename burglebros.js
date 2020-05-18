@@ -57,7 +57,7 @@ function (dojo, declare) {
             }
             
             // TODO: Set up your game interface here, according to "gamedatas"
-            
+            window.gamedatas = gamedatas;
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
