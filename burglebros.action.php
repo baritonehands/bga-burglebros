@@ -40,7 +40,15 @@
   	} 
   	
   	// TODO: defines your action entry points there
+    public function peek() {
+      self::setAjaxMode();
+      
+      $floor = self::getArg( "floor", AT_posint, true );
+      $location_arg = self::getArg( "location_arg", AT_posint, true );
+      $this->game->peek($floor, $location_arg);
 
+      self::ajaxResponse();
+    }
 
     /*
     

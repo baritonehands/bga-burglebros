@@ -33,9 +33,12 @@
 
 <div id="board_wrap" class="whiteblock">
     <!-- BEGIN floor -->
-    <div class="floor">
+    <div class="floor_container">
         <h3>Floor {FLOOR}</h3>
-        <div id="floor{FLOOR}">
+        <div class="floor" id="floor{FLOOR}">
+        </div>
+        <h4>Patrol {FLOOR}</h4>
+        <div class="patrol" id="patrol{FLOOR}">
         </div>
     </div>
     <!-- END floor -->
@@ -51,7 +54,7 @@
 var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';
 
 */
-var jstpl_tile = '<div class="tile whiteblock" style="left: ${x}px; top: ${y}px" aria-label="${name}" title="${name}">${name}</div>';
+var jstpl_tile = '<div id="tile_${id}" class="tile whiteblock" style="left: ${x}px; top: ${y}px" aria-label="${name}" title="${name}">${name}</div>';
 
 </script>  
 

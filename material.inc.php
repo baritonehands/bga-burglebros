@@ -36,12 +36,31 @@ $this->card_types = array(
   1 => array( 'name' => clienttranslate('tools'),'nametr' => self::_('tools') ),
   2 => array( 'name' => clienttranslate('loot'),'nametr' => self::_('loot') ),
   3 => array( 'name' => clienttranslate('events'),'nametr' => self::_('events') ),
+);
+
+$this->card_info = array(
+  1 => array(
+    array('name'=>'dynamite'),
+    array('name'=>'stethoscope'),
+    array('name'=>'donuts'),
+  ),
+  2 => array(
+    array('name'=>'isotope'),
+    array('name'=>'gold-bar','nbr'=>2),
+  ),
+  3 => array(
+    array('name'=>'throw-voice'),
+    array('name'=>'buddy-system')
+  ),
+);
+
+$this->patrol_types = array(
   4 => array( 'name' => clienttranslate('patrol1'),'nametr' => self::_('patrol1') ),
   5 => array( 'name' => clienttranslate('patrol2'),'nametr' => self::_('patrol2') ),
   6 => array( 'name' => clienttranslate('patrol3'),'nametr' => self::_('patrol3') ),
 );
 
-$this->patrol_types = array(
+$this->patrol_names = array(
   array('name'=>'a1'),
   array('name'=>'a2'),
   array('name'=>'a3'),
@@ -60,23 +79,10 @@ $this->patrol_types = array(
   array('name'=>'d4'),
 );
 
-$this->card_info = array(
-  1 => array(
-    array('name'=>'dynamite'),
-    array('name'=>'stethoscope'),
-    array('name'=>'donuts'),
-  ),
-  2 => array(
-    array('name'=>'isotope'),
-    array('name'=>'gold-bar','nbr'=>2),
-  ),
-  3 => array(
-    array('name'=>'throw-voice'),
-    array('name'=>'buddy-system')
-  ),
-  4 => $this->patrol_types,
-  5 => $this->patrol_types,
-  6 => $this->patrol_types,
+$this->patrol_info = array(
+  4 => $this->patrol_names,
+  5 => $this->patrol_names,
+  6 => $this->patrol_names,
 );
 
 $this->tile_types = array(

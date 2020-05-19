@@ -92,19 +92,8 @@ class burglebros extends Table
         //self::initStat( 'table', 'table_teststat1', 0 );    // Init a table statistics
         //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
 
-        // Create cards
-        foreach ( $this->card_types as $type => $desc ) {
-            $cards = array ();
-            foreach ( $this->card_info[$type] as $index => $value ) {
-                $nbr = isset($value['nbr']) ? $value['nbr'] : 1;
-                $cards [] = array('type' => $type, 'type_arg' => $index, 'nbr' => $nbr);
-            }
-            $deck_name = $desc['name'].'_deck';
-            $this->cards->createCards( $cards, $deck_name );
-
-            // Shuffle deck
-            $this->cards->shuffle($deck_name);
-        }
+        $this->setupCards($this->card_types, $this->card_info);
+        $this->setupCards($this->patrol_types, $this->patrol_info);
 
         $tiles = array ();
         $index = 0;
@@ -115,6 +104,7 @@ class burglebros extends Table
         $this->tiles->createCards( $tiles, 'tile_deck' );
 
         $this->setupTiles();
+        $this->flipTile(1, 5);
 
         // $plan_cards = $this->plan_cards->pickCardsForLocation(3, 'deck', 'plan_supply');
        
@@ -146,17 +136,8 @@ class burglebros extends Table
         $result['players'] = self::getCollectionFromDb( $sql );
   
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
-        $result['card_types'] = array();
-        foreach ( $this->card_types as $type => $desc ) {
-            $card_info = array();
-            foreach ($this->card_info[$type] as $index => $value) {
-                $card_info [] = array('type' => $type, 'index' => $index);
-            }
-
-            $deck_name = $desc['name'].'_deck';
-            $result[$deck_name] = $this->cards->getCardsInLocation( $deck_name );
-            $result['card_types'][$desc['name']] = array('deck' => $deck_name, 'cards' => $card_info);
-        }
+        $result = array_merge($result, $this->gatherCardData('card', $this->card_types, $this->card_info));
+        $result = array_merge($result, $this->gatherCardData('patrol', $this->patrol_types, $this->patrol_info));
 
         $tiles = array();
         $index = 0;
@@ -166,10 +147,9 @@ class burglebros extends Table
         }
         $result['tile_types'] = $tiles;
 
-        // TODO: Remove this debug info
-        $result['floor1'] = $this->tiles->getCardsInLocation('floor1');
-        $result['floor2'] = $this->tiles->getCardsInLocation('floor2');
-        $result['floor3'] = $this->tiles->getCardsInLocation('floor3');
+        $result['floor1'] = $this->getFlippedTiles(1);
+        $result['floor2'] = $this->getFlippedTiles(2);
+        $result['floor3'] = $this->getFlippedTiles(3);
   
         return $result;
     }
@@ -199,6 +179,38 @@ class burglebros extends Table
     /*
         In this space, you can put any utility methods useful for your game logic
     */
+    function setupCards($types, $info) {
+        // Create cards
+        foreach ( $types as $type => $desc ) {
+            $cards = array ();
+            foreach ( $info[$type] as $index => $value ) {
+                $nbr = isset($value['nbr']) ? $value['nbr'] : 1;
+                $cards [] = array('type' => $type, 'type_arg' => $index, 'nbr' => $nbr);
+            }
+            $deck_name = $desc['name'].'_deck';
+            $this->cards->createCards( $cards, $deck_name );
+
+            // Shuffle deck
+            $this->cards->shuffle($deck_name);
+        }
+    }
+
+    function gatherCardData($prefix, $types, $info) {
+        $result = array();
+        $result[$prefix.'_types'] = array();
+        foreach ( $types as $type => $desc ) {
+            $card_info = array();
+            foreach ($info[$type] as $index => $value) {
+                $card_info [] = array('type' => $type, 'index' => $index, 'name' => $value['name']);
+            }
+
+            $deck_name = $desc['name'].'_deck';
+            $result[$deck_name] = $this->cards->getCardsInLocation( $deck_name );
+            $result[$prefix.'_types'][$desc['name']] = array('deck' => $deck_name, 'cards' => $card_info);
+        }
+        return $result;
+    }
+
     function setupTiles() {
         $safes = $this->tiles->getCardsOfType('safe');
         $stairs = $this->tiles->getCardsOfType('stairs');
@@ -218,7 +230,21 @@ class burglebros extends Table
         }
     }
 
+    function getFlippedTiles($floor) {
+        $tiles = $this->tiles->getCardsInLocation("floor$floor");
+        $flipped = self::getCollectionFromDB("SELECT card_id id FROM tile WHERE card_location='floor$floor' and flipped=1");
+        foreach ($tiles as &$tile) {
+            if (!isset($flipped[$tile['id']])) {
+                $tile['type'] = ''; // face-down
+                $tile['type_arg'] = -1;
+            }
+        }
+        return $tiles;
+    }
 
+    function flipTile($floor, $location_arg) {
+        self::DbQuery("UPDATE tile SET flipped=1 WHERE card_location='floor$floor' and card_location_arg=$location_arg");
+    }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
@@ -254,6 +280,10 @@ class burglebros extends Table
     }
     
     */
+
+    function peek( $floor, $location_arg ) {
+        $this->flipTile( $floor, $location_arg );
+    }
 
     
 //////////////////////////////////////////////////////////////////////////////

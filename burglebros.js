@@ -68,33 +68,39 @@ function (dojo, declare) {
             // Create cards types:
             for (var type in gamedatas.card_types) {
                 var typeInfo = gamedatas.card_types[type];
-                // var deck = new ebg.stock();
-                // deck.create( this, $(typeInfo.deck), this.cardwidth, this.cardheight)
                 for (var index = 0; index < typeInfo.cards.length; index++) {
                     // Build card type id
                     var cardTypeId = this.getCardUniqueId(type, index);
                     this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/vertical_cards.jpeg', cardTypeId);
-                    // deck.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/vertical_cards.jpeg', cardTypeId);
                 }
-                // this[typeInfo.deck] = deck;
             }
-
-            
 
             for(var floor = 1; floor <= 3; floor++) {
                 var key = 'floor' + floor;
-                this[key] = new ebg.stock();
-                this[key].create(this, $(key), this.cardwidth, this.cardheight);
-                this[key].image_items_per_row = 1;
-
-                for (var type in gamedatas.tile_types) {
-                    var tileInfo = gamedatas.tile_types[type];
-                    this[key].addItemType(tileInfo.id, tileInfo.id, g_gamethemeurl + 'img/tiles.jpeg', tileInfo.id);
-                }
                 for ( var tileId in this.gamedatas[key]) {
                     var tile = this.gamedatas[key][tileId];
                     // this[key].addToStockWithId(tile.type_arg, tile.id);
                     this.playTileOnTable(floor, tile);
+                }
+
+                var patrolKey = 'patrol' + floor;
+                this[patrolKey] = new ebg.stock();
+                this[patrolKey].create(this, $(patrolKey), this.cardwidth, this.cardheight);
+                this[patrolKey].image_items_per_row = 1;
+                this[patrolKey].onItemCreate = dojo.hitch(this, 'setupPatrolItem', floor);
+                console.log(this[patrolKey].jstpl_stock_item);
+
+                for (var type in gamedatas.patrol_types) {
+                    var typeInfo = gamedatas.patrol_types[type];
+                    for (var index = 0; index < typeInfo.cards.length; index++) {
+                        var cardInfo = typeInfo.cards[index];
+                        this[patrolKey].addItemType(cardInfo.index, cardInfo.index, g_gamethemeurl + 'img/patrol.jpeg', cardInfo.index);
+                    }
+                }
+                var patrolDeckKey = patrolKey + '_deck';
+                for (var cardId in gamedatas[patrolDeckKey]) {
+                    var card = gamedatas[patrolDeckKey][cardId];
+                    this[patrolKey].addToStockWithId(card.type_arg, card.location_arg);
                 }
             }
  
@@ -185,7 +191,12 @@ function (dojo, declare) {
 */
                 }
             }
-        },        
+        },
+        
+        setupPatrolItem: function(floor, card_div, card_type_id, card_id) {
+            var key = 'patrol' + floor;
+            card_div.innerText = this.gamedatas.patrol_types[key].cards[card_type_id].name;
+        },
 
         ///////////////////////////////////////////////////
         //// Utility methods
@@ -210,10 +221,16 @@ function (dojo, declare) {
             var row = Math.floor(idx / 4);
             var col = idx % 4;
             dojo.place(this.format_block('jstpl_tile', {
+                id : tile.id, 
                 x : (this.cardwidth + 40) * col,
                 y : (this.cardheight + 40) * row,
                 name : tile.type
             }), 'floor' + floor);
+
+            var div_id = 'tile_' + tile.id;
+            dojo.connect( $(div_id), 'onclick', this, function(evt) {
+                this.handleTileClick(evt, floor, tile.location_arg);
+            });
 
             // if (player_id != this.player_id) {
             //     // Some opponent played a card
@@ -281,6 +298,12 @@ function (dojo, declare) {
         },        
         
         */
+
+        handleTileClick: function(evt, floor, location_arg) {
+            dojo.stopEvent(evt);
+
+            this.ajaxcall('/burglebros/burglebros/peek.html', { lock: true, floor: floor, location_arg: location_arg }, this, console.log, console.error);
+        },
 
         
         ///////////////////////////////////////////////////
