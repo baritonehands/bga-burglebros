@@ -33,12 +33,7 @@ class burglebros extends Table
         parent::__construct();
         
         self::initGameStateLabels( array( 
-            //    "my_first_global_variable" => 10,
-            //    "my_second_global_variable" => 11,
-            //      ...
-            //    "my_first_game_variant" => 100,
-            //    "my_second_game_variant" => 101,
-            //      ...
+            'actionsRemaining' => 10,
         ) ); 
 
         $this->cards = self::getNew( "module.common.deck" );
@@ -85,7 +80,7 @@ class burglebros extends Table
         /************ Start the game initialization *****/
 
         // Init global values with their initial values
-        //self::setGameStateInitialValue( 'my_first_global_variable', 0 );
+        self::setGameStateInitialValue( 'actionsRemaining', 4 );
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -246,6 +241,16 @@ class burglebros extends Table
         self::DbQuery("UPDATE tile SET flipped=1 WHERE card_location='floor$floor' and card_location_arg=$location_arg");
     }
 
+    function nextAction() {
+        $actionsRemaining = self::getGameStateValue('actionsRemaining') - 1;
+        self::setGameStateValue('actionsRemaining', $actionsRemaining);
+        if ($actionsRemaining == 0) {
+            $this->gamestate->nextState('moveGuard');
+        } else {
+            $this->gamestate->nextState('nextAction');
+        }
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -282,7 +287,13 @@ class burglebros extends Table
     */
 
     function peek( $floor, $location_arg ) {
+        self::checkAction('peek');
         $this->flipTile( $floor, $location_arg );
+        self::notifyAllPlayers('peek', '', array(
+            'floor' => $floor,
+            'tiles' => $this->getFlippedTiles($floor),
+        ));
+        $this->nextAction();
     }
 
     
@@ -312,6 +323,11 @@ class burglebros extends Table
         );
     }    
     */
+    function argPlayerTurn() {
+        return array(
+            'actionsRemaining' => self::getGameStateValue('actionsRemaining')
+        );
+    }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state actions
@@ -334,6 +350,18 @@ class burglebros extends Table
         $this->gamestate->nextState( 'some_gamestate_transition' );
     }    
     */
+
+    function stMoveGuard() {
+        $this->gamestate->nextState( 'nextPlayer' );
+    }
+
+    function stNextPlayer() {
+        $player_id = self::activeNextPlayer();
+        self::giveExtraTime( $player_id );
+        self::setGameStateValue('actionsRemaining', 4);
+
+        $this->gamestate->nextState( 'playerTurn' );
+    }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Zombie

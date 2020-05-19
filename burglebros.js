@@ -189,6 +189,11 @@ function (dojo, declare) {
                     this.addActionButton( 'button_3_id', _('Button 3 label'), 'onMyMethodToCall3' ); 
                     break;
 */
+                    case 'playerTurn':
+                        this.addActionButton( 'button_peek', _('Peek'), console.log );
+                        this.addActionButton( 'button_move', _('Move'), console.log );
+                        this.addActionButton( 'button_pass', _('Pass'), console.log );
+                        break;
                 }
             }
         },
@@ -217,6 +222,11 @@ function (dojo, declare) {
         },
 
         playTileOnTable : function(floor, tile) {
+            var div_id = 'tile_' + tile.id;
+            if ($(div_id)) {
+                dojo.destroy(div_id);
+            }
+                
             var idx = parseInt(tile.location_arg, 10);
             var row = Math.floor(idx / 4);
             var col = idx % 4;
@@ -226,8 +236,7 @@ function (dojo, declare) {
                 y : (this.cardheight + 40) * row,
                 name : tile.type
             }), 'floor' + floor);
-
-            var div_id = 'tile_' + tile.id;
+            
             dojo.connect( $(div_id), 'onclick', this, function(evt) {
                 this.handleTileClick(evt, floor, tile.location_arg);
             });
@@ -305,6 +314,10 @@ function (dojo, declare) {
             this.ajaxcall('/burglebros/burglebros/peek.html', { lock: true, floor: floor, location_arg: location_arg }, this, console.log, console.error);
         },
 
+        handlePeekClick: function(evt) {
+
+        },
+
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
@@ -333,6 +346,7 @@ function (dojo, declare) {
             // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
             // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
             // 
+            dojo.subscribe('peek', this, 'notif_peek');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -351,5 +365,15 @@ function (dojo, declare) {
         },    
         
         */
+        notif_peek: function(notif) {
+            var tiles = notif.args.tiles,
+                floor = notif.args.floor
+                deck = 'floor' + floor;
+            this.gamedatas[deck] = tiles;
+            for ( var tileId in this.gamedatas[deck]) {
+                var tile = this.gamedatas[deck][tileId];
+                this.playTileOnTable(floor, tile);
+            }
+       }
    });             
 });
