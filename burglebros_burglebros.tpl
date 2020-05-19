@@ -25,11 +25,20 @@
     Please REMOVE this comment before publishing your game on BGA
 -->
 
-
 <div id="myhand_wrap" class="whiteblock">
-    <h3>My Hand</h3>
+    <h3>{MY_HAND}</h3>
     <div id="myhand">
     </div>
+</div>
+
+<div id="board_wrap" class="whiteblock">
+    <!-- BEGIN floor -->
+    <div class="floor">
+        <h3>Floor {FLOOR}</h3>
+        <div id="floor{FLOOR}">
+        </div>
+    </div>
+    <!-- END floor -->
 </div>
 
 
@@ -42,6 +51,7 @@
 var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';
 
 */
+var jstpl_tile = '<div class="tile whiteblock" style="left: ${x}px; top: ${y}px" aria-label="${name}" title="${name}">${name}</div>';
 
 </script>  
 

@@ -18,7 +18,8 @@
 define([
     "dojo","dojo/_base/declare",
     "ebg/core/gamegui",
-    "ebg/counter"
+    "ebg/counter",
+    "ebg/stock"
 ],
 function (dojo, declare) {
     return declare("bgagame.burglebros", ebg.core.gamegui, {
@@ -28,7 +29,8 @@ function (dojo, declare) {
             // Here, you can init the global variables of your user interface
             // Example:
             // this.myGlobalValue = 0;
-
+            this.cardwidth = 150;
+            this.cardheight = 150;
         },
         
         /*
@@ -58,6 +60,43 @@ function (dojo, declare) {
             
             // TODO: Set up your game interface here, according to "gamedatas"
             window.gamedatas = gamedatas;
+
+            this.playerHand = new ebg.stock();
+            this.playerHand.create( this, $('myhand'), this.cardwidth, this.cardheight);
+            this.playerHand.image_items_per_row = 1;
+
+            // Create cards types:
+            for (var type in gamedatas.card_types) {
+                var typeInfo = gamedatas.card_types[type];
+                // var deck = new ebg.stock();
+                // deck.create( this, $(typeInfo.deck), this.cardwidth, this.cardheight)
+                for (var index = 0; index < typeInfo.cards.length; index++) {
+                    // Build card type id
+                    var cardTypeId = this.getCardUniqueId(type, index);
+                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/vertical_cards.jpeg', cardTypeId);
+                    // deck.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/vertical_cards.jpeg', cardTypeId);
+                }
+                // this[typeInfo.deck] = deck;
+            }
+
+            
+
+            for(var floor = 1; floor <= 3; floor++) {
+                var key = 'floor' + floor;
+                this[key] = new ebg.stock();
+                this[key].create(this, $(key), this.cardwidth, this.cardheight);
+                this[key].image_items_per_row = 1;
+
+                for (var type in gamedatas.tile_types) {
+                    var tileInfo = gamedatas.tile_types[type];
+                    this[key].addItemType(tileInfo.id, tileInfo.id, g_gamethemeurl + 'img/tiles.jpeg', tileInfo.id);
+                }
+                for ( var tileId in this.gamedatas[key]) {
+                    var tile = this.gamedatas[key][tileId];
+                    // this[key].addToStockWithId(tile.type_arg, tile.id);
+                    this.playTileOnTable(floor, tile);
+                }
+            }
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -157,6 +196,42 @@ function (dojo, declare) {
             script.
         
         */
+        // Get card unique identifier based on its row and col
+        getCardUniqueId : function(type, index) {
+            return parseInt(type, 10) * 100 + parseInt(index, 10);
+        },
+
+        getTileUniqueId : function(row, col) {
+            return parseInt(row, 10) * 4 + parseInt(col, 10);
+        },
+
+        playTileOnTable : function(floor, tile) {
+            var idx = parseInt(tile.location_arg, 10);
+            var row = Math.floor(idx / 4);
+            var col = idx % 4;
+            dojo.place(this.format_block('jstpl_tile', {
+                x : (this.cardwidth + 40) * col,
+                y : (this.cardheight + 40) * row,
+                name : tile.type
+            }), 'floor' + floor);
+
+            // if (player_id != this.player_id) {
+            //     // Some opponent played a card
+            //     // Move card from player panel
+            //     this.placeOnObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
+            // } else {
+            //     // You played a card. If it exists in your hand, move card from there and remove
+            //     // corresponding item
+
+            //     if ($('myhand_item_' + card_id)) {
+            //         this.placeOnObject('cardontable_' + player_id, 'myhand_item_' + card_id);
+            //         this.playerHand.removeFromStockById(card_id);
+            //     }
+            // }
+
+            // // In any case: move it to its final destination
+            // this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
+        },
 
 
         ///////////////////////////////////////////////////

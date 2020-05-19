@@ -75,8 +75,14 @@
         }
         
         */
+        $template = self::getGameName() . "_" . self::getGameName();
 
-
+        $this->page->begin_block($template, "floor");
+        for ($floor=1; $floor <= 3; $floor++) { 
+            $this->page->insert_block("floor", array ("FLOOR" => $floor));
+        }
+        // this will make our My Hand text translatable
+        $this->tpl['MY_HAND'] = self::_("My hand");
 
         /*********** Do not change anything below this line  ************/
   	}

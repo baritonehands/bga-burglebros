@@ -67,6 +67,15 @@
     }
 */
 
+.floor {
+    position: relative;
+    width: 800px;
+    height: 800px;
+}
 
-
+.tile {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+}
 
