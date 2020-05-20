@@ -60,11 +60,15 @@ var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_I
 */
 var jstpl_tile = '<div id="tile_${id}" class="tile whiteblock" style="left: ${x}px; top: ${y}px" aria-label="${name}" title="${name}">${name}<div id="tile_${id}_tokens" class="tile-zone"></div></div>';
 
+var jstpl_wall = '<div id="wall_${wall_id}" class="wall ${wall_direction}" style="left: ${x}px; top: ${y}px"></div>';
+
 var jstpl_player_token = '<div id="player_token_${player_id}" class="token" style="background-color: #${player_color}">P</div>';
 
 var jstpl_guard_token = '<div id="guard_token_${guard_floor}" class="token" style="background-color: black;">G</div>';
 
-var jstpl_patrol_token = '<div id="patrol_token_${guard_floor}" class="token die" style="background-color: orange;">${num_spaces}</div>';
+var jstpl_patrol_die = '<div id="patrol_token_${guard_floor}" class="token die patrol">${num_spaces}</div>';
+
+var jstpl_safe_die = '<div id="safe_token_${die_num}" class="token die safe">${die_num}</div>';
 
 </script>  
 

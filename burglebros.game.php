@@ -191,6 +191,7 @@ class burglebros extends Table
         $result['floor1'] = $this->getTiles(1);
         $result['floor2'] = $this->getTiles(2);
         $result['floor3'] = $this->getTiles(3);
+        $result['walls'] = $this->getWalls();
 
         $result['guard_tokens'] = $this->tokens->getCardsOfType('guard');
         $result['patrol_tokens'] = $this->tokens->getCardsOfType('patrol');
@@ -263,18 +264,37 @@ class burglebros extends Table
         $stairs = $this->tiles->getCardsOfType('stairs');
         
         // Grab a safe and stair for each floor, and move to the floor "deck"
-        for ($floor=0; $floor < 3; $floor++) { 
+        for ($floor=1; $floor <= 3; $floor++) { 
             $safe = array_shift($safes);
             $stair = array_shift($stairs);
             $card_ids = array($safe['id'], $stair['id']);
-            $this->tiles->moveCards($card_ids, 'floor'.($floor + 1));
+            $this->tiles->moveCards($card_ids, "floor$floor");
+
+            $this->setupWalls($floor);
         }
         $this->tiles->shuffle('tile_deck');
         // Grab 14 more tiles per floor "deck" and shuffle
-        for ($floor=0; $floor < 3; $floor++) { 
-            $this->tiles->pickCardsForLocation(14, 'tile_deck', 'floor'.($floor + 1));
-            $this->tiles->shuffle('floor'.($floor + 1));
+        for ($floor=1; $floor <= 3; $floor++) { 
+            $this->tiles->pickCardsForLocation(14, 'tile_deck', "floor$floor");
+            $this->tiles->shuffle("floor$floor");
         }
+    }
+
+    function setupWalls($floor) {
+        foreach ($this->default_walls[$floor] as $dir => $positions) {
+            $sql = 'INSERT INTO wall (floor, vertical, position) VALUES ';
+            $values = array();
+            foreach ($positions as $position) {
+                $vertical = $dir == 'vertical' ? 1 : 0;
+                $values [] = "($floor,$vertical,$position)";
+            }
+            $sql .= implode($values, ',');
+            self::DbQuery($sql);
+        }
+    }
+
+    function getWalls() {
+        return self::getObjectListFromDB("SELECT * from wall");
     }
 
     function getFlippedTiles($floor) {

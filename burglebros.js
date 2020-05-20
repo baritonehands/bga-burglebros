@@ -111,6 +111,11 @@ function (dojo, declare) {
                 this.createPatrolToken(floor);
             }
 
+            for (var wallIdx = 0; wallIdx < 24; wallIdx++) {
+                var wall = gamedatas.walls[wallIdx];
+                this.playWallOnTable(wall);
+            }
+
             for (var player_id in gamedatas.players) {
                 this.createPlayerToken(player_id);
             }
@@ -297,6 +302,22 @@ function (dojo, declare) {
             // this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
         },
 
+        playWallOnTable : function(wall) {
+            var div_id = 'wall_' + wall.id;
+                
+            var idx = parseInt(wall.position, 10);
+            var row = Math.floor(idx / 3);
+            var col = idx % 3;
+            var x = wall.vertical == '1' ?  175 + (col * 190) : 10 + (row * 190);
+            var y = wall.vertical == '1' ? 20 + (row * 190) : 185 + (col * 190);
+            dojo.place(this.format_block('jstpl_wall', {
+                wall_id : wall.id,
+                wall_direction : wall.vertical == '1' ? 'vertical' : 'horizontal', 
+                x : x,
+                y : y
+            }), 'floor' + wall.floor);
+        },
+
         createPlayerToken: function(player_id) {
             dojo.place(this.format_block('jstpl_player_token', {
                 player_id : player_id,
@@ -316,7 +337,7 @@ function (dojo, declare) {
         },
 
         createPatrolToken: function(floor) {
-            dojo.place(this.format_block('jstpl_patrol_token', {
+            dojo.place(this.format_block('jstpl_patrol_die', {
                 guard_floor : floor,
                 num_spaces : floor + 1,
             }), 'token_container');

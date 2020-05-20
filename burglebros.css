@@ -84,6 +84,22 @@
     height: 100%;
 }
 
+.wall {
+    position: absolute;
+    background-color: #CCCCCC;
+    border: 1px solid #666666;
+}
+
+.wall.vertical {
+    width: 10px;
+    height: 150px;
+}
+
+.wall.horizontal {
+    width: 150px;
+    height: 10px;
+}
+
 .token {
     width: 30px;
     height: 30px;
@@ -95,5 +111,14 @@
 
 .die {
     border-radius: 3px;
+    filter: drop-shadow(0px 0px 1px #000000);
+}
+
+.die.patrol {
+    background-color: orange;
+}
+
+.die.safe {
+    background-color: green;
 }
 
