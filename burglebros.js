@@ -19,7 +19,8 @@ define([
     "dojo","dojo/_base/declare",
     "ebg/core/gamegui",
     "ebg/counter",
-    "ebg/stock"
+    "ebg/stock",
+    "ebg/zone"
 ],
 function (dojo, declare) {
     return declare("bgagame.burglebros", ebg.core.gamegui, {
@@ -60,6 +61,9 @@ function (dojo, declare) {
             
             // TODO: Set up your game interface here, according to "gamedatas"
             window.gamedatas = gamedatas;
+            window.app = this;
+
+            this.zones = {};
 
             this.playerHand = new ebg.stock();
             this.playerHand.create( this, $('myhand'), this.cardwidth, this.cardheight);
@@ -101,6 +105,26 @@ function (dojo, declare) {
                 for (var cardId in gamedatas[patrolDeckKey]) {
                     var card = gamedatas[patrolDeckKey][cardId];
                     this[patrolKey].addToStockWithId(card.type_arg, card.location_arg);
+                }
+
+                this.createGuardToken(floor);
+            }
+
+            for (var player_id in gamedatas.players) {
+                this.createPlayerToken(player_id);
+            }
+
+            for (var token_id in gamedatas.player_tokens) {
+                var token = gamedatas.player_tokens[token_id];
+                if (token.location === 'tile') {
+                    this.moveToken('player', token.type_arg, token.location_arg);
+                }
+            }
+
+            for (var token_id in gamedatas.guard_tokens) {
+                var token = gamedatas.guard_tokens[token_id];
+                if (token.location === 'tile') {
+                    this.moveToken('guard', token.type_arg, token.location_arg);
                 }
             }
  
@@ -241,6 +265,12 @@ function (dojo, declare) {
                 this.handleTileClick(evt, floor, tile.location_arg);
             });
 
+            var zone = new ebg.zone();
+            var zoneId = div_id + '_tokens';
+            zone.create( this, zoneId, 30, 30 );
+            zone.setPattern( 'grid' );
+            this.zones[zoneId] = zone;
+
             // if (player_id != this.player_id) {
             //     // Some opponent played a card
             //     // Move card from player panel
@@ -259,6 +289,23 @@ function (dojo, declare) {
             // this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
         },
 
+        createPlayerToken: function(player_id) {
+            dojo.place(this.format_block('jstpl_player_token', {
+                player_id : player_id,
+                player_color: this.gamedatas.players[player_id].color
+            }), 'token_container');
+        },
+
+        moveToken: function(token_type, id, tile_id) {
+            var zoneId = 'tile_' + tile_id + '_tokens';
+            this.zones[zoneId].placeInZone(token_type + '_token_' + id);
+        },
+
+        createGuardToken: function(floor) {
+            dojo.place(this.format_block('jstpl_guard_token', {
+                guard_floor : floor,
+            }), 'token_container');
+        },
 
         ///////////////////////////////////////////////////
         //// Player's action

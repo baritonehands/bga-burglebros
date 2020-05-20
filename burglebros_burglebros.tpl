@@ -31,6 +31,10 @@
     </div>
 </div>
 
+<div id="token_container">
+    <h3>Tokens</h3>
+</div>
+
 <div id="board_wrap" class="whiteblock">
     <!-- BEGIN floor -->
     <div class="floor_container">
@@ -54,7 +58,11 @@
 var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';
 
 */
-var jstpl_tile = '<div id="tile_${id}" class="tile whiteblock" style="left: ${x}px; top: ${y}px" aria-label="${name}" title="${name}">${name}</div>';
+var jstpl_tile = '<div id="tile_${id}" class="tile whiteblock" style="left: ${x}px; top: ${y}px" aria-label="${name}" title="${name}">${name}<div id="tile_${id}_tokens" class="tile-zone"></div></div>';
+
+var jstpl_player_token = '<div id="player_token_${player_id}" class="token" style="background-color: #${player_color}">P</div>';
+
+var jstpl_guard_token = '<div id="guard_token_${guard_floor}" class="token" style="background-color: black;">G</div>';
 
 </script>  
 

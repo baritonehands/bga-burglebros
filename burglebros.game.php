@@ -34,12 +34,15 @@ class burglebros extends Table
         
         self::initGameStateLabels( array( 
             'actionsRemaining' => 10,
+            'entranceTile' => 11
         ) ); 
 
         $this->cards = self::getNew( "module.common.deck" );
         $this->cards->init( "card" );
         $this->tiles = self::getNew( "module.common.deck" );
-        $this->tiles->init( "tile" );     
+        $this->tiles->init( "tile" );
+        $this->tokens = self::getNew( "module.common.deck" );
+        $this->tokens->init( "token" );     
 	}
 	
     protected function getGameName( )
@@ -87,8 +90,8 @@ class burglebros extends Table
         //self::initStat( 'table', 'table_teststat1', 0 );    // Init a table statistics
         //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
 
-        $this->setupCards($this->card_types, $this->card_info);
-        $this->setupCards($this->patrol_types, $this->patrol_info);
+        $this->createDecks($this->card_types, $this->card_info);
+        $this->createDecks($this->patrol_types, $this->patrol_info);
 
         $tiles = array ();
         $index = 0;
@@ -101,11 +104,40 @@ class burglebros extends Table
         $this->setupTiles();
         $this->flipTile(1, 5);
 
-        // $plan_cards = $this->plan_cards->pickCardsForLocation(3, 'deck', 'plan_supply');
-       
+        // Guards
+        $tokens = array ();
+        for ($floor=1; $floor <= 3; $floor++) { 
+            $tokens [] = array('type' => 'guard', 'type_arg' => $floor, 'nbr' => 1);
+        }
+        $this->tokens->createCards( $tokens );
+        foreach ($players as $player_id => $player) {
+            $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
+            $this->tokens->createCards(array($player_token), 'hand', $player_id);
+        }
 
         // Activate first player (which is in general a good idea :) )
-        $this->activeNextPlayer();
+        $current_player_id = $this->activeNextPlayer();
+
+        // Move first player token to entrance
+        $flipped = $this->getFlippedTiles(1);
+        $entrance = array_shift($flipped)['id'];
+        self::setGameStateInitialValue( 'entranceTile', $entrance );
+        $hand = $this->tokens->getPlayerHand($current_player_id);
+        $current_player_token = array_shift($hand);
+        $this->tokens->moveCard($current_player_token['id'], 'tile', $entrance);
+
+        // Move guard
+        $this->cards->pickCardForLocation('patrol1_deck', 'patrol1_discard');
+        $guard_entrance = $this->cards->getCardOnTop('patrol1_discard');
+        $floor1_tiles = $this->getTiles(1);
+        $guard_tokens = $this->tokens->getCardsOfType('guard', 1);
+        $guard_token1 = array_shift($guard_tokens);
+        foreach ($floor1_tiles as $tile_id => $tile) {
+            if ($tile['location_arg'] == $guard_entrance['type_arg']) {
+                $this->tokens->moveCard($guard_token1['id'], 'tile', $tile_id);
+            }   
+        }
+        $this->cards->pickCardForLocation('patrol1_deck', 'patrol1_discard');
 
         /************ End of the game initialization *****/
     }
@@ -142,9 +174,12 @@ class burglebros extends Table
         }
         $result['tile_types'] = $tiles;
 
-        $result['floor1'] = $this->getFlippedTiles(1);
-        $result['floor2'] = $this->getFlippedTiles(2);
-        $result['floor3'] = $this->getFlippedTiles(3);
+        $result['floor1'] = $this->getTiles(1);
+        $result['floor2'] = $this->getTiles(2);
+        $result['floor3'] = $this->getTiles(3);
+
+        $result['guard_tokens'] = $this->tokens->getCardsOfType('guard');
+        $result['player_tokens'] = $this->tokens->getCardsOfType('player');
   
         return $result;
     }
@@ -174,7 +209,7 @@ class burglebros extends Table
     /*
         In this space, you can put any utility methods useful for your game logic
     */
-    function setupCards($types, $info) {
+    function createDecks($types, $info) {
         // Create cards
         foreach ( $types as $type => $desc ) {
             $cards = array ();
@@ -226,8 +261,12 @@ class burglebros extends Table
     }
 
     function getFlippedTiles($floor) {
-        $tiles = $this->tiles->getCardsInLocation("floor$floor");
-        $flipped = self::getCollectionFromDB("SELECT card_id id FROM tile WHERE card_location='floor$floor' and flipped=1");
+        return self::getCollectionFromDB("SELECT card_id id FROM tile WHERE card_location='floor$floor' and flipped=1");
+    }
+
+    function getTiles($floor) {
+        $tiles = $this->tiles->getCardsInLocation("floor$floor", null, 'location_arg');
+        $flipped = $this->getFlippedTiles($floor);
         foreach ($tiles as &$tile) {
             if (!isset($flipped[$tile['id']])) {
                 $tile['type'] = ''; // face-down
@@ -242,8 +281,7 @@ class burglebros extends Table
     }
 
     function nextAction() {
-        $actionsRemaining = self::getGameStateValue('actionsRemaining') - 1;
-        self::setGameStateValue('actionsRemaining', $actionsRemaining);
+        $actionsRemaining = self::incGameStateValue('actionsRemaining', -1);
         if ($actionsRemaining == 0) {
             $this->gamestate->nextState('moveGuard');
         } else {
@@ -291,7 +329,7 @@ class burglebros extends Table
         $this->flipTile( $floor, $location_arg );
         self::notifyAllPlayers('peek', '', array(
             'floor' => $floor,
-            'tiles' => $this->getFlippedTiles($floor),
+            'tiles' => $this->getTiles($floor),
         ));
         $this->nextAction();
     }
@@ -359,6 +397,13 @@ class burglebros extends Table
         $player_id = self::activeNextPlayer();
         self::giveExtraTime( $player_id );
         self::setGameStateValue('actionsRemaining', 4);
+        $hand = $this->tokens->getPlayerHand($player_id);
+        $token = array_shift($hand);
+        if ($token) {
+            $entrance = self::getGameStateValue('entranceTile');
+            $this->tokens->moveCard($token['id'], 'tile', $entrance);
+        }
+        
 
         $this->gamestate->nextState( 'playerTurn' );
     }
