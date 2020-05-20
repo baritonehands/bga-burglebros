@@ -101,7 +101,7 @@ function (dojo, declare) {
                         this[patrolKey].addItemType(cardInfo.index, cardInfo.index, g_gamethemeurl + 'img/patrol.jpeg', cardInfo.index);
                     }
                 }
-                var patrolDeckKey = patrolKey + '_deck';
+                var patrolDeckKey = patrolKey + '_discard';
                 for (var cardId in gamedatas[patrolDeckKey]) {
                     var card = gamedatas[patrolDeckKey][cardId];
                     this[patrolKey].addToStockWithId(card.type_arg, card.location_arg);
