@@ -132,9 +132,9 @@ class burglebros extends Table
         $floor1_tiles = $this->getTiles(1);
         $guard_tokens = $this->tokens->getCardsOfType('guard', 1);
         $guard_token1 = array_shift($guard_tokens);
-        foreach ($floor1_tiles as $tile_id => $tile) {
+        foreach ($floor1_tiles as $tile) {
             if ($tile['location_arg'] == $guard_entrance['type_arg']) {
-                $this->tokens->moveCard($guard_token1['id'], 'tile', $tile_id);
+                $this->tokens->moveCard($guard_token1['id'], 'tile', $tile['id']);
             }   
         }
         $this->cards->pickCardForLocation('patrol1_deck', 'patrol1_discard');
