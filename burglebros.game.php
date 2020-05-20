@@ -108,6 +108,7 @@ class burglebros extends Table
         $tokens = array ();
         for ($floor=1; $floor <= 3; $floor++) { 
             $tokens [] = array('type' => 'guard', 'type_arg' => $floor, 'nbr' => 1);
+            $tokens [] = array('type' => 'patrol', 'type_arg' => $floor, 'nbr' => 1);
         }
         $this->tokens->createCards( $tokens );
         foreach ($players as $player_id => $player) {
@@ -118,6 +119,8 @@ class burglebros extends Table
         // Activate first player (which is in general a good idea :) )
         $current_player_id = $this->activeNextPlayer();
 
+        $this->cards->pickCard('tools_deck', $current_player_id);
+
         // Move first player token to entrance
         $flipped = $this->getFlippedTiles(1);
         $entrance = array_shift($flipped)['id'];
@@ -126,7 +129,7 @@ class burglebros extends Table
         $current_player_token = array_shift($hand);
         $this->tokens->moveCard($current_player_token['id'], 'tile', $entrance);
 
-        // Move guard
+        // Move guard and patrol
         $this->cards->pickCardForLocation('patrol1_deck', 'patrol1_discard');
         $guard_entrance = $this->cards->getCardOnTop('patrol1_discard');
         $floor1_tiles = $this->getTiles(1);
@@ -137,7 +140,15 @@ class burglebros extends Table
                 $this->tokens->moveCard($guard_token1['id'], 'tile', $tile['id']);
             }   
         }
-        $this->cards->pickCardForLocation('patrol1_deck', 'patrol1_discard');
+        $this->cards->pickCardForLocation('patrol1_deck', 'patrol1_discard', 1);
+        $patrol_entrance = $this->cards->getCardOnTop('patrol1_discard');
+        $patrol_tokens = $this->tokens->getCardsOfType('patrol', 1);
+        $patrol_token1 = array_shift($patrol_tokens);
+        foreach ($floor1_tiles as $tile) {
+            if ($tile['location_arg'] == $patrol_entrance['type_arg']) {
+                $this->tokens->moveCard($patrol_token1['id'], 'tile', $tile['id']);
+            }   
+        }
 
         /************ End of the game initialization *****/
     }
@@ -161,6 +172,9 @@ class burglebros extends Table
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
         $sql = "SELECT player_id id, player_score score FROM player ";
         $result['players'] = self::getCollectionFromDb( $sql );
+        foreach ($result['players'] as $player_id => &$player) {
+            $player['hand'] = $this->cards->getPlayerHand($player_id);
+        }
   
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
         $result = array_merge($result, $this->gatherCardData('card', $this->card_types, $this->card_info));
@@ -179,6 +193,7 @@ class burglebros extends Table
         $result['floor3'] = $this->getTiles(3);
 
         $result['guard_tokens'] = $this->tokens->getCardsOfType('guard');
+        $result['patrol_tokens'] = $this->tokens->getCardsOfType('patrol');
         $result['player_tokens'] = $this->tokens->getCardsOfType('player');
   
         return $result;
@@ -237,6 +252,8 @@ class burglebros extends Table
             $deck_name = $desc['name'].'_deck';
             $result[$deck_name] = $this->cards->getCardsInLocation( $deck_name );
             $result[$prefix.'_types'][$desc['name']] = array('deck' => $deck_name, 'cards' => $card_info);
+            $discard_name = $desc['name'].'_discard';
+            $result[$discard_name] = $this->cards->getCardsInLocation( $discard_name );
         }
         return $result;
     }

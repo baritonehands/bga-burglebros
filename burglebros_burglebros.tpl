@@ -64,6 +64,8 @@ var jstpl_player_token = '<div id="player_token_${player_id}" class="token" styl
 
 var jstpl_guard_token = '<div id="guard_token_${guard_floor}" class="token" style="background-color: black;">G</div>';
 
+var jstpl_patrol_token = '<div id="patrol_token_${guard_floor}" class="token die" style="background-color: orange;">${num_spaces}</div>';
+
 </script>  
 
 {OVERALL_GAME_FOOTER}
