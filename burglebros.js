@@ -227,8 +227,8 @@ function (dojo, declare) {
                     break;
 */
                     case 'playerTurn':
-                        this.addActionButton( 'button_peek', _('Peek'), console.log );
-                        this.addActionButton( 'button_move', _('Move'), console.log );
+                        this.addActionButton( 'button_peek', _('Peek'), dojo.hitch(this, 'handleIntentClick', 'peek') );
+                        this.addActionButton( 'button_move', _('Move'), dojo.hitch(this, 'handleIntentClick', 'move') );
                         this.addActionButton( 'button_pass', _('Pass'), console.log );
                         break;
                 }
@@ -394,11 +394,12 @@ function (dojo, declare) {
         handleTileClick: function(evt, floor, location_arg) {
             dojo.stopEvent(evt);
 
-            this.ajaxcall('/burglebros/burglebros/peek.html', { lock: true, floor: floor, location_arg: location_arg }, this, console.log, console.error);
+            var url = '/burglebros/burglebros/' + this.intent + '.html';
+            this.ajaxcall(url, { lock: true, floor: floor, location_arg: location_arg }, this, console.log, console.error);
         },
 
-        handlePeekClick: function(evt) {
-
+        handleIntentClick: function(intent, evt) {
+            this.intent = intent;
         },
 
         

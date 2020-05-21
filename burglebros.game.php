@@ -415,6 +415,27 @@ class burglebros extends Table
         $this->nextAction();
     }
 
+    function move( $floor, $location_arg ) {
+        self::checkAction('move');
+        
+        $current_player_id = self::getCurrentPlayerId();
+        $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
+        $player_tile = $this->tiles->getCard($player_token['location_arg']);
+        $to_move = array_values($this->tiles->getCardsInLocation("floor$floor", $location_arg))[0];
+
+        if (!$this->tileIsAdjacent($to_move, $player_tile)) {
+            throw new BgaUserException(self::_("Tile is not adjacent"));
+        }
+
+        $this->flipTile( $floor, $location_arg );
+        $this->tokens->moveCard($player_token['id'], 'tile', $to_move['id']);
+        self::notifyAllPlayers('move', '', array(
+            'floor' => $floor,
+            'tiles' => $this->getTiles($floor),
+        ));
+        $this->nextAction();
+    }
+
     
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state arguments
