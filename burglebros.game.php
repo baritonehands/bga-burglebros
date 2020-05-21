@@ -360,7 +360,16 @@ class burglebros extends Table
             }
         }
         
-        return $same_floor && $adjacent && !$blocked;
+        return ($same_floor && $adjacent && !$blocked) ||
+            $this->stairsAreAdjacent($tile, $other_tile) ||
+            $this->stairsAreAdjacent($other_tile, $tile) ||
+            $tile['type'] == 'service-duct' && $other_tile['type'] == 'service-duct';
+    }
+
+    function stairsAreAdjacent($tile, $other_tile) {
+        return $tile['type'] == 'stairs' &&
+            $tile['location'][5] + 1 == $other_tile['location'][5] &&
+            $tile['location_arg'] == $other_tile['location_arg'];
     }
 
 //////////////////////////////////////////////////////////////////////////////
