@@ -102,7 +102,7 @@ class burglebros extends Table
         $this->tiles->createCards( $tiles, 'tile_deck' );
 
         $this->setupTiles();
-        $this->flipTile(1, 5);
+        $this->flipTile(1, 6);
 
         // Guards
         $tokens = array ();
@@ -326,6 +326,36 @@ class burglebros extends Table
         }
     }
 
+    function tileIsAdjacent($tile, $other_tile) {
+        $walls = $this->getWalls();
+        
+        $tindex = $tile['location_arg'];
+        $trow = floor($tindex / 4);
+        $tcol = $tindex % 4;
+
+        $pindex = $other_tile['location_arg'];
+        $prow = floor($pindex / 4);
+        $pcol = $pindex % 4;
+
+        $same_floor = $tile['location'] == $other_tile['location'];
+        $adjacent = ($trow == $prow && abs($tcol - $pcol) == 1) || ($tcol == $pcol && abs($trow - $prow) == 1);
+        $blocked = false;
+        foreach ($walls as $wall) {
+            if($wall['floor'] == $tile['location'][5]) {
+                $wrow = $wall['vertical'] == 1 ? floor($wall['position'] / 3) : $wall['position'] % 3;
+                $wcol = $wall['vertical'] == 0 ? floor($wall['position'] / 3) : $wall['position'] % 3;
+                $vertical = ($trow == $prow && $trow == $wrow && abs($tcol - $pcol) == 1) && min($tcol, $pcol) == $wcol;
+                $horizontal = ($tcol == $pcol && $tcol == $wcol && abs($trow - $prow) == 1) && min($trow, $prow) == $wrow;
+                if (($wall['vertical'] == 1 && $vertical) || ($wall['vertical'] == 0 && $horizontal)) {
+                    $blocked = true;
+                    break;
+                }
+            }
+        }
+        
+        return $same_floor && $adjacent && !$blocked;
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -363,6 +393,20 @@ class burglebros extends Table
 
     function peek( $floor, $location_arg ) {
         self::checkAction('peek');
+        
+        $current_player_id = self::getCurrentPlayerId();
+        $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
+        $player_tile = $this->tiles->getCard($player_token['location_arg']);
+        $to_peek = array_values($this->tiles->getCardsInLocation("floor$floor", $location_arg))[0];
+        $flipped = $this->getFlippedTiles($floor);
+
+        if (isset($flipped[$to_peek['id']])) {
+            throw new BgaUserException(self::_("Tile is already visible"));
+        }
+        if (!$this->tileIsAdjacent($to_peek, $player_tile)) {
+            throw new BgaUserException(self::_("Tile is not adjacent"));
+        }
+
         $this->flipTile( $floor, $location_arg );
         self::notifyAllPlayers('peek', '', array(
             'floor' => $floor,
