@@ -134,25 +134,8 @@ class burglebros extends Table
         $this->tokens->moveCard($current_player_token['id'], 'tile', $entrance);
 
         // Move guard and patrol
-        $this->cards->pickCardForLocation('patrol1_deck', 'patrol1_discard');
-        $guard_entrance = $this->cards->getCardOnTop('patrol1_discard');
-        $floor1_tiles = $this->getTiles(1);
-        $guard_tokens = $this->tokens->getCardsOfType('guard', 1);
-        $guard_token1 = array_shift($guard_tokens);
-        foreach ($floor1_tiles as $tile) {
-            if ($tile['location_arg'] == $guard_entrance['type_arg']) {
-                $this->tokens->moveCard($guard_token1['id'], 'tile', $tile['id']);
-            }   
-        }
-        $this->cards->pickCardForLocation('patrol1_deck', 'patrol1_discard', 1);
-        $patrol_entrance = $this->cards->getCardOnTop('patrol1_discard');
-        $patrol_tokens = $this->tokens->getCardsOfType('patrol', 1);
-        $patrol_token1 = array_shift($patrol_tokens);
-        foreach ($floor1_tiles as $tile) {
-            if ($tile['location_arg'] == $patrol_entrance['type_arg']) {
-                $this->tokens->moveCard($patrol_token1['id'], 'tile', $tile['id']);
-            }   
-        }
+        $guard_token = array_values($this->tokens->getCardsOfType('guard', 1))[0];
+        $this->setupPatrol($guard_token, 1);
 
         /************ End of the game initialization *****/
     }
@@ -320,6 +303,28 @@ class burglebros extends Table
         return $tiles;
     }
 
+    function setupPatrol($guard_token, $floor) {
+        $patrol = "patrol".$floor;
+        $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard');
+        $guard_entrance = $this->cards->getCardOnTop($patrol.'_discard');
+        $floor_tiles = $this->getTiles($floor);
+        foreach ($floor_tiles as $tile) {
+            if ($tile['location_arg'] == $guard_entrance['type_arg']) {
+                $this->tokens->moveCard($guard_token['id'], 'tile', $tile['id']);
+                break;
+            }   
+        }
+        $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', $floor);
+        $patrol_entrance = $this->cards->getCardOnTop($patrol.'_discard');
+        $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
+        foreach ($floor_tiles as $tile) {
+            if ($tile['location_arg'] == $patrol_entrance['type_arg']) {
+                $this->tokens->moveCard($patrol_token['id'], 'tile', $tile['id']);
+                break;
+            }   
+        }
+    }
+
     function flipTile($floor, $location_arg) {
         self::DbQuery("UPDATE tile SET flipped=1 WHERE card_location='floor$floor' and card_location_arg=$location_arg");
     }
@@ -445,6 +450,10 @@ class burglebros extends Table
 
         $this->flipTile( $floor, $location_arg );
         $this->tokens->moveCard($player_token['id'], 'tile', $to_move['id']);
+        $guard_token = array_values($this->tokens->getCardsOfType('guard', $to_move['location'][5]))[0];
+        if ($guard_token['location'] == 'deck') {
+            $this->setupPatrol($guard_token, $to_move['location'][5]);
+        }
         self::notifyAllPlayers('move', '', array(
             'floor' => $floor,
             'tiles' => $this->getTiles($floor),

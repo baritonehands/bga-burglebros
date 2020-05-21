@@ -98,13 +98,17 @@ function (dojo, declare) {
                     var typeInfo = gamedatas.patrol_types[type];
                     for (var index = 0; index < typeInfo.cards.length; index++) {
                         var cardInfo = typeInfo.cards[index];
-                        this[patrolKey].addItemType(cardInfo.index, cardInfo.index, g_gamethemeurl + 'img/patrol.jpg', cardInfo.index);
+                        var id = ((cardInfo.type - 4) * 16) + index;
+                        this[patrolKey].addItemType(id, id, g_gamethemeurl + 'img/patrol.jpg', id);
                     }
                 }
                 var patrolDeckKey = patrolKey + '_discard';
                 for (var cardId in gamedatas[patrolDeckKey]) {
                     var card = gamedatas[patrolDeckKey][cardId];
-                    this[patrolKey].addToStockWithId(card.type_arg, card.location_arg);
+                    var cardType = parseInt(card.type, 10);
+                    var cardIndex = parseInt(card.type_arg, 10);
+                    var id = ((cardType - 4) * 16) + cardIndex;
+                    this[patrolKey].addToStockWithId(id, cardId);
                 }
 
                 this.createGuardToken(floor);
@@ -237,7 +241,8 @@ function (dojo, declare) {
         
         setupPatrolItem: function(floor, card_div, card_type_id, card_id) {
             var key = 'patrol' + floor;
-            card_div.innerText = this.gamedatas.patrol_types[key].cards[card_type_id].name;
+            debugger;
+            card_div.innerText = this.gamedatas.patrol_types[key].cards[card_type_id % 16].name;
         },
 
         ///////////////////////////////////////////////////
