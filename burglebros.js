@@ -74,8 +74,18 @@ function (dojo, declare) {
                 var typeInfo = gamedatas.card_types[type];
                 for (var index = 0; index < typeInfo.cards.length; index++) {
                     // Build card type id
-                    var cardTypeId = this.getCardUniqueId(type, index);
-                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/tools.jpg', cardTypeId);
+                    var card = typeInfo.cards[index];
+                    var cardTypeId = this.getCardUniqueId(card.type, card.index);
+                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/' + type + '.jpg', card.index);
+                }
+            }
+
+            for (var playerId in gamedatas.players) {
+                var hand = gamedatas.players[playerId].hand;
+                for(var cardId in hand) {
+                    var card = hand[cardId];
+                    var cardTypeId = this.getCardUniqueId(card.type, card.type_arg);
+                    this.playerHand.addToStockWithId(cardTypeId, cardId);
                 }
             }
 
@@ -241,7 +251,6 @@ function (dojo, declare) {
         
         setupPatrolItem: function(floor, card_div, card_type_id, card_id) {
             var key = 'patrol' + floor;
-            debugger;
             card_div.innerText = this.gamedatas.patrol_types[key].cards[card_type_id % 16].name;
         },
 

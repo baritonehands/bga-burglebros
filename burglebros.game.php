@@ -124,6 +124,8 @@ class burglebros extends Table
         $current_player_id = $this->activeNextPlayer();
 
         $this->cards->pickCard('tools_deck', $current_player_id);
+        $this->cards->pickCard('loot_deck', $current_player_id);
+        $this->cards->pickCard('events_deck', $current_player_id);
 
         // Move first player token to entrance
         $flipped = $this->getFlippedTiles(1);
@@ -218,7 +220,7 @@ class burglebros extends Table
             $cards = array ();
             foreach ( $info[$type] as $index => $value ) {
                 $nbr = isset($value['nbr']) ? $value['nbr'] : 1;
-                $cards [] = array('type' => $type, 'type_arg' => $index, 'nbr' => $nbr);
+                $cards [] = array('type' => $type, 'type_arg' => $index + 1, 'nbr' => $nbr);
             }
             $deck_name = $desc['name'].'_deck';
             $this->cards->createCards( $cards, $deck_name );
@@ -234,7 +236,7 @@ class burglebros extends Table
         foreach ( $types as $type => $desc ) {
             $card_info = array();
             foreach ($info[$type] as $index => $value) {
-                $card_info [] = array('type' => $type, 'index' => $index, 'name' => $value['name']);
+                $card_info [] = array('type' => $type, 'index' => $index + 1, 'name' => $value['name']);
             }
 
             $deck_name = $desc['name'].'_deck';

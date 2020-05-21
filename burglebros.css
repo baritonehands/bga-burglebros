@@ -71,6 +71,10 @@
     background-size: 600px;
 }
 
+#myhand .stockitem {
+    background-size: 300px;
+}
+
 .floor {
     position: relative;
     width: 800px;
