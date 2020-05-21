@@ -67,7 +67,7 @@ function (dojo, declare) {
 
             this.playerHand = new ebg.stock();
             this.playerHand.create( this, $('myhand'), this.cardwidth, this.cardheight);
-            this.playerHand.image_items_per_row = 1;
+            this.playerHand.image_items_per_row = 2;
 
             // Create cards types:
             for (var type in gamedatas.card_types) {
@@ -75,7 +75,7 @@ function (dojo, declare) {
                 for (var index = 0; index < typeInfo.cards.length; index++) {
                     // Build card type id
                     var cardTypeId = this.getCardUniqueId(type, index);
-                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/vertical_cards.jpeg', cardTypeId);
+                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/tools.jpg', cardTypeId);
                 }
             }
 
@@ -90,7 +90,7 @@ function (dojo, declare) {
                 var patrolKey = 'patrol' + floor;
                 this[patrolKey] = new ebg.stock();
                 this[patrolKey].create(this, $(patrolKey), this.cardwidth, this.cardheight);
-                this[patrolKey].image_items_per_row = 1;
+                this[patrolKey].image_items_per_row = 4;
                 this[patrolKey].onItemCreate = dojo.hitch(this, 'setupPatrolItem', floor);
                 console.log(this[patrolKey].jstpl_stock_item);
 
@@ -98,7 +98,7 @@ function (dojo, declare) {
                     var typeInfo = gamedatas.patrol_types[type];
                     for (var index = 0; index < typeInfo.cards.length; index++) {
                         var cardInfo = typeInfo.cards[index];
-                        this[patrolKey].addItemType(cardInfo.index, cardInfo.index, g_gamethemeurl + 'img/patrol.jpeg', cardInfo.index);
+                        this[patrolKey].addItemType(cardInfo.index, cardInfo.index, g_gamethemeurl + 'img/patrol.jpg', cardInfo.index);
                     }
                 }
                 var patrolDeckKey = patrolKey + '_discard';
@@ -267,10 +267,14 @@ function (dojo, declare) {
             var idx = parseInt(tile.location_arg, 10);
             var row = Math.floor(idx / 4);
             var col = idx % 4;
+            var bg_row = Math.floor(tile.type_arg / 2) * -100;
+            var bg_col = (tile.type_arg % 2) * -100;
             dojo.place(this.format_block('jstpl_tile', {
                 id : tile.id, 
                 x : (this.cardwidth + 40) * col,
                 y : (this.cardheight + 40) * row,
+                bg_image: g_gamethemeurl + 'img/tiles.jpg',
+                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%',
                 name : tile.type
             }), 'floor' + floor);
             
@@ -283,23 +287,6 @@ function (dojo, declare) {
             zone.create( this, zoneId, 30, 30 );
             zone.setPattern( 'grid' );
             this.zones[zoneId] = zone;
-
-            // if (player_id != this.player_id) {
-            //     // Some opponent played a card
-            //     // Move card from player panel
-            //     this.placeOnObject('cardontable_' + player_id, 'overall_player_board_' + player_id);
-            // } else {
-            //     // You played a card. If it exists in your hand, move card from there and remove
-            //     // corresponding item
-
-            //     if ($('myhand_item_' + card_id)) {
-            //         this.placeOnObject('cardontable_' + player_id, 'myhand_item_' + card_id);
-            //         this.playerHand.removeFromStockById(card_id);
-            //     }
-            // }
-
-            // // In any case: move it to its final destination
-            // this.slideToObject('cardontable_' + player_id, 'playertablecard_' + player_id).play();
         },
 
         playWallOnTable : function(wall) {

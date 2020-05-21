@@ -306,8 +306,8 @@ class burglebros extends Table
         $flipped = $this->getFlippedTiles($floor);
         foreach ($tiles as &$tile) {
             if (!isset($flipped[$tile['id']])) {
-                $tile['type'] = ''; // face-down
-                $tile['type_arg'] = -1;
+                $tile['type'] = 'back'; // face-down
+                $tile['type_arg'] = 0;
             }
         }
         return $tiles;

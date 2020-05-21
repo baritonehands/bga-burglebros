@@ -58,7 +58,7 @@
 var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';
 
 */
-var jstpl_tile = '<div id="tile_${id}" class="tile whiteblock" style="left: ${x}px; top: ${y}px" aria-label="${name}" title="${name}">${name}<div id="tile_${id}_tokens" class="tile-zone"></div></div>';
+var jstpl_tile = '<div id="tile_${id}" class="tile" style="background-image: url(${bg_image}); background-position: ${bg_position}; left: ${x}px; top: ${y}px" aria-label="${name}" title="${name}">${name}<div id="tile_${id}_tokens" class="tile-zone"></div></div>';
 
 var jstpl_wall = '<div id="wall_${wall_id}" class="wall ${wall_direction}" style="left: ${x}px; top: ${y}px"></div>';
 

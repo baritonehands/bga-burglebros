@@ -67,6 +67,10 @@
     }
 */
 
+.stockitem {
+    background-size: 600px;
+}
+
 .floor {
     position: relative;
     width: 800px;
@@ -77,6 +81,9 @@
     position: absolute;
     width: 150px;
     height: 150px;
+    background-size: 300px;
+    margin: 20px 10px;
+    border: 1px solid #666666;
 }
 
 .tile-zone {

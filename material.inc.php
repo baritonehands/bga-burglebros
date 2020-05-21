@@ -86,26 +86,27 @@ $this->patrol_info = array(
 );
 
 $this->tile_types = array(
-  'safe' => 3,
-  'stairs' => 3,
-  'walkway' => 3,
-  'laboratory' => 2,
-  'lavatory' => 1,
-  'service-duct' => 2,
-  'secret-door' => 2,
+  'back' => 1,
+  'atrium' => 2,
+  'camera' => 4,
   'fingerprint-computer' => 1,
   'laser-computer' => 1,
   'motion-computer' => 1,
-  'camera' => 4,
-  'laser' => 3,
-  'motion' => 3,
+  'deadbolt' => 3,
   'detector' => 3,
   'fingerprint' => 3,
-  'thermo' => 3,
-  'keypad' => 3,
-  'deadbolt' => 3,
   'foyer' => 2,
-  'atrium' => 2
+  'keypad' => 3,
+  'laboratory' => 2,
+  'laser' => 3,
+  'lavatory' => 1,
+  'motion' => 3,
+  'safe' => 3,
+  'secret-door' => 2,
+  'service-duct' => 2,
+  'stairs' => 3,
+  'thermo' => 3,
+  'walkway' => 3,
 );
 
 $this->default_walls = array(
