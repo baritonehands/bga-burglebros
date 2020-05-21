@@ -275,7 +275,7 @@ function (dojo, declare) {
                 y : (this.cardheight + 40) * row,
                 bg_image: g_gamethemeurl + 'img/tiles.jpg',
                 bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%',
-                name : tile.type
+                name : tile.type + tile.safe_die
             }), 'floor' + floor);
             
             dojo.connect( $(div_id), 'onclick', this, function(evt) {

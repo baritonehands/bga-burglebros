@@ -93,13 +93,17 @@ class burglebros extends Table
         $this->createDecks($this->card_types, $this->card_info);
         $this->createDecks($this->patrol_types, $this->patrol_info);
 
-        $tiles = array ();
-        $index = 0;
-        foreach ( $this->tile_types as $type => $nbr ) {
-            $tiles [] = array('type' => $type, 'type_arg' => $index, 'nbr' => $nbr);
-            $index++;
+        
+        $index = 1;
+        $values = array();
+        foreach ( $this->tile_types as $type => $dice ) {
+            foreach ($dice as $die) {
+                $values [] = "('$type',$index,'deck',$die)";
+                $index++;
+            }
         }
-        $this->tiles->createCards( $tiles, 'tile_deck' );
+        $sql = "INSERT INTO tile (card_type,card_type_arg,card_location,safe_die) VALUES ";
+        self::DbQuery($sql.implode($values, ','));
 
         $this->setupTiles();
         $this->flipTile(1, 6);
@@ -123,7 +127,7 @@ class burglebros extends Table
 
         // Move first player token to entrance
         $flipped = $this->getFlippedTiles(1);
-        $entrance = array_shift($flipped)['id'];
+        $entrance = array_keys($flipped)[0];
         self::setGameStateInitialValue( 'entranceTile', $entrance );
         $hand = $this->tokens->getPlayerHand($current_player_id);
         $current_player_token = array_shift($hand);
@@ -272,10 +276,10 @@ class burglebros extends Table
 
             $this->setupWalls($floor);
         }
-        $this->tiles->shuffle('tile_deck');
+        $this->tiles->shuffle('deck');
         // Grab 14 more tiles per floor "deck" and shuffle
         for ($floor=1; $floor <= 3; $floor++) { 
-            $this->tiles->pickCardsForLocation(14, 'tile_deck', "floor$floor");
+            $this->tiles->pickCardsForLocation(14, 'deck', "floor$floor");
             $this->tiles->shuffle("floor$floor");
         }
     }
@@ -298,7 +302,7 @@ class burglebros extends Table
     }
 
     function getFlippedTiles($floor) {
-        return self::getCollectionFromDB("SELECT card_id id FROM tile WHERE card_location='floor$floor' and flipped=1");
+        return self::getCollectionFromDB("SELECT card_id id, safe_die FROM tile WHERE card_location='floor$floor' and flipped=1", true);
     }
 
     function getTiles($floor) {
@@ -308,6 +312,9 @@ class burglebros extends Table
             if (!isset($flipped[$tile['id']])) {
                 $tile['type'] = 'back'; // face-down
                 $tile['type_arg'] = 0;
+                $tile['safe_die'] = 0;
+            } else {
+                $tile['safe_die'] = $flipped[$tile['id']];
             }
         }
         return $tiles;

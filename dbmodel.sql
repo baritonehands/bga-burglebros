@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS `tile` (
   `card_location` varchar(16) NOT NULL,
   `card_location_arg` int(11) NOT NULL,
   `flipped` boolean NOT NULL DEFAULT 0,
+  `safe_die` int(11) NOT NULL,
   PRIMARY KEY (`card_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
