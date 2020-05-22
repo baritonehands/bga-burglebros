@@ -132,8 +132,6 @@ class burglebros extends Table
         // Activate first player (which is in general a good idea :) )
         $current_player_id = $this->activeNextPlayer();
 
-        $this->cards->pickCard('tools_deck', $current_player_id);
-        $this->cards->pickCard('loot_deck', $current_player_id);
         $this->cards->pickCard('events_deck', $current_player_id);
 
         // Move first player token to entrance
@@ -552,17 +550,40 @@ class burglebros extends Table
             $result = bga_rand(1, 6);
             $roll[$result] = $result;
         }
+        var_dump(array_keys($roll));
         $safe_row = floor($safe_tile['location_arg'] / 4);
         $safe_col = $safe_tile['location_arg'] % 4;
+        $cracked_count = 0;
         foreach ($tiles as $tile) {
             $row = floor($tile['location_arg'] / 4);
             $col = $tile['location_arg'] % 4;
-            if (($row == $safe_row || $col == $safe_col) &&
-                    !isset($placed_tokens[$tile['id']]) &&
-                    isset($roll[intval($tile['safe_die'])])) {
-                $this->tokens->pickCardForLocation('deck', 'tile', $tile['id']);
+            if (($row == $safe_row || $col == $safe_col)) {
+                if (!isset($placed_tokens[$tile['id']])) {
+                    if(isset($roll[intval($tile['safe_die'])])) {
+                        $this->pickTokenForTile('safe', $tile['id']);
+                        $cracked_count++;
+                    }
+                } else {
+                    $cracked_count++;
+                }
             }
         }
+        // Safe is open
+        if ($cracked_count == 6) {
+            $current_player_id = self::getCurrentPlayerId();
+            $this->cards->pickCard('tools_deck', $current_player_id);
+            $this->cards->pickCard('loot_deck', $current_player_id);
+            $safe_token = array_values($this->tokens->getCardsOfType('crack', $floor))[0];
+            if ($safe_token['location'] == 'tile') {
+                $this->tokens->moveCard($safe_token['id'], 'deck');
+            }
+            // TODO: Increase patrol dice on floors below
+        }
+    }
+
+    function pickTokenForTile($type, $tile_id) {
+        $token = array_values($this->tokens->getCardsOfTypeInLocation($type, null, 'deck'))[0];
+        $this->tokens->moveCard($token['id'], 'tile', $tile_id);
     }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -681,7 +702,7 @@ class burglebros extends Table
         $floor = $player_tile['location'][5];
         $dice_count = self::getGameStateValue("safeDieCount$floor");
         if ($dice_count == 0) {
-            throw new BgaUserException(self::_("You have not added an dice"));
+            throw new BgaUserException(self::_("You have not added any dice"));
         }
         $this->performSafeDiceRoll($player_tile, $dice_count);
         $this->nextAction();
@@ -695,7 +716,11 @@ class burglebros extends Table
         if (strpos($player_tile['type'], 'computer') === FALSE) {
             throw new BgaUserException(self::_("Tile is not a computer"));
         }
-        $this->tokens->pickCardForLocation('deck', 'tile', $player_token['location_arg']);
+        $existing = $this->tokens->getCardsOfTypeInLocation('hack', null, 'tile', $player_token['location_arg']);
+        if (count($existing) >= 6) {
+            throw new BgaUserException(self::_("Only 6 hack tokens can be added to this tile"));
+        }
+        $this->pickTokenForTile('hack', $player_token['location_arg']);
         $this->nextAction();
     }
 
