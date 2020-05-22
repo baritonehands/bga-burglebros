@@ -159,14 +159,7 @@ function (dojo, declare) {
                 var token = gamedatas.safe_tokens[token_id];
                 this.createSafeToken(token.type_arg, token.die_num);
                 if (token.location === 'tile') {
-                    this.moveToken('safe', token.type_arg, token.location_arg);
-                }
-            }
-
-            for (var token_id in gamedatas.safe_tokens) {
-                var token = gamedatas.safe_tokens[token_id];
-                if (token.location === 'tile') {
-                    this.moveToken('safe', token.type_arg, token.location_arg);
+                    this.moveToken('crack', token.type_arg, token.location_arg);
                 }
             }
 
@@ -268,6 +261,9 @@ function (dojo, declare) {
                         this.addActionButton( 'button_move', _('Move'), dojo.hitch(this, 'handleIntentClick', 'move') );
                         if (this.canAddSafeDie()) {
                             this.addActionButton( 'button_add_safe_die', _('Add Safe Die'), 'handleAddSafeDie' );
+                        }
+                        if (this.canRollSafeDice()) {
+                            this.addActionButton( 'button_roll_safe_dice', _('Roll Safe Dice'), 'handleRollSafeDice' );
                         }
                         if (this.canHack()) {
                             this.addActionButton( 'button_hack' , _('Hack'), 'handleHack' );
@@ -465,6 +461,11 @@ function (dojo, declare) {
         handleAddSafeDie: function(evt) {
             dojo.stopEvent(evt);
             this.ajaxcall('/burglebros/burglebros/addSafeDie.html', { lock: true }, this, console.log, console.error);
+        },
+
+        handleRollSafeDice: function(evt) {
+            dojo.stopEvent(evt);
+            this.ajaxcall('/burglebros/burglebros/rollSafeDice.html', { lock: true }, this, console.log, console.error);
         },
 
         handleHack: function(evt) {

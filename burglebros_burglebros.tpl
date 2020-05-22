@@ -70,7 +70,7 @@ var jstpl_generic_token = '<div id="generic_token_${token_id}" class="token" sty
 
 var jstpl_patrol_die = '<div id="patrol_token_${guard_floor}" class="token die patrol">${num_spaces}</div>';
 
-var jstpl_safe_die = '<div id="safe_token_${safe_floor}" class="token die safe">${die_num}</div>';
+var jstpl_safe_die = '<div id="crack_token_${safe_floor}" class="token die safe">${die_num}</div>';
 
 </script>  
 

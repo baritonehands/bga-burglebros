@@ -169,5 +169,6 @@ $this->default_walls = array(
 );
 
 $this->token_colors = array(
-  'hack' => 'purple'
+  'hack' => 'purple',
+  'safe' => 'green'
 );

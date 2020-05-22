@@ -66,6 +66,12 @@
       self::ajaxResponse();
     }
 
+    public function rollSafeDice() {
+      self::setAjaxMode();
+      $this->game->rollSafeDice();
+      self::ajaxResponse();
+    }
+
     public function hack() {
       self::setAjaxMode();
       $this->game->hack();
