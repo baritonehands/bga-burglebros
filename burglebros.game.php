@@ -123,6 +123,7 @@ class burglebros extends Table
         }
         $tokens [] = array('type' => 'hack', 'type_arg' => 0, 'nbr' => 18);
         $tokens [] = array('type' => 'safe', 'type_arg' => 0, 'nbr' => 18);
+        $tokens [] = array('type' => 'alarm', 'type_arg' => 0, 'nbr' => 9);
         $this->tokens->createCards( $tokens );
         foreach ($players as $player_id => $player) {
             $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
@@ -166,7 +167,7 @@ class burglebros extends Table
     
         // Get information about players
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
-        $sql = "SELECT player_id id, player_score score FROM player ";
+        $sql = "SELECT player_id id, player_score score, player_stealth_tokens stealth_tokens FROM player ";
         $result['players'] = self::getCollectionFromDb( $sql );
         foreach ($result['players'] as $player_id => &$player) {
             $player['hand'] = $this->cards->getPlayerHand($player_id);
@@ -433,6 +434,7 @@ class burglebros extends Table
             if ($tile_id != $guard_token['location_arg']) {
                 $this->tokens->moveCard($guard_token['id'], 'tile', $tile_id);
                 $movement--;
+                $this->checkPlayerStealth($tile_id);
                 if ($tile_id == $patrol_token['location_arg']) {
                     $this->nextPatrol($floor);
                     if ($movement > 0) {
@@ -443,6 +445,14 @@ class burglebros extends Table
                     break;
                 }
             }
+        }
+    }
+
+    function checkPlayerStealth($tile_id) {
+        $current_player_id = self::getCurrentPlayerId();
+        $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
+        if ($tile_id == $player_token['location_arg']) {
+            self::DbQuery("UPDATE player SET player_stealth_tokens = player_stealth_tokens - 1 WHERE player_id = '$current_player_id'");
         }
     }
 
@@ -532,8 +542,9 @@ class burglebros extends Table
         return $tokens;
     }
 
-    function getPlacedTokens($type) {
-        return self::getCollectionFromDb("SELECT card_location_arg id, card_id token_id FROM token WHERE card_type = '$type' AND card_location = 'tile'", true);
+    function getPlacedTokens($types) {
+        $types_arg = "('".implode($types,"','")."')";
+        return self::getCollectionFromDb("SELECT card_location_arg id, card_id token_id FROM token WHERE card_type in $types_arg AND card_location = 'tile'", true);
     }
 
     function performSafeDiceRollDebug($floor,$dice_count) {
@@ -544,7 +555,7 @@ class burglebros extends Table
     function performSafeDiceRoll($safe_tile, $dice_count) {
         $floor = $safe_tile['location'][5];
         $tiles = $this->getTiles($floor);
-        $placed_tokens = $this->getPlacedTokens('safe');
+        $placed_tokens = $this->getPlacedTokens(array('safe'));
         $roll = array();
         for ($i=0; $i < $dice_count; $i++) { 
             $result = bga_rand(1, 6);
@@ -584,6 +595,56 @@ class burglebros extends Table
     function pickTokenForTile($type, $tile_id) {
         $token = array_values($this->tokens->getCardsOfTypeInLocation($type, null, 'deck'))[0];
         $this->tokens->moveCard($token['id'], 'tile', $tile_id);
+    }
+
+    function handleTileMovement($tile, $player_token) {
+        $type = $tile['type'];
+        $actionsRemaining = self::getGameStateValue('actionsRemaining');
+        $cancel_move = false;
+        if ($type == 'deadbolt') {
+            $people = $this->getPlacedTokens(array('player', 'guard'));
+            if (!isset($people[$tile['id']]) || count($people[$tile['id']]) == 0) {
+                if ($actionsRemaining < 3) {
+                    $cancel_move = true;
+                } else {
+                    self::incGameStateValue('actionsRemaining', -2); // One is deducted already
+                }
+            }
+        } elseif ($type == 'keypad') {
+            // TODO: How do I allow them to roll again?
+            $roll = bga_rand(1, 6);
+            var_dump(array('keypad_roll' => $roll));
+            $cancel_move = $roll != 6;
+        } elseif ($type == 'laser') {
+            // TODO: How do I make them choose?
+            if ($actionsRemaining < 2) {
+                $this->triggerAlarm($tile);
+            } else {
+                self::incGameStateValue('actionsRemaining', -1);
+            }
+        } elseif ($type == 'walkway') {
+            // Fall down
+            $floor = $tile['location'][5];
+            if ($floor > 1) {
+                $lower_tile = $this->findTileOnFloor($floor, $location_arg);
+                $cancel_move = true;
+                $this->tokens->moveCard($player_token['id'], 'tile', $tile['id']);
+            }
+        }
+        if (!$cancel_move) {
+            $this->tokens->moveCard($player_token['id'], 'tile', $tile['id']);
+        }
+    }
+
+    function triggerAlarm($tile) {
+        $alarms = $this->getPlacedTokens(array('alarm'));
+        if (!isset($alarms[$tile['id']])) {
+            $floor = $tile['location'][5];
+            $patrol = "patrol".$floor;
+            $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
+            $this->tokens->moveCard($patrol_token['id'], 'tile', $tile['id']);
+            $this->pickTokenForTile('alarm', $tile['id']);
+        }
     }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -658,10 +719,15 @@ class burglebros extends Table
         }
 
         $this->flipTile( $floor, $location_arg );
-        $this->tokens->moveCard($player_token['id'], 'tile', $to_move['id']);
+        $this->handleTileMovement($to_move, $player_token);
         $guard_token = array_values($this->tokens->getCardsOfType('guard', $to_move['location'][5]))[0];
         if ($guard_token['location'] == 'deck') {
             $this->setupPatrol($guard_token, $to_move['location'][5]);
+        }
+        // Refetch guard token
+        $guard_token = array_values($this->tokens->getCardsOfType('guard', $to_move['location'][5]))[0];
+        if ($to_move['id'] == $guard_token['location_arg']) {
+            $this->checkPlayerStealth($to_move['id']);
         }
         self::notifyAllPlayers('move', '', array(
             'floor' => $floor,

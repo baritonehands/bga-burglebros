@@ -81,12 +81,14 @@ function (dojo, declare) {
             }
 
             for (var playerId in gamedatas.players) {
-                var hand = gamedatas.players[playerId].hand;
+                var player = gamedatas.players[playerId];
+                var hand = player.hand;
                 for(var cardId in hand) {
                     var card = hand[cardId];
                     var cardTypeId = this.getCardUniqueId(card.type, card.type_arg);
                     this.playerHand.addToStockWithId(cardTypeId, cardId);
                 }
+                this.createPlayerStealthToken(playerId, player.stealth_tokens);
             }
 
             for(var floor = 1; floor <= 3; floor++) {
@@ -383,6 +385,14 @@ function (dojo, declare) {
                 token_color : color,
                 token_letter : letter
             }), 'token_container');
+        },
+
+        createPlayerStealthToken: function(id, count) {
+            dojo.place(this.format_block('jstpl_generic_token', {
+                token_id : 'p' + id,
+                token_color : 'darkcyan',
+                token_letter : count
+            }), 'player_board_' + id);
         },
 
         canAddSafeDie: function() {
