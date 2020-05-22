@@ -457,6 +457,8 @@ class burglebros extends Table
         $tiles = array_values($this->tiles->getCardsInLocation("floor$floor", null, 'location_arg'));
         $walls = $this->getWalls();
 
+        // An implementation of https://en.wikipedia.org/wiki/A*_search_algorithm
+        // Returned path contains tile ids
         $open_set = array($start=>$start);
         $came_from = array();
 
@@ -578,6 +580,16 @@ class burglebros extends Table
             'tiles' => $this->getTiles($floor),
         ));
         $this->nextAction();
+    }
+
+    function pass() {
+        self::checkAction('pass');
+        $actionsRemaining = self::incGameStateValue('actionsRemaining', -1);
+        if ($actionsRemaining >= 2) {
+            $current_player_id = self::getCurrentPlayerId();
+            $this->cards->pickCard('events_deck', $current_player_id);
+        }
+        $this->gamestate->nextState('moveGuard');
     }
 
     

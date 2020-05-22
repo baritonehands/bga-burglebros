@@ -243,7 +243,7 @@ function (dojo, declare) {
                     case 'playerTurn':
                         this.addActionButton( 'button_peek', _('Peek'), dojo.hitch(this, 'handleIntentClick', 'peek') );
                         this.addActionButton( 'button_move', _('Move'), dojo.hitch(this, 'handleIntentClick', 'move') );
-                        this.addActionButton( 'button_pass', _('Pass'), console.log );
+                        this.addActionButton( 'button_pass', _('Pass'), 'handlePassClick' );
                         break;
                 }
             }
@@ -400,7 +400,15 @@ function (dojo, declare) {
         },
 
         handleIntentClick: function(intent, evt) {
+            dojo.stopEvent(evt);
             this.intent = intent;
+        },
+
+        handlePassClick: function(evt) {
+            dojo.stopEvent(evt);
+
+            var url = '/burglebros/burglebros/pass.html';
+            this.ajaxcall(url, { lock: true }, this, console.log, console.error);
         },
 
         
