@@ -167,3 +167,7 @@ $this->default_walls = array(
     'horizontal' => array(1, 6, 7)
   )
 );
+
+$this->token_colors = array(
+  'hack' => 'purple'
+);

@@ -34,7 +34,10 @@ class burglebros extends Table
         
         self::initGameStateLabels( array( 
             'actionsRemaining' => 10,
-            'entranceTile' => 11
+            'entranceTile' => 11,
+            'safeDieCount1' => 12,
+            'safeDieCount2' => 13,
+            'safeDieCount3' => 14,
         ) ); 
 
         $this->cards = self::getNew( "module.common.deck" );
@@ -84,6 +87,9 @@ class burglebros extends Table
 
         // Init global values with their initial values
         self::setGameStateInitialValue( 'actionsRemaining', 4 );
+        self::setGameStateInitialValue( 'safeDieCount1', 1 );
+        self::setGameStateInitialValue( 'safeDieCount2', 1 );
+        self::setGameStateInitialValue( 'safeDieCount3', 1 );
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -113,7 +119,9 @@ class burglebros extends Table
         for ($floor=1; $floor <= 3; $floor++) { 
             $tokens [] = array('type' => 'guard', 'type_arg' => $floor, 'nbr' => 1);
             $tokens [] = array('type' => 'patrol', 'type_arg' => $floor, 'nbr' => 1);
+            $tokens [] = array('type' => 'safe', 'type_arg' => $floor, 'nbr' => 1);
         }
+        $tokens [] = array('type' => 'hack', 'type_arg' => 0, 'nbr' => 18);
         $this->tokens->createCards( $tokens );
         foreach ($players as $player_id => $player) {
             $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
@@ -185,6 +193,23 @@ class burglebros extends Table
         $result['guard_tokens'] = $this->tokens->getCardsOfType('guard');
         $result['patrol_tokens'] = $this->tokens->getCardsOfType('patrol');
         $result['player_tokens'] = $this->tokens->getCardsOfType('player');
+        $result['generic_tokens'] = $this->getGenericTokens();
+        
+        $safe_tokens = $this->tokens->getCardsOfType('safe');
+        foreach ($safe_tokens as $id => &$value) {
+            $floor = $value['type_arg'];
+            $value['die_num'] = self::getGameStateValue("safeDieCount$floor");
+        }
+        $result['safe_tokens'] = $safe_tokens;
+
+        $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
+        $player_tile = $this->tiles->getCard($player_token['location_arg']);
+        $result['current'] = array(
+            'player_token' => $player_token,
+            'tile' => $player_tile,
+            'floor' => $player_tile['location'][5],
+            'actions_remaining' => self::getGameStateValue('actionsRemaining')
+        );
   
         return $result;
     }
@@ -337,8 +362,8 @@ class burglebros extends Table
         self::DbQuery("UPDATE tile SET flipped=1 WHERE card_location='floor$floor' and card_location_arg=$location_arg");
     }
 
-    function nextAction() {
-        $actionsRemaining = self::incGameStateValue('actionsRemaining', -1);
+    function nextAction($action_cost = 1) {
+        $actionsRemaining = self::incGameStateValue('actionsRemaining', -$action_cost);
         if ($actionsRemaining == 0) {
             $this->gamestate->nextState('moveGuard');
         } else {
@@ -498,6 +523,15 @@ class burglebros extends Table
         }
     }
 
+    function getGenericTokens() {
+        $tokens = self::getObjectListFromDB("SELECT card_id id, card_type type, card_location location, card_location_arg location_arg FROM token WHERE card_location != 'deck' and card_type in ('hack')");
+        foreach ($tokens as &$token) {
+            $token['letter'] = strtoupper($token['type'][0]);
+            $token['color'] = $this->token_colors[$token['type']];
+        }
+        return $tokens;
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -582,9 +616,43 @@ class burglebros extends Table
         $this->nextAction();
     }
 
+    function addSafeDie() {
+        self::checkAction('addSafeDie');
+        $actionsRemaining = self::getGameStateValue('actionsRemaining');
+        if ($actionsRemaining < 2) {
+            throw new BgaUserException(self::_("Adding a die requires 2 actions"));
+        }
+        $current_player_id = self::getCurrentPlayerId();
+        $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
+        $player_tile = $this->tiles->getCard($player_token['location_arg']);
+        if ($player_tile['type'] != 'safe') {
+            throw new BgaUserException(self::_("Tile is not a safe"));
+        }
+        $floor = $player_tile['location'][5];
+        $safe_token = array_values($this->tokens->getCardsOfType('safe', $floor))[0];
+        if ($safe_token['location'] != 'tile') {
+            $this->tokens->moveCard($safe_token['id'], 'tile', $player_tile['id']);
+        } else {
+            self::incGameStateValue("safeDieCount$floor", 1);
+        }
+        $this->nextAction(2);
+    }
+
+    function hack() {
+        self::checkAction('hack');
+        $current_player_id = self::getCurrentPlayerId();
+        $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
+        $player_tile = $this->tiles->getCard($player_token['location_arg']);
+        if (strpos($player_tile['type'], 'computer') === FALSE) {
+            throw new BgaUserException(self::_("Tile is not a computer"));
+        }
+        $this->tokens->pickCardForLocation('deck', 'tile', $player_token['location_arg']);
+        $this->nextAction();
+    }
+
     function pass() {
         self::checkAction('pass');
-        $actionsRemaining = self::incGameStateValue('actionsRemaining', -1);
+        $actionsRemaining = self::getGameStateValue('actionsRemaining');
         if ($actionsRemaining >= 2) {
             $current_player_id = self::getCurrentPlayerId();
             $this->cards->pickCard('events_deck', $current_player_id);

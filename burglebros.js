@@ -154,6 +154,29 @@ function (dojo, declare) {
                     this.moveToken('patrol', token.type_arg, token.location_arg);
                 }
             }
+
+            for (var token_id in gamedatas.safe_tokens) {
+                var token = gamedatas.safe_tokens[token_id];
+                this.createSafeToken(token.type_arg, token.die_num);
+                if (token.location === 'tile') {
+                    this.moveToken('safe', token.type_arg, token.location_arg);
+                }
+            }
+
+            for (var token_id in gamedatas.safe_tokens) {
+                var token = gamedatas.safe_tokens[token_id];
+                if (token.location === 'tile') {
+                    this.moveToken('safe', token.type_arg, token.location_arg);
+                }
+            }
+
+            for (var token_id in gamedatas.generic_tokens) {
+                var token = gamedatas.generic_tokens[token_id];
+                this.createGenericToken(token_id, token.color, token.letter);
+                if (token.location === 'tile') {
+                    this.moveToken('generic', token_id, token.location_arg);
+                }
+            }
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -243,6 +266,12 @@ function (dojo, declare) {
                     case 'playerTurn':
                         this.addActionButton( 'button_peek', _('Peek'), dojo.hitch(this, 'handleIntentClick', 'peek') );
                         this.addActionButton( 'button_move', _('Move'), dojo.hitch(this, 'handleIntentClick', 'move') );
+                        if (this.canAddSafeDie()) {
+                            this.addActionButton( 'button_add_safe_die', _('Add Safe Die'), 'handleAddSafeDie' );
+                        }
+                        if (this.canHack()) {
+                            this.addActionButton( 'button_hack' , _('Hack'), 'handleHack' );
+                        }
                         this.addActionButton( 'button_pass', _('Pass'), 'handlePassClick' );
                         break;
                 }
@@ -344,6 +373,35 @@ function (dojo, declare) {
             }), 'token_container');
         },
 
+        createSafeToken: function(floor, die_num) {
+            dojo.place(this.format_block('jstpl_safe_die', {
+                safe_floor : floor,
+                die_num : die_num,
+            }), 'token_container');
+        },
+
+        createGenericToken: function(id, color, letter) {
+            
+            dojo.place(this.format_block('jstpl_generic_token', {
+                token_id : id,
+                token_color : color,
+                token_letter : letter
+            }), 'token_container');
+        },
+
+        canAddSafeDie: function() {
+            return this.gamedatas.current.tile.type === 'safe' &&
+                this.gamedatas.current.actions_remaining >= 2;
+        },
+
+        canRollSafeDice: function() {
+            return this.gamedatas.current.tile.type === 'safe';
+        },
+
+        canHack: function() {
+            return this.gamedatas.current.tile.type.endsWith('-computer');
+        },
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -402,6 +460,16 @@ function (dojo, declare) {
         handleIntentClick: function(intent, evt) {
             dojo.stopEvent(evt);
             this.intent = intent;
+        },
+
+        handleAddSafeDie: function(evt) {
+            dojo.stopEvent(evt);
+            this.ajaxcall('/burglebros/burglebros/addSafeDie.html', { lock: true }, this, console.log, console.error);
+        },
+
+        handleHack: function(evt) {
+            dojo.stopEvent(evt);
+            this.ajaxcall('/burglebros/burglebros/hack.html', { lock: true }, this, console.log, console.error);
         },
 
         handlePassClick: function(evt) {

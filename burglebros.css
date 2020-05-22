@@ -69,6 +69,8 @@
 
 .stockitem {
     background-size: 600px;
+    border-radius: 8px;
+    border: 1px solid #999999;
 }
 
 #myhand .stockitem {
@@ -87,7 +89,8 @@
     height: 150px;
     background-size: 300px;
     margin: 20px 10px;
-    border: 1px solid #666666;
+    border: 1px solid #999999;
+    border-radius: 8px;
 }
 
 .tile-zone {
@@ -118,11 +121,11 @@
     line-height: 30px;;
     text-align: center;
     color: white;
+    filter: drop-shadow(1px 1px 3px #000000);
 }
 
 .die {
     border-radius: 3px;
-    filter: drop-shadow(0px 0px 1px #000000);
 }
 
 .die.patrol {

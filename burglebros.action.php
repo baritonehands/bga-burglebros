@@ -60,6 +60,18 @@
       self::ajaxResponse();
     }
 
+    public function addSafeDie() {
+      self::setAjaxMode();
+      $this->game->addSafeDie();
+      self::ajaxResponse();
+    }
+
+    public function hack() {
+      self::setAjaxMode();
+      $this->game->hack();
+      self::ajaxResponse();
+    }
+
     public function pass() {
       self::setAjaxMode();
       $this->game->pass();
