@@ -305,26 +305,32 @@ class burglebros extends Table
         return $tiles;
     }
 
+    function nextPatrol($floor) {
+        $patrol = "patrol".$floor;
+        $count = $this->cards->countCardInLocation($patrol.'_discard');
+        $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', $count + 1);
+        $patrol_entrance = $this->cards->getCardOnTop($patrol.'_discard');
+        $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
+        $tile = $this->findTileOnFloor($floor, $patrol_entrance['type_arg'] - 1);
+        $this->tokens->moveCard($patrol_token['id'], 'tile', $tile['id']);
+    }
+
     function setupPatrol($guard_token, $floor) {
         $patrol = "patrol".$floor;
         $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard');
         $guard_entrance = $this->cards->getCardOnTop($patrol.'_discard');
         $floor_tiles = $this->getTiles($floor);
         foreach ($floor_tiles as $tile) {
-            if ($tile['location_arg'] == $guard_entrance['type_arg']) {
+            if ($tile['location_arg'] == $guard_entrance['type_arg'] - 1) {
                 $this->tokens->moveCard($guard_token['id'], 'tile', $tile['id']);
                 break;
             }   
         }
-        $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', $floor);
-        $patrol_entrance = $this->cards->getCardOnTop($patrol.'_discard');
-        $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
-        foreach ($floor_tiles as $tile) {
-            if ($tile['location_arg'] == $patrol_entrance['type_arg']) {
-                $this->tokens->moveCard($patrol_token['id'], 'tile', $tile['id']);
-                break;
-            }   
-        }
+        $this->nextPatrol($floor);
+    }
+
+    function findTileOnFloor($floor, $location_arg) {
+        return array_values($this->tiles->getCardsInLocation("floor$floor", $location_arg))[0];
     }
 
     function flipTile($floor, $location_arg) {
@@ -340,8 +346,10 @@ class burglebros extends Table
         }
     }
 
-    function tileIsAdjacent($tile, $other_tile) {
-        $walls = $this->getWalls();
+    function isTileAdjacent($tile, $other_tile, $walls=null, $is_guard=false) {
+        if (!isset($walls)) {
+            $walls = $this->getWalls();
+        }
         
         $tindex = $tile['location_arg'];
         $trow = floor($tindex / 4);
@@ -366,17 +374,126 @@ class burglebros extends Table
                 }
             }
         }
-        
-        return ($same_floor && $adjacent && !$blocked) ||
-            $this->stairsAreAdjacent($tile, $other_tile) ||
-            $this->stairsAreAdjacent($other_tile, $tile) ||
-            $tile['type'] == 'service-duct' && $other_tile['type'] == 'service-duct';
+        // if ($tile['location_arg'] == 5) {
+        //     var_dump(array('other'=>$other_tile['location_arg'],'sf'=>$same_floor, 'adj'=>$adjacent, 'blk'=>$blocked));
+        // }
+        if ($is_guard) {
+            return ($same_floor && $adjacent && !$blocked);
+        } else {
+            return ($same_floor && $adjacent && !$blocked) ||
+                $this->stairsAreAdjacent($tile, $other_tile) ||
+                $this->stairsAreAdjacent($other_tile, $tile) ||
+                $tile['type'] == 'service-duct' && $other_tile['type'] == 'service-duct';
+        }
     }
 
     function stairsAreAdjacent($tile, $other_tile) {
         return $tile['type'] == 'stairs' &&
             $tile['location'][5] + 1 == $other_tile['location'][5] &&
             $tile['location_arg'] == $other_tile['location_arg'];
+    }
+
+    function moveGuardDebug($floor) {
+        return $this->moveGuard(intval($floor), intval($floor) + 1);
+    }
+
+    function moveGuard($floor, $movement) {
+        $guard_token = array_values($this->tokens->getCardsOfType('guard', $floor))[0];
+        $guard_tile = $this->tiles->getCard($guard_token['location_arg']);
+        $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
+        $patrol_tile = $this->tiles->getCard($patrol_token['location_arg']);
+
+        $path = $this->findShortestPath($floor, $guard_tile['location_arg'], $patrol_tile['location_arg']);
+        // var_dump($path);
+        foreach ($path as $tile_id) {
+            if ($tile_id != $guard_token['location_arg']) {
+                $this->tokens->moveCard($guard_token['id'], 'tile', $tile_id);
+                $movement--;
+                if ($tile_id == $patrol_token['location_arg']) {
+                    $this->nextPatrol($floor);
+                    if ($movement > 0) {
+                        $this->moveGuard($floor, $movement);
+                    }
+                }
+                if ($movement == 0) {
+                    break;
+                }
+            }
+        }
+    }
+
+    function manhattanDistance($left, $right) {
+        $lcol = $left % 4;
+        $lrow = floor($left / 4);
+        $rcol = $right % 4;
+        $rrow = floor($right / 4);
+        return abs($lcol - $rcol) + abs($lrow - $rrow);
+    }
+
+    function findShortestPathDebug($floor, $start, $end) {
+        return $this->findShortestPath(intval($floor),intval($start),intval($end));
+    }
+
+    function lowestIn($values, $container) {
+        asort($values);
+        foreach ($values as $key => $value) {
+            if (isset($container[$key])) {
+                return $container[$key];
+            }
+        }
+        throw new BgaUserException("Shouldn't get here");
+    }
+
+    function reconstructPath($came_from, $current) {
+        $path = array($current);
+        while(isset($came_from[$current])) {
+            $current = $came_from[$current];
+            array_unshift($path, $current);
+        }
+        return $path;
+    }
+
+    function findShortestPath($floor, $start, $end) {
+        $tiles = array_values($this->tiles->getCardsInLocation("floor$floor", null, 'location_arg'));
+        $walls = $this->getWalls();
+
+        $open_set = array($start=>$start);
+        $came_from = array();
+
+        $g_score = array($start=>0);
+        $f_score = array($start=>$this->manhattanDistance($start, $end));
+        $iterations = 0;
+        while (count($open_set) > 0) {
+            $current = $this->lowestIn($f_score, $open_set);
+            $current_tile = $tiles[$current];
+            if ($current == $end) {
+                return $this->reconstructPath($came_from, $current_tile['id']);
+            }
+            // var_dump($current);
+            
+            unset($open_set[$current]);
+            
+            $neighbors = array_filter($tiles, function($tile) use ($current_tile,$walls) {
+                return $this->isTileAdjacent($tile, $current_tile, $walls, true);
+            });
+            foreach ($neighbors as $id => $neighbor) {
+                $index = intval($neighbor['location_arg']);
+                $g = $g_score[$current] + 1;
+                if (!isset($g_score[$index]) || $g < $g_score[$index]) {
+                    $came_from[$neighbor['id']] = $current_tile['id'];
+                    $g_score[$index] = $g;
+                    $f_score[$index] = $g + $this->manhattanDistance($current, $index);
+                    if (!isset($open_set[$index])) {
+                        $open_set[$index] = $index;
+                    }
+                }
+            }
+            $iterations++;
+            // if ($iterations > 10) {
+            //     break;
+            // }
+            // var_dump(array('os'=>$open_set,'fs'=>$f_score,'gs'=>$g_score,'cf'=>$came_from));
+        }
     }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -420,13 +537,13 @@ class burglebros extends Table
         $current_player_id = self::getCurrentPlayerId();
         $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
         $player_tile = $this->tiles->getCard($player_token['location_arg']);
-        $to_peek = array_values($this->tiles->getCardsInLocation("floor$floor", $location_arg))[0];
+        $to_peek = $this->findTileOnFloor($floor, $location_arg);
         $flipped = $this->getFlippedTiles($floor);
 
         if (isset($flipped[$to_peek['id']])) {
             throw new BgaUserException(self::_("Tile is already visible"));
         }
-        if (!$this->tileIsAdjacent($to_peek, $player_tile)) {
+        if (!$this->isTileAdjacent($to_peek, $player_tile)) {
             throw new BgaUserException(self::_("Tile is not adjacent"));
         }
 
@@ -444,9 +561,9 @@ class burglebros extends Table
         $current_player_id = self::getCurrentPlayerId();
         $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
         $player_tile = $this->tiles->getCard($player_token['location_arg']);
-        $to_move = array_values($this->tiles->getCardsInLocation("floor$floor", $location_arg))[0];
+        $to_move = $this->findTileOnFloor($floor, $location_arg);
 
-        if (!$this->tileIsAdjacent($to_move, $player_tile)) {
+        if (!$this->isTileAdjacent($to_move, $player_tile)) {
             throw new BgaUserException(self::_("Tile is not adjacent"));
         }
 
@@ -519,6 +636,11 @@ class burglebros extends Table
     */
 
     function stMoveGuard() {
+        $current_player_id = self::getCurrentPlayerId();
+        $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
+        $player_tile = $this->tiles->getCard($player_token['location_arg']);
+        $floor = $player_tile['location'][5];
+        $this->moveGuard($floor, $floor + 1); // TODO: Store in state
         $this->gamestate->nextState( 'nextPlayer' );
     }
 

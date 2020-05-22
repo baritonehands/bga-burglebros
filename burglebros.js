@@ -116,7 +116,7 @@ function (dojo, declare) {
                 for (var cardId in gamedatas[patrolDeckKey]) {
                     var card = gamedatas[patrolDeckKey][cardId];
                     var cardType = parseInt(card.type, 10);
-                    var cardIndex = parseInt(card.type_arg, 10);
+                    var cardIndex = parseInt(card.type_arg, 10) - 1;
                     var id = ((cardType - 4) * 16) + cardIndex;
                     this[patrolKey].addToStockWithId(id, cardId);
                 }
