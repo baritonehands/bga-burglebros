@@ -124,6 +124,8 @@ class burglebros extends Table
         $tokens [] = array('type' => 'hack', 'type_arg' => 0, 'nbr' => 18);
         $tokens [] = array('type' => 'safe', 'type_arg' => 0, 'nbr' => 18);
         $tokens [] = array('type' => 'alarm', 'type_arg' => 0, 'nbr' => 9);
+        $tokens [] = array('type' => 'open', 'type_arg' => 0, 'nbr' => 6);
+        $tokens [] = array('type' => 'keypad', 'type_arg' => 0, 'nbr' => 3);
         $this->tokens->createCards( $tokens );
         foreach ($players as $player_id => $player) {
             $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
@@ -544,7 +546,15 @@ class burglebros extends Table
 
     function getPlacedTokens($types) {
         $types_arg = "('".implode($types,"','")."')";
-        return self::getCollectionFromDb("SELECT card_location_arg id, card_id token_id FROM token WHERE card_type in $types_arg AND card_location = 'tile'", true);
+        $rows = self::getObjectListFromDB("SELECT card_location_arg id, card_id token_id FROM token WHERE card_type in $types_arg AND card_location = 'tile'");
+        $result = array();
+        foreach ($rows as $row) {
+            if (!isset($result[$row['id']])) {
+                $result[$row['id']] = array();
+            }
+            $result[$row['id']] [] = $row['token_id'];
+        }
+        return $result;
     }
 
     function performSafeDiceRollDebug($floor,$dice_count) {
@@ -597,6 +607,42 @@ class burglebros extends Table
         $this->tokens->moveCard($token['id'], 'tile', $tile_id);
     }
 
+    function clearKeypadTokens() {
+        $tokens = $this->tokens->getCardsOfTypeInLocation('keypad', null, 'tile');
+        foreach ($tokens as $token) {
+            $this->tokens->moveCard($token['id'], 'deck');
+        }
+    }
+
+    function attemptKeypadRoll($tile) {
+        $open = $this->getPlacedTokens(array('open'));
+        if (isset($open[$tile['id']])) {
+            return TRUE; // Skip
+        }
+
+        $previous = $this->getPlacedTokens(array('keypad'));
+        var_dump(array('keypad_tokens'=>$previous[$tile['id']]));
+        $count = isset($previous[$tile['id']]) ? count($previous[$tile['id']]) + 1 : 1;
+        for ($i=0; $i < $count; $i++) { 
+            $roll = bga_rand(1,6);
+            var_dump(array('keypad_roll' => $roll));
+            if ($roll == 6) {
+                $this->pickTokenForTile('open', $tile['id']);
+                if (isset($previous[$tile['id']])) {
+                    foreach ($previous[$tile['id']] as $token_id) {
+                        $this->tokens->moveCard($token_id, 'deck');
+                    }
+                }
+                return TRUE;
+            }
+        }
+
+        if(self::getGameStateValue('actionsRemaining') > 1) {
+            $this->pickTokenForTile('keypad', $tile['id']);
+        }
+        return FALSE;
+    }
+
     function handleTileMovement($tile, $player_token) {
         $type = $tile['type'];
         $actionsRemaining = self::getGameStateValue('actionsRemaining');
@@ -612,9 +658,7 @@ class burglebros extends Table
             }
         } elseif ($type == 'keypad') {
             // TODO: How do I allow them to roll again?
-            $roll = bga_rand(1, 6);
-            var_dump(array('keypad_roll' => $roll));
-            $cancel_move = $roll != 6;
+            $cancel_move = !$this->attemptKeypadRoll($tile);
         } elseif ($type == 'laser') {
             // TODO: How do I make them choose?
             if ($actionsRemaining < 2) {
@@ -626,7 +670,7 @@ class burglebros extends Table
             // Fall down
             $floor = $tile['location'][5];
             if ($floor > 1) {
-                $lower_tile = $this->findTileOnFloor($floor, $location_arg);
+                $lower_tile = $this->findTileOnFloor($floor, $tile['location_arg']);
                 $cancel_move = true;
                 $this->tokens->moveCard($player_token['id'], 'tile', $tile['id']);
             }
@@ -874,7 +918,7 @@ class burglebros extends Table
             $entrance = self::getGameStateValue('entranceTile');
             $this->tokens->moveCard($token['id'], 'tile', $entrance);
         }
-        
+        $this->clearKeypadTokens();
 
         $this->gamestate->nextState( 'playerTurn' );
     }

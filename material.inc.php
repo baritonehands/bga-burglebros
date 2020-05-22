@@ -173,4 +173,6 @@ $this->token_colors = array(
   'safe' => 'green',
   'stealth' => 'darkcyan',
   'alarm' => 'darkred',
+  'open' => 'gold',
+  'keypad' => 'gold',
 );
