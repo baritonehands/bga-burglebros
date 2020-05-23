@@ -115,13 +115,16 @@ function (dojo, declare) {
                     }
                 }
                 var patrolDeckKey = patrolKey + '_discard';
+                var weights = {};
                 for (var cardId in gamedatas[patrolDeckKey]) {
                     var card = gamedatas[patrolDeckKey][cardId];
                     var cardType = parseInt(card.type, 10);
                     var cardIndex = parseInt(card.type_arg, 10) - 1;
                     var id = ((cardType - 4) * 16) + cardIndex;
                     this[patrolKey].addToStockWithId(id, cardId);
+                    weights[id] = parseInt(card.location_arg, 10);
                 }
+                this[patrolKey].changeItemsWeight(weights);
 
                 this.createGuardToken(floor);
                 this.createPatrolToken(floor);
