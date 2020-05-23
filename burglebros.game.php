@@ -122,10 +122,12 @@ class burglebros extends Table
             $tokens [] = array('type' => 'crack', 'type_arg' => $floor, 'nbr' => 1);
         }
         $tokens [] = array('type' => 'hack', 'type_arg' => 0, 'nbr' => 18);
-        $tokens [] = array('type' => 'safe', 'type_arg' => 0, 'nbr' => 18);
+        $tokens [] = array('type' => 'safe', 'type_arg' => 0, 'nbr' => 22);
+        $tokens [] = array('type' => 'stealth', 'type_arg' => 0, 'nbr' => 18);
         $tokens [] = array('type' => 'alarm', 'type_arg' => 0, 'nbr' => 9);
         $tokens [] = array('type' => 'open', 'type_arg' => 0, 'nbr' => 6);
         $tokens [] = array('type' => 'keypad', 'type_arg' => 0, 'nbr' => 3);
+        $tokens [] = array('type' => 'stairs', 'type_arg' => 0, 'nbr' => 3);
         $this->tokens->createCards( $tokens );
         foreach ($players as $player_id => $player) {
             $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
@@ -144,6 +146,7 @@ class burglebros extends Table
         $hand = $this->tokens->getPlayerHand($current_player_id);
         $current_player_token = array_shift($hand);
         $this->tokens->moveCard($current_player_token['id'], 'tile', $entrance);
+        $this->pickTokensForTile('stairs', $entrance);
 
         // Move guard and patrol
         $guard_token = array_values($this->tokens->getCardsOfType('guard', 1))[0];
@@ -587,7 +590,7 @@ class burglebros extends Table
             if (($row == $safe_row || $col == $safe_col)) {
                 if (!isset($placed_tokens[$tile['id']])) {
                     if(isset($roll[intval($tile['safe_die'])])) {
-                        $this->pickTokenForTile('safe', $tile['id']);
+                        $this->pickTokensForTile('safe', $tile['id']);
                         $cracked_count++;
                     }
                 } else {
@@ -608,9 +611,13 @@ class burglebros extends Table
         }
     }
 
-    function pickTokenForTile($type, $tile_id) {
-        $token = array_values($this->tokens->getCardsOfTypeInLocation($type, null, 'deck'))[0];
-        $this->tokens->moveCard($token['id'], 'tile', $tile_id);
+    function pickTokensForTile($type, $tile_id, $nbr = 1) {
+        $token_ids = array_keys($this->tokens->getCardsOfTypeInLocation($type, null, 'deck'));
+        $ids = array();
+        for ($i=0; $i < $nbr; $i++) { 
+            $ids [] = $token_ids[$i];
+        }
+        $this->tokens->moveCards($ids, 'tile', $tile_id);
     }
 
     function clearKeypadTokens() {
@@ -633,7 +640,7 @@ class burglebros extends Table
             $roll = bga_rand(1,6);
             var_dump(array('keypad_roll' => $roll));
             if ($roll == 6) {
-                $this->pickTokenForTile('open', $tile['id']);
+                $this->pickTokensForTile('open', $tile['id']);
                 if (isset($previous[$tile['id']])) {
                     foreach ($previous[$tile['id']] as $token_id) {
                         $this->tokens->moveCard($token_id, 'deck');
@@ -644,16 +651,28 @@ class burglebros extends Table
         }
 
         if(self::getGameStateValue('actionsRemaining') > 1) {
-            $this->pickTokenForTile('keypad', $tile['id']);
+            $this->pickTokensForTile('keypad', $tile['id']);
         }
         return FALSE;
     }
 
-    function handleTileMovement($tile, $player_token) {
+    function handleTilePeek($tile) {
+        $type = $tile['type'];
+        if ($type == 'stairs') {
+            $floor = $tile['location'][5];
+            if ($floor < 3) {
+                $upper_tile = $this->findTileOnFloor($floor + 1, $tile['location_arg']);
+                $this->pickTokensForTile('stairs', $upper_tile['id']);
+            }
+        } elseif ($type == 'lavatory') {
+            $this->pickTokensForTile('stealth', $tile['id'], 3);
+        }
+    }
+
+    function handleTileMovement($tile, $player_token, $flipped_this_turn) {
         $type = $tile['type'];
         $actionsRemaining = self::getGameStateValue('actionsRemaining');
         $cancel_move = false;
-        $flipped = $this->getFlippedTiles($tile['location'][5]);
         if ($type == 'deadbolt') {
             $people = $this->getPlacedTokens(array('player', 'guard'));
             if (!isset($people[$tile['id']]) || count($people[$tile['id']]) == 0) {
@@ -672,7 +691,7 @@ class burglebros extends Table
             } else {
                 self::incGameStateValue('actionsRemaining', -1);
             }
-        } elseif ($type == 'walkway' && !isset($flipped[$tile['id']])) {
+        } elseif ($type == 'walkway' && $flipped_this_turn) {
             // Fall down
             $floor = $tile['location'][5];
             if ($floor > 1) {
@@ -694,7 +713,7 @@ class burglebros extends Table
             $patrol = "patrol".$floor;
             $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
             $this->tokens->moveCard($patrol_token['id'], 'tile', $tile['id']);
-            $this->pickTokenForTile('alarm', $tile['id']);
+            $this->pickTokensForTile('alarm', $tile['id']);
         }
     }
 
@@ -749,6 +768,7 @@ class burglebros extends Table
             throw new BgaUserException(self::_("Tile is not adjacent"));
         }
 
+        $this->handleTilePeek($to_peek);
         $this->flipTile( $floor, $location_arg );
         self::notifyAllPlayers('peek', '', array(
             'floor' => $floor,
@@ -764,12 +784,17 @@ class burglebros extends Table
         $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
         $player_tile = $this->tiles->getCard($player_token['location_arg']);
         $to_move = $this->findTileOnFloor($floor, $location_arg);
+        $flipped = $this->getFlippedTiles($floor);
 
         if (!$this->isTileAdjacent($to_move, $player_tile)) {
             throw new BgaUserException(self::_("Tile is not adjacent"));
         }
 
-        $this->handleTileMovement($to_move, $player_token);
+        $flipped_this_turn = !isset($flipped[$to_move['id']]);
+        if ($flipped_this_turn) {
+            $this->handleTilePeek($to_move);
+        }
+        $this->handleTileMovement($to_move, $player_token, $flipped_this_turn);
         $this->flipTile( $floor, $location_arg );
         $guard_token = array_values($this->tokens->getCardsOfType('guard', $to_move['location'][5]))[0];
         if ($guard_token['location'] == 'deck') {
@@ -837,7 +862,7 @@ class burglebros extends Table
         if (count($existing) >= 6) {
             throw new BgaUserException(self::_("Only 6 hack tokens can be added to this tile"));
         }
-        $this->pickTokenForTile('hack', $player_token['location_arg']);
+        $this->pickTokensForTile('hack', $player_token['location_arg']);
         $this->nextAction();
     }
 

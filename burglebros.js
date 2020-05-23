@@ -260,7 +260,7 @@ function (dojo, declare) {
 */
                     case 'playerTurn':
                         this.addActionButton( 'button_peek', _('Peek'), dojo.hitch(this, 'handleIntentClick', 'peek') );
-                        this.addActionButton( 'button_move', _('Move'), dojo.hitch(this, 'handleIntentClick', 'move') );
+                        // this.addActionButton( 'button_move', _('Move'), dojo.hitch(this, 'handleIntentClick', 'move') );
                         if (this.canAddSafeDie()) {
                             this.addActionButton( 'button_add_safe_die', _('Add Safe Die'), 'handleAddSafeDie' );
                         }
@@ -459,8 +459,12 @@ function (dojo, declare) {
         handleTileClick: function(evt, floor, location_arg) {
             dojo.stopEvent(evt);
 
-            var url = '/burglebros/burglebros/' + this.intent + '.html';
-            this.ajaxcall(url, { lock: true, floor: floor, location_arg: location_arg }, this, console.log, console.error);
+            var intent = this.intent || 'move';
+            var url = '/burglebros/burglebros/' + intent + '.html';
+            this.ajaxcall(url, { lock: true, floor: floor, location_arg: location_arg }, this, function() {
+                location.reload();
+            }, console.error);
+            this.intent = 'move';
         },
 
         handleIntentClick: function(intent, evt) {
@@ -487,7 +491,10 @@ function (dojo, declare) {
             dojo.stopEvent(evt);
 
             var url = '/burglebros/burglebros/pass.html';
-            this.ajaxcall(url, { lock: true }, this, console.log, console.error);
+            this.ajaxcall(url, { lock: true }, this, function() {
+                console.log(arguments);
+                location.reload();
+            }, console.error);
         },
 
         
