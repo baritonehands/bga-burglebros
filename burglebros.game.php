@@ -335,6 +335,12 @@ class burglebros extends Table
     function nextPatrol($floor) {
         $patrol = "patrol".$floor;
         $count = $this->cards->countCardInLocation($patrol.'_discard');
+        if ($count == 16) {
+            $this->cards->moveAllCardsInLocation($patrol.'_discard', $patrol.'_deck');
+            $this->cards->shuffle($patrol.'_deck');
+            $count = 0;
+            // TODO: Increase patrol dice number
+        }
         $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', $count + 1);
         $patrol_entrance = $this->cards->getCardOnTop($patrol.'_discard');
         $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
@@ -647,6 +653,7 @@ class burglebros extends Table
         $type = $tile['type'];
         $actionsRemaining = self::getGameStateValue('actionsRemaining');
         $cancel_move = false;
+        $flipped = $this->getFlippedTiles($tile['location'][5]);
         if ($type == 'deadbolt') {
             $people = $this->getPlacedTokens(array('player', 'guard'));
             if (!isset($people[$tile['id']]) || count($people[$tile['id']]) == 0) {
@@ -657,7 +664,6 @@ class burglebros extends Table
                 }
             }
         } elseif ($type == 'keypad') {
-            // TODO: How do I allow them to roll again?
             $cancel_move = !$this->attemptKeypadRoll($tile);
         } elseif ($type == 'laser') {
             // TODO: How do I make them choose?
@@ -666,13 +672,14 @@ class burglebros extends Table
             } else {
                 self::incGameStateValue('actionsRemaining', -1);
             }
-        } elseif ($type == 'walkway') {
+        } elseif ($type == 'walkway' && !isset($flipped[$tile['id']])) {
             // Fall down
             $floor = $tile['location'][5];
             if ($floor > 1) {
-                $lower_tile = $this->findTileOnFloor($floor, $tile['location_arg']);
+                $lower_tile = $this->findTileOnFloor($floor - 1, $tile['location_arg']);
                 $cancel_move = true;
-                $this->tokens->moveCard($player_token['id'], 'tile', $tile['id']);
+                $this->tokens->moveCard($player_token['id'], 'tile', $lower_tile['id']);
+                $this->flipTile($floor - 1, $lower_tile['location_arg']);
             }
         }
         if (!$cancel_move) {
@@ -762,8 +769,8 @@ class burglebros extends Table
             throw new BgaUserException(self::_("Tile is not adjacent"));
         }
 
-        $this->flipTile( $floor, $location_arg );
         $this->handleTileMovement($to_move, $player_token);
+        $this->flipTile( $floor, $location_arg );
         $guard_token = array_values($this->tokens->getCardsOfType('guard', $to_move['location'][5]))[0];
         if ($guard_token['location'] == 'deck') {
             $this->setupPatrol($guard_token, $to_move['location'][5]);
