@@ -739,6 +739,14 @@ class burglebros extends Table
             $motion_bit = 1 << (self::getUniqueValueFromDB("SELECT safe_die FROM tile WHERE card_id = '$id'") - 1);
             $motion_entered = self::getGameStateValue('motionTileEntered');
             self::setGameStateValue('motionTileEntered', $motion_entered | $motion_bit);
+        } elseif($type == 'detector') {
+            $hand = $this->cards->getPlayerHand($player_token['type_arg']);
+            foreach ($hand as $card_id => $card) {
+                if ($card['type'] == 1 || $card['type'] == 2) {
+                    $this->triggerAlarm($tile);
+                    break;
+                }
+            }
         } elseif ($type == 'walkway' && $flipped_this_turn) {
             // Fall down
             $floor = $tile['location'][5];
