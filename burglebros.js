@@ -477,12 +477,18 @@ function (dojo, declare) {
 
         handleAddSafeDie: function(evt) {
             dojo.stopEvent(evt);
-            this.ajaxcall('/burglebros/burglebros/addSafeDie.html', { lock: true }, this, console.log, console.error);
+            this.ajaxcall('/burglebros/burglebros/addSafeDie.html', { lock: true }, this, function() {
+                console.log(arguments);
+                location.reload();
+            }, console.error);
         },
 
         handleRollSafeDice: function(evt) {
             dojo.stopEvent(evt);
-            this.ajaxcall('/burglebros/burglebros/rollSafeDice.html', { lock: true }, this, console.log, console.error);
+            this.ajaxcall('/burglebros/burglebros/rollSafeDice.html', { lock: true }, this, function() {
+                console.log(arguments);
+                location.reload();
+            }, console.error);
         },
 
         handleHack: function(evt) {

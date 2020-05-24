@@ -575,12 +575,9 @@ class burglebros extends Table
         $floor = $safe_tile['location'][5];
         $tiles = $this->getTiles($floor);
         $placed_tokens = $this->getPlacedTokens(array('safe'));
-        $roll = array();
-        for ($i=0; $i < $dice_count; $i++) { 
-            $result = bga_rand(1, 6);
-            $roll[$result] = $result;
-        }
-        var_dump(array_keys($roll));
+        $rolls = $this->rollDice($dice_count);
+        $this->notifyRoll($rolls, 'safe');
+
         $safe_row = floor($safe_tile['location_arg'] / 4);
         $safe_col = $safe_tile['location_arg'] % 4;
         $cracked_count = 0;
@@ -589,7 +586,7 @@ class burglebros extends Table
             $col = $tile['location_arg'] % 4;
             if (($row == $safe_row || $col == $safe_col)) {
                 if (!isset($placed_tokens[$tile['id']])) {
-                    if(isset($roll[intval($tile['safe_die'])])) {
+                    if(isset($rolls[intval($tile['safe_die'])])) {
                         $this->pickTokensForTile('safe', $tile['id']);
                         $cracked_count++;
                     }
@@ -627,6 +624,37 @@ class burglebros extends Table
         }
     }
 
+    function rollDice($dice_count) {
+        $rolls = array();
+        for ($i=0; $i < $dice_count; $i++) { 
+            $result = bga_rand(1, 6);
+            $rolls[$result] = isset($rolls[$result]) ? $rolls[$result] + 1 : 1;
+        }
+        return $rolls;
+    }
+
+    function notifyRoll($rolls, $for) {
+        $roll_list = array();
+        for ($i=1; $i <= 6; $i++) { 
+            if (isset($rolls[$i])) {
+                $count = $rolls[$i];
+                while ($count > 0) {
+                    $roll_list [] = $i;
+                    $count--;
+                }
+            }
+        }
+        self::notifyAllPlayers('message', clienttranslate( '${player_name} rolled ${roll} for ${for}' ), array(
+            'player_name' => self::getActivePlayerName(),
+            'roll' => implode($roll_list, ','),
+            'for' => $for
+        ));
+    }
+
+    function rollDebug($dice_count) {
+        $this->notifyRoll($this->rollDice(intval($dice_count)), 'debug');
+    }
+
     function attemptKeypadRoll($tile) {
         $open = $this->getPlacedTokens(array('open'));
         if (isset($open[$tile['id']])) {
@@ -634,20 +662,17 @@ class burglebros extends Table
         }
 
         $previous = $this->getPlacedTokens(array('keypad'));
-        var_dump(array('keypad_tokens'=>$previous[$tile['id']]));
         $count = isset($previous[$tile['id']]) ? count($previous[$tile['id']]) + 1 : 1;
-        for ($i=0; $i < $count; $i++) { 
-            $roll = bga_rand(1,6);
-            var_dump(array('keypad_roll' => $roll));
-            if ($roll == 6) {
-                $this->pickTokensForTile('open', $tile['id']);
-                if (isset($previous[$tile['id']])) {
-                    foreach ($previous[$tile['id']] as $token_id) {
-                        $this->tokens->moveCard($token_id, 'deck');
-                    }
+        $rolls = $this->rollDice($count);
+        $this->notifyRoll($rolls, 'keypad');
+        if (isset($rolls[6])) {
+            $this->pickTokensForTile('open', $tile['id']);
+            if (isset($previous[$tile['id']])) {
+                foreach ($previous[$tile['id']] as $token_id) {
+                    $this->tokens->moveCard($token_id, 'deck');
                 }
-                return TRUE;
             }
+            return TRUE;
         }
 
         if(self::getGameStateValue('actionsRemaining') > 1) {
