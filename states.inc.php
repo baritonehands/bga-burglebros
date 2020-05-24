@@ -58,20 +58,29 @@ $machinestates = array(
         'description' => '',
         'type' => 'manager',
         'action' => 'stGameSetup',
-        'transitions' => array( '' => 10 )
+        'transitions' => array( '' => 9 )
     ),
     
     // Note: ID=2 => your first state
 
-    10 => array(
+    9 => array(
         'name' => 'playerTurn',
         'description' => clienttranslate('${actplayer} may do ${actionsRemaining} actions or pass'),
         'descriptionmyturn' => clienttranslate('${you} may do ${actionsRemaining} actions or pass'),
         'type' => 'activeplayer',
         'args' => 'argPlayerTurn',
         'possibleactions' => array( 'hack', 'move', 'peek', 'addSafeDie', 'rollSafeDice', 'pass' ),
-        'transitions' => array( 'nextAction' => 10, 'moveGuard' => 11 )
+        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10 )
     ),    
+
+    10 => array(
+        'name' => 'endTurn',
+        'description' => 'Trigger end of turn effects',
+        'type' => 'game',
+        'action' => 'stEndTurn',
+        'updateGameProgression' => true,
+        'transitions' => array( 'moveGuard' => 11 )
+    ), 
 
     11 => array(
         'name' => 'moveGuard',
@@ -87,7 +96,7 @@ $machinestates = array(
         'description' => '',
         'type' => 'game',
         'action' => 'stNextPlayer',
-        'transitions' => array( 'playerTurn' => 10 )
+        'transitions' => array( 'playerTurn' => 9 )
     ),
     
 /*

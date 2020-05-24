@@ -143,6 +143,7 @@ class burglebros extends Table
         // Move first player token to entrance
         $flipped = $this->getFlippedTiles(1);
         $entrance = array_keys($flipped)[0];
+        $this->handleTilePeek($this->tiles->getCard($entrance));
         self::setGameStateInitialValue( 'entranceTile', $entrance );
         $hand = $this->tokens->getPlayerHand($current_player_id);
         $current_player_token = array_shift($hand);
@@ -377,7 +378,7 @@ class burglebros extends Table
     function nextAction($action_cost = 1) {
         $actionsRemaining = self::incGameStateValue('actionsRemaining', -$action_cost);
         if ($actionsRemaining == 0) {
-            $this->gamestate->nextState('moveGuard');
+            $this->gamestate->nextState('endTurn');
         } else {
             $this->gamestate->nextState('nextAction');
         }
@@ -682,6 +683,17 @@ class burglebros extends Table
         return FALSE;
     }
 
+    function hackOrTrigger($tile, $type) {
+        $tokens = $this->getPlacedTokens(array('hack'));
+        $computer_tile = array_values($this->tiles->getCardsOfType("$type-computer"))[0];
+        if (isset($tokens[$computer_tile['id']])) {
+            $to_move = $tokens[$computer_tile['id']][0];
+            $this->tokens->moveCard($to_move, 'deck');
+        } else {
+            $this->triggerAlarm($tile);
+        }
+    }
+
     function handleTilePeek($tile) {
         $type = $tile['type'];
         if ($type == 'stairs') {
@@ -710,10 +722,12 @@ class burglebros extends Table
             }
         } elseif ($type == 'keypad') {
             $cancel_move = !$this->attemptKeypadRoll($tile);
+        } elseif ($type == 'fingerprint') {
+            $this->hackOrTrigger($tile, $type);
         } elseif ($type == 'laser') {
             // TODO: How do I make them choose?
             if ($actionsRemaining < 2) {
-                $this->triggerAlarm($tile);
+                $this->hackOrTrigger($tile, $type);
             } else {
                 self::incGameStateValue('actionsRemaining', -1);
             }
@@ -733,14 +747,11 @@ class burglebros extends Table
     }
 
     function triggerAlarm($tile) {
-        $alarms = $this->getPlacedTokens(array('alarm'));
-        if (!isset($alarms[$tile['id']])) {
-            $floor = $tile['location'][5];
-            $patrol = "patrol".$floor;
-            $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
-            $this->tokens->moveCard($patrol_token['id'], 'tile', $tile['id']);
-            $this->pickTokensForTile('alarm', $tile['id']);
-        }
+        $floor = $tile['location'][5];
+        $patrol = "patrol".$floor;
+        $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
+        $this->tokens->moveCard($patrol_token['id'], 'tile', $tile['id']);
+        $this->pickTokensForTile('alarm', $tile['id']);
     }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -899,7 +910,7 @@ class burglebros extends Table
             $current_player_id = self::getCurrentPlayerId();
             $this->cards->pickCard('events_deck', $current_player_id);
         }
-        $this->gamestate->nextState('moveGuard');
+        $this->gamestate->nextState('endTurn');
     }
 
     
@@ -956,6 +967,17 @@ class burglebros extends Table
         $this->gamestate->nextState( 'some_gamestate_transition' );
     }    
     */
+
+    function stEndTurn() {
+        $current_player_id = self::getCurrentPlayerId();
+        $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
+        $player_tile = $this->tiles->getCard($player_token['location_arg']);
+        $type = $player_tile['type'];
+        if ($type == 'thermo') {
+            $this->triggerAlarm($player_tile);
+        }
+        $this->gamestate->nextState( 'moveGuard' );
+    }
 
     function stMoveGuard() {
         $current_player_id = self::getCurrentPlayerId();
