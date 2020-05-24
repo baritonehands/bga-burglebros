@@ -76,7 +76,8 @@ function (dojo, declare) {
                     // Build card type id
                     var card = typeInfo.cards[index];
                     var cardTypeId = this.getCardUniqueId(card.type, card.index);
-                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/' + type + '.jpg', card.index);
+                    var cardIndex = card.type == 0 ? card.index * 2 : card.index;
+                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/' + type + '.jpg', cardIndex);
                 }
             }
 

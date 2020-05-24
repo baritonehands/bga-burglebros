@@ -33,12 +33,24 @@ $this->card_types = array(
 */
 
 $this->card_types = array(
+  0 => array( 'name' => clienttranslate('characters'),'nametr' => self::_('characters') ),
   1 => array( 'name' => clienttranslate('tools'),'nametr' => self::_('tools') ),
   2 => array( 'name' => clienttranslate('loot'),'nametr' => self::_('loot') ),
   3 => array( 'name' => clienttranslate('events'),'nametr' => self::_('events') ),
 );
 
 $this->card_info = array(
+  0 => array(
+    array('name'=>'acrobat'),
+    array('name'=>'hacker'),
+    array('name'=>'hawk'),
+    array('name'=>'juicer'),
+    array('name'=>'peterman'),
+    array('name'=>'raven'),
+    array('name'=>'rigger'),
+    array('name'=>'rook'),
+    array('name'=>'spotter'),
+  ),
   1 => array(
     array('name'=>'blueprints'),
     array('name'=>'crowbar'),

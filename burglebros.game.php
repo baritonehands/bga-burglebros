@@ -132,6 +132,7 @@ class burglebros extends Table
         foreach ($players as $player_id => $player) {
             $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
             $this->tokens->createCards(array($player_token), 'hand', $player_id);
+            $this->cards->pickCard('characters_deck', $player_id);
         }
 
         // Activate first player (which is in general a good idea :) )
