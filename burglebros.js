@@ -128,7 +128,6 @@ function (dojo, declare) {
                 this[patrolKey].changeItemsWeight(weights);
 
                 this.createGuardToken(floor);
-                this.createPatrolToken(floor);
             }
 
             for (var wallIdx = 0; wallIdx < 24; wallIdx++) {
@@ -156,6 +155,7 @@ function (dojo, declare) {
 
             for (var token_id in gamedatas.patrol_tokens) {
                 var token = gamedatas.patrol_tokens[token_id];
+                this.createPatrolToken(token.type_arg, token.die_num);
                 if (token.location === 'tile') {
                     this.moveToken('patrol', token.type_arg, token.location_arg);
                 }
@@ -368,10 +368,10 @@ function (dojo, declare) {
             }), 'token_container');
         },
 
-        createPatrolToken: function(floor) {
+        createPatrolToken: function(floor, die_num) {
             dojo.place(this.format_block('jstpl_patrol_die', {
                 guard_floor : floor,
-                num_spaces : floor + 1,
+                num_spaces : die_num,
             }), 'token_container');
         },
 

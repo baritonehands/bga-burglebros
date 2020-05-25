@@ -39,6 +39,9 @@ class burglebros extends Table
             'safeDieCount2' => 13,
             'safeDieCount3' => 14,
             'motionTileEntered' => 15,
+            'patrolDieCount1' => 16,
+            'patrolDieCount2' => 17,
+            'patrolDieCount3' => 18, 
         ) ); 
 
         $this->cards = self::getNew( "module.common.deck" );
@@ -92,6 +95,9 @@ class burglebros extends Table
         self::setGameStateInitialValue( 'safeDieCount2', 0 );
         self::setGameStateInitialValue( 'safeDieCount3', 0 );
         self::setGameStateInitialValue( 'motionTileEntered', 0x000 ); // Bit vector
+        self::setGameStateInitialValue( 'patrolDieCount1', 2 );
+        self::setGameStateInitialValue( 'patrolDieCount2', 3 );
+        self::setGameStateInitialValue( 'patrolDieCount3', 4 );
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -200,7 +206,6 @@ class burglebros extends Table
         $result['walls'] = $this->getWalls();
 
         $result['guard_tokens'] = $this->tokens->getCardsOfType('guard');
-        $result['patrol_tokens'] = $this->tokens->getCardsOfType('patrol');
         $result['player_tokens'] = $this->tokens->getCardsOfType('player');
         $result['generic_tokens'] = $this->getGenericTokens();
         
@@ -210,6 +215,13 @@ class burglebros extends Table
             $value['die_num'] = self::getGameStateValue("safeDieCount$floor");
         }
         $result['safe_tokens'] = $safe_tokens;
+
+        $patrol_tokens = $this->tokens->getCardsOfType('patrol');
+        foreach ($patrol_tokens as $id => &$value) {
+            $floor = $value['type_arg'];
+            $value['die_num'] = self::getGameStateValue("patrolDieCount$floor");
+        }
+        $result['patrol_tokens'] = $patrol_tokens;
 
         $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
         $player_tile = $this->tiles->getCard($player_token['location_arg']);
@@ -373,7 +385,10 @@ SQL;
                 $this->cards->moveAllCardsInLocation($patrol.'_discard', $patrol.'_deck');
                 $this->cards->shuffle($patrol.'_deck');
                 $count = 0;
-                // TODO: Increase patrol dice number
+                $die_count = self::getGameStateValue("patrolDieCount$floor");
+                if ($die_count < 6) {
+                    self::setGameStateValue("patrolDieCount$floor", $die_count + 1);
+                }
             }
             $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', $count + 1);
             $patrol_entrance = $this->cards->getCardOnTop($patrol.'_discard');
@@ -638,7 +653,12 @@ SQL;
             if ($safe_token['location'] == 'tile') {
                 $this->tokens->moveCard($safe_token['id'], 'deck');
             }
-            // TODO: Increase patrol dice on floors below
+            for ($lower_floor=$floor; $lower_floor >= 1; $lower_floor--) { 
+                $die_count = self::getGameStateValue("patrolDieCount$lower_floor");
+                if ($die_count < 6) {
+                    self::setGameStateValue("patrolDieCount$lower_floor", $die_count + 1);
+                }
+            }
         }
     }
 
@@ -1085,7 +1105,8 @@ SQL;
         $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
         $player_tile = $this->tiles->getCard($player_token['location_arg']);
         $floor = $player_tile['location'][5];
-        $this->moveGuard($floor, $floor + 1); // TODO: Store in state
+        $movement = self::getGameStateValue("patrolDieCount$floor") + count($this->getFloorAlarmTiles($floor));
+        $this->moveGuard($floor, $movement);
         $this->gamestate->nextState( 'nextPlayer' );
     }
 
