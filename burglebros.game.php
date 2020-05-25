@@ -449,6 +449,7 @@ class burglebros extends Table
             if ($tile_id != $guard_token['location_arg']) {
                 $this->tokens->moveCard($guard_token['id'], 'tile', $tile_id);
                 $movement--;
+                $this->checkCameras(array('guard_id'=>$guard_token['id']));
                 $this->checkPlayerStealth($tile_id);
                 if ($tile_id == $patrol_token['location_arg']) {
                     $this->nextPatrol($floor);
@@ -774,6 +775,35 @@ class burglebros extends Table
         }
     }
 
+    function checkCameras($params) {
+        $player_clause = '';
+        $guard_clause = '';
+        if (isset($params['guard_id'])) {
+            $guard_id = $params['guard_id'];
+            $guard_clause = "AND token.card_id = $guard_id";
+        } else {
+            $player_id = $params['player_id'];
+            $player_clause = "AND token.card_id = $player_id";
+        }
+        $sql = <<<SQL
+            SELECT distinct tile.card_id id, tile.card_type type, tile.card_location location, tile.card_location_arg location_arg
+            FROM tile
+            INNER JOIN token ON token.card_location = 'tile' AND token.card_location_arg = tile.card_id
+            WHERE tile.card_type = 'camera' AND token.card_type = 'player' $player_clause AND EXISTS (
+                SELECT token.card_id
+                FROM tile
+                INNER JOIN token ON token.card_location = 'tile' AND token.card_location_arg = tile.card_id
+                WHERE tile.card_type = 'camera' AND token.card_type = 'guard' $guard_clause and tile.flipped=1)
+SQL;
+        $camera_tiles = self::getObjectListFromDB($sql);
+        if (count($camera_tiles) > 0) {
+            var_dump(array($params, $camera_tiles));
+        }
+        foreach ($camera_tiles as $tile) {
+            $this->triggerAlarm($tile);
+        }
+    }
+
     function triggerAlarm($tile) {
         $floor = $tile['location'][5];
         $patrol = "patrol".$floor;
@@ -871,6 +901,7 @@ class burglebros extends Table
         if ($to_move['id'] == $guard_token['location_arg']) {
             $this->checkPlayerStealth($to_move['id']);
         }
+        $this->checkCameras(array('player_id'=>$player_token['id']));
         self::notifyAllPlayers('move', '', array(
             'floor' => $floor,
             'tiles' => $this->getTiles($floor),
