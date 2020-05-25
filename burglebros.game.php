@@ -339,20 +339,48 @@ class burglebros extends Table
         return $tiles;
     }
 
+    function getFloorAlarmTiles($floor) {
+        $tile_location = "'floor$floor'";
+        $sql = <<<SQL
+            SELECT distinct tile.card_id id, tile.card_type type, tile.card_type_arg type_arg, tile.card_location location, tile.card_location_arg location_arg
+            FROM token
+            INNER JOIN tile ON token.card_location = 'tile' AND tile.card_id = token.card_location_arg
+            WHERE token.card_type = 'alarm' AND tile.card_location = $tile_location
+SQL;
+        return self::getObjectListFromDB($sql);
+    }
+
     function nextPatrol($floor) {
-        $patrol = "patrol".$floor;
-        $count = $this->cards->countCardInLocation($patrol.'_discard');
-        if ($count == 16) {
-            $this->cards->moveAllCardsInLocation($patrol.'_discard', $patrol.'_deck');
-            $this->cards->shuffle($patrol.'_deck');
-            $count = 0;
-            // TODO: Increase patrol dice number
+        $alarm_tiles = $this->getFloorAlarmTiles($floor);
+        if (count($alarm_tiles) > 0) {
+            $guard_token = array_values($this->tokens->getCardsOfType('guard', $floor))[0];
+            $guard_tile = $this->tiles->getCard($guard_token['location_arg']);
+
+            $min_count = 100; // longest is 6, but I'm paranoid
+            $tile_id = null;
+            foreach ($alarm_tiles as $tile) {
+                $path = $this->findShortestPath($floor, $guard_tile['location_arg'], $tile['location_arg']);
+                if (count($path) < $min_count) {
+                    // TODO: Allow players to choose guard's path
+                    $min_count = count($path); 
+                    $tile_id = $tile['id'];
+                }
+            }
+        } else {
+            $patrol = "patrol".$floor;
+            $count = $this->cards->countCardInLocation($patrol.'_discard');
+            if ($count == 16) {
+                $this->cards->moveAllCardsInLocation($patrol.'_discard', $patrol.'_deck');
+                $this->cards->shuffle($patrol.'_deck');
+                $count = 0;
+                // TODO: Increase patrol dice number
+            }
+            $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', $count + 1);
+            $patrol_entrance = $this->cards->getCardOnTop($patrol.'_discard');
+            $tile_id = $this->findTileOnFloor($floor, $patrol_entrance['type_arg'] - 1)['id'];
         }
-        $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', $count + 1);
-        $patrol_entrance = $this->cards->getCardOnTop($patrol.'_discard');
         $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
-        $tile = $this->findTileOnFloor($floor, $patrol_entrance['type_arg'] - 1);
-        $this->tokens->moveCard($patrol_token['id'], 'tile', $tile['id']);
+        $this->tokens->moveCard($patrol_token['id'], 'tile', $tile_id);
     }
 
     function setupPatrol($guard_token, $floor) {
@@ -451,6 +479,7 @@ class burglebros extends Table
                 $movement--;
                 $this->checkCameras(array('guard_id'=>$guard_token['id']));
                 $this->checkPlayerStealth($tile_id);
+                $this->clearTileTokens('alarm', $tile_id);
                 if ($tile_id == $patrol_token['location_arg']) {
                     $this->nextPatrol($floor);
                     if ($movement > 0) {
@@ -622,8 +651,8 @@ class burglebros extends Table
         $this->tokens->moveCards($ids, 'tile', $tile_id);
     }
 
-    function clearKeypadTokens() {
-        $tokens = $this->tokens->getCardsOfTypeInLocation('keypad', null, 'tile');
+    function clearTileTokens($type, $tile_id=null) {
+        $tokens = $this->tokens->getCardsOfTypeInLocation($type, null, 'tile', $tile_id);
         foreach ($tokens as $token) {
             $this->tokens->moveCard($token['id'], 'deck');
         }
@@ -686,13 +715,13 @@ class burglebros extends Table
         return FALSE;
     }
 
-    function guardInTile($tile) {
-        $guard_tokens = $this->tokens->getCardsOfTypeInLocation('guard', null, 'tile', $tile['id']);
-        return count($guard_tokens) > 0;
+    function tokensInTile($type, $tile_id) {
+        $tokens = $this->tokens->getCardsOfTypeInLocation($type, null, 'tile', $tile_id);
+        return count($tokens) > 0;
     }
 
     function hackOrTrigger($tile) {
-        if ($this->guardInTile($tile)) {
+        if ($this->tokensInTile('guard', $tile['id']) || $this->tokensInTile('alarm', $tile['id'])) {
             return;
         }
 
@@ -805,17 +834,16 @@ class burglebros extends Table
                 WHERE tile.card_type = 'camera' AND token.card_type = 'guard' $guard_clause and tile.flipped=1)
 SQL;
         $camera_tiles = self::getObjectListFromDB($sql);
-        if (count($camera_tiles) > 0) {
-            var_dump(array($params, $camera_tiles));
-        }
         foreach ($camera_tiles as $tile) {
             $this->triggerAlarm($tile);
         }
     }
 
-    function triggerAlarm($tile, $skip_guard_check=FALSE) {
-        if (!$skip_guard_check && $this->guardInTile($tile)) {
-            return;
+    function triggerAlarm($tile, $skip_token_checks=FALSE) {
+        if (!$skip_token_checks) {
+            if($this->tokensInTile('guard', $tile['id']) || $this->tokensInTile('alarm', $tile['id'])) {
+                return;
+            }
         }
 
         $floor = $tile['location'][5];
@@ -1072,7 +1100,7 @@ SQL;
             $entrance = self::getGameStateValue('entranceTile');
             $this->tokens->moveCard($token['id'], 'tile', $entrance);
         }
-        $this->clearKeypadTokens();
+        $this->clearTileTokens('keypad');
 
         $this->gamestate->nextState( 'playerTurn' );
     }
