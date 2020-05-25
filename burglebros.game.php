@@ -686,7 +686,16 @@ class burglebros extends Table
         return FALSE;
     }
 
+    function guardInTile($tile) {
+        $guard_tokens = $this->tokens->getCardsOfTypeInLocation('guard', null, 'tile', $tile['id']);
+        return count($guard_tokens) > 0;
+    }
+
     function hackOrTrigger($tile) {
+        if ($this->guardInTile($tile)) {
+            return;
+        }
+
         $type = $tile['type'];
         $tokens = $this->getPlacedTokens(array('hack'));
         $computer_tile = array_values($this->tiles->getCardsOfType("$type-computer"))[0];
@@ -694,7 +703,7 @@ class burglebros extends Table
             $to_move = $tokens[$computer_tile['id']][0];
             $this->tokens->moveCard($to_move, 'deck');
         } else {
-            $this->triggerAlarm($tile);
+            $this->triggerAlarm($tile, TRUE);
         }
     }
 
@@ -804,7 +813,11 @@ SQL;
         }
     }
 
-    function triggerAlarm($tile) {
+    function triggerAlarm($tile, $skip_guard_check=FALSE) {
+        if (!$skip_guard_check && $this->guardInTile($tile)) {
+            return;
+        }
+
         $floor = $tile['location'][5];
         $patrol = "patrol".$floor;
         $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
