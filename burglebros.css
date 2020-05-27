@@ -102,10 +102,9 @@
 
 .tile-zone {
     position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
+    left: 15px;
+    top: 45px;
+    width: 120px;
     z-index: 1;
 }
 
