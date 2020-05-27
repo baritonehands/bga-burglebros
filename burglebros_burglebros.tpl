@@ -58,19 +58,23 @@
 var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';
 
 */
-var jstpl_tile = '<div id="tile_${id}" class="tile" style="background-image: url(${bg_image}); background-position: ${bg_position}; left: ${x}px; top: ${y}px" aria-label="${name}" title="${name}">${name}<div id="tile_${id}_tokens" class="tile-zone"></div></div>';
+var jstpl_tile_container = '<div id="tile_${id}_container" class="tile-container" style="left: ${x}px; top: ${y}px;" aria-label="${name}" title="${name}">\n' +
+'    <div id="tile_${id}_tokens" class="tile-zone"></div>\n' +
+'</div>';
+
+var jstpl_tile = '<div id="tile_${id}" class="tile" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>';
 
 var jstpl_wall = '<div id="wall_${wall_id}" class="wall ${wall_direction}" style="left: ${x}px; top: ${y}px"></div>';
 
-var jstpl_player_token = '<div id="player_token_${player_id}" class="token" style="background-color: #${player_color}">P</div>';
+var jstpl_player_token = '<div id="player_token_${token_id}" class="token" style="background-color: #${player_color}">P</div>';
 
-var jstpl_guard_token = '<div id="guard_token_${guard_floor}" class="token" style="background-color: black;">G</div>';
+var jstpl_guard_token = '<div id="guard_token_${token_id}" class="token" style="background-color: black;">G</div>';
 
 var jstpl_generic_token = '<div id="generic_token_${token_id}" class="token" style="background-color: ${token_color};">${token_letter}</div>';
 
-var jstpl_patrol_die = '<div id="patrol_token_${guard_floor}" class="token die patrol">${num_spaces}</div>';
+var jstpl_patrol_die = '<div id="patrol_token_${token_id}" class="token die patrol">${num_spaces}</div>';
 
-var jstpl_safe_die = '<div id="crack_token_${safe_floor}" class="token die safe">${die_num}</div>';
+var jstpl_safe_die = '<div id="crack_token_${token_id}" class="token die safe">${die_num}</div>';
 
 </script>  
 

@@ -32,6 +32,7 @@ function (dojo, declare) {
             // this.myGlobalValue = 0;
             this.cardwidth = 150;
             this.cardheight = 150;
+            this.nonGenericTokenTypes = ['player', 'guard', 'patrol', 'crack'];
         },
         
         /*
@@ -97,6 +98,7 @@ function (dojo, declare) {
                 for ( var tileId in this.gamedatas[key]) {
                     var tile = this.gamedatas[key][tileId];
                     // this[key].addToStockWithId(tile.type_arg, tile.id);
+                    this.createTileContainer(floor, tile);
                     this.playTileOnTable(floor, tile);
                 }
 
@@ -126,8 +128,6 @@ function (dojo, declare) {
                     weights[id] = parseInt(card.location_arg, 10);
                 }
                 this[patrolKey].changeItemsWeight(weights);
-
-                this.createGuardToken(floor);
             }
 
             for (var wallIdx = 0; wallIdx < 24; wallIdx++) {
@@ -135,37 +135,35 @@ function (dojo, declare) {
                 this.playWallOnTable(wall);
             }
 
-            for (var player_id in gamedatas.players) {
-                this.createPlayerToken(player_id);
-            }
-
             for (var token_id in gamedatas.player_tokens) {
                 var token = gamedatas.player_tokens[token_id];
+                this.createPlayerToken(token_id, token.type_arg);
                 if (token.location === 'tile') {
-                    this.moveToken('player', token.type_arg, token.location_arg);
+                    this.moveToken('player', token_id, token.location_arg);
                 }
             }
 
             for (var token_id in gamedatas.guard_tokens) {
                 var token = gamedatas.guard_tokens[token_id];
+                this.createGuardToken(token_id);
                 if (token.location === 'tile') {
-                    this.moveToken('guard', token.type_arg, token.location_arg);
+                    this.moveToken('guard', token_id, token.location_arg);
                 }
             }
 
             for (var token_id in gamedatas.patrol_tokens) {
                 var token = gamedatas.patrol_tokens[token_id];
-                this.createPatrolToken(token.type_arg, token.die_num);
+                this.createPatrolToken(token_id, token.die_num);
                 if (token.location === 'tile') {
-                    this.moveToken('patrol', token.type_arg, token.location_arg);
+                    this.moveToken('patrol', token_id, token.location_arg);
                 }
             }
 
-            for (var token_id in gamedatas.safe_tokens) {
-                var token = gamedatas.safe_tokens[token_id];
-                this.createSafeToken(token.type_arg, token.die_num);
+            for (var token_id in gamedatas.crack_tokens) {
+                var token = gamedatas.crack_tokens[token_id];
+                this.createSafeToken(token_id, token.die_num);
                 if (token.location === 'tile') {
-                    this.moveToken('crack', token.type_arg, token.location_arg);
+                    this.moveToken('crack', token_id, token.location_arg);
                 }
             }
 
@@ -303,23 +301,16 @@ function (dojo, declare) {
             return parseInt(row, 10) * 4 + parseInt(col, 10);
         },
 
-        playTileOnTable : function(floor, tile) {
-            var div_id = 'tile_' + tile.id;
-            if ($(div_id)) {
-                dojo.destroy(div_id);
-            }
+        createTileContainer: function(floor, tile) {
+            var div_id = 'tile_' + tile.id + '_container';
                 
             var idx = parseInt(tile.location_arg, 10);
             var row = Math.floor(idx / 4);
             var col = idx % 4;
-            var bg_row = Math.floor(tile.type_arg / 2) * -100;
-            var bg_col = (tile.type_arg % 2) * -100;
-            dojo.place(this.format_block('jstpl_tile', {
+            dojo.place(this.format_block('jstpl_tile_container', {
                 id : tile.id, 
                 x : (this.cardwidth + 40) * col,
                 y : (this.cardheight + 40) * row,
-                bg_image: g_gamethemeurl + 'img/tiles.jpg',
-                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%',
                 name : tile.type + tile.safe_die
             }), 'floor' + floor);
             
@@ -328,10 +319,26 @@ function (dojo, declare) {
             });
 
             var zone = new ebg.zone();
-            var zoneId = div_id + '_tokens';
+            var zoneId = 'tile_' + tile.id + '_tokens';
             zone.create( this, zoneId, 30, 30 );
             zone.setPattern( 'grid' );
             this.zones[zoneId] = zone;
+        },
+
+        playTileOnTable : function(floor, tile) {
+            var div_id = 'tile_' + tile.id;
+            if ($(div_id)) {
+                dojo.destroy(div_id);
+            }
+                
+            var bg_row = Math.floor(tile.type_arg / 2) * -100;
+            var bg_col = (tile.type_arg % 2) * -100;
+            dojo.place(this.format_block('jstpl_tile', {
+                id : tile.id, 
+                bg_image: g_gamethemeurl + 'img/tiles.jpg',
+                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%',
+                name : tile.type + tile.safe_die
+            }), div_id + '_container');
         },
 
         playWallOnTable : function(wall) {
@@ -350,9 +357,9 @@ function (dojo, declare) {
             }), 'floor' + wall.floor);
         },
 
-        createPlayerToken: function(player_id) {
+        createPlayerToken: function(id, player_id) {
             dojo.place(this.format_block('jstpl_player_token', {
-                player_id : player_id,
+                token_id : id,
                 player_color: this.gamedatas.players[player_id].color
             }), 'token_container');
         },
@@ -362,22 +369,31 @@ function (dojo, declare) {
             this.zones[zoneId].placeInZone(token_type + '_token_' + id);
         },
 
-        createGuardToken: function(floor) {
+        removeToken: function(token_type, id) {
+            var deck = this.gamedatas[token_type + '_tokens'];
+            var token = deck[id];
+            if (token && token.location === 'tile') {
+                var zoneId = 'tile_' + token.location_arg + '_tokens';
+                this.zones[zoneId].removeFromZone(token_type + '_token_' + id, token_type === 'generic');
+            }
+        },
+
+        createGuardToken: function(token_id) {
             dojo.place(this.format_block('jstpl_guard_token', {
-                guard_floor : floor,
+                token_id : token_id,
             }), 'token_container');
         },
 
-        createPatrolToken: function(floor, die_num) {
+        createPatrolToken: function(token_id, die_num) {
             dojo.place(this.format_block('jstpl_patrol_die', {
-                guard_floor : floor,
+                token_id : token_id,
                 num_spaces : die_num,
             }), 'token_container');
         },
 
-        createSafeToken: function(floor, die_num) {
+        createSafeToken: function(token_id, die_num) {
             dojo.place(this.format_block('jstpl_safe_die', {
-                safe_floor : floor,
+                token_id : token_id,
                 die_num : die_num,
             }), 'token_container');
         },
@@ -389,6 +405,10 @@ function (dojo, declare) {
                 token_color : color,
                 token_letter : letter
             }), 'token_container');
+        },
+
+        destroyGenericToken: function(id) {
+            dojo.destroy('generic_token_' + id);
         },
 
         createPlayerStealthToken: function(id, count) {
@@ -466,7 +486,8 @@ function (dojo, declare) {
             var intent = this.intent || 'move';
             var url = '/burglebros/burglebros/' + intent + '.html';
             this.ajaxcall(url, { lock: true, floor: floor, location_arg: location_arg }, this, function() {
-                location.reload();
+                console.log(arguments);
+                // location.reload();
             }, console.error);
             this.intent = 'move';
         },
@@ -480,7 +501,7 @@ function (dojo, declare) {
             dojo.stopEvent(evt);
             this.ajaxcall('/burglebros/burglebros/addSafeDie.html', { lock: true }, this, function() {
                 console.log(arguments);
-                location.reload();
+                // location.reload();
             }, console.error);
         },
 
@@ -488,7 +509,7 @@ function (dojo, declare) {
             dojo.stopEvent(evt);
             this.ajaxcall('/burglebros/burglebros/rollSafeDice.html', { lock: true }, this, function() {
                 console.log(arguments);
-                location.reload();
+                // location.reload();
             }, console.error);
         },
 
@@ -503,7 +524,7 @@ function (dojo, declare) {
             var url = '/burglebros/burglebros/pass.html';
             this.ajaxcall(url, { lock: true }, this, function() {
                 console.log(arguments);
-                location.reload();
+                // location.reload();
             }, console.error);
         },
 
@@ -536,6 +557,8 @@ function (dojo, declare) {
             // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
             // 
             dojo.subscribe('peek', this, 'notif_peek');
+            dojo.subscribe('tokensPicked', this, 'notif_tokensPicked');
+            dojo.subscribe('tileFlipped', this, 'notif_tileFlipped');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -563,6 +586,34 @@ function (dojo, declare) {
                 var tile = this.gamedatas[deck][tileId];
                 this.playTileOnTable(floor, tile);
             }
-       }
+        },
+
+        notif_tokensPicked: function(notif) {
+            var tokens = notif.args.tokens;
+            for(var tokenId in tokens) {
+                var token = tokens[tokenId];
+                var isGeneric = this.nonGenericTokenTypes.indexOf(token.type) == -1;
+                var type = isGeneric ? 'generic' : token.type;
+                this.removeToken(type, tokenId);
+                if(isGeneric) {
+                    delete this.gamedatas.generic_tokens[tokenId];
+                }
+                if (token.location === 'tile') {
+                    if (isGeneric) {
+                        this.createGenericToken(tokenId, token.color, token.letter);
+                    }
+                    this.moveToken(type, token.id, token.location_arg);
+                    this.gamedatas[type + '_tokens'][tokenId] = token;
+                }
+            }
+        },
+
+        notif_tileFlipped: function(notif) {
+            var tile = notif.args.tile,
+            floor = tile.location[5];
+            deck = 'floor' + floor;
+            this.gamedatas[deck][tile.location_arg] = tile;
+            this.playTileOnTable(floor, tile);
+        }
    });             
 });
