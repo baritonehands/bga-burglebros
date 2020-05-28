@@ -71,25 +71,21 @@ function (dojo, declare) {
             this.playerHand.image_items_per_row = 2;
 
             // Create cards types:
-            for (var type in gamedatas.card_types) {
+            for (var type = 0; type < gamedatas.card_types.length; type++) {
                 var typeInfo = gamedatas.card_types[type];
                 for (var index = 0; index < typeInfo.cards.length; index++) {
                     // Build card type id
                     var card = typeInfo.cards[index];
                     var cardTypeId = this.getCardUniqueId(card.type, card.index);
                     var cardIndex = card.type == 0 ? card.index * 2 : card.index;
-                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/' + type + '.jpg', cardIndex);
+                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/' + typeInfo.name + '.jpg', cardIndex);
                 }
             }
 
             for (var playerId in gamedatas.players) {
                 var player = gamedatas.players[playerId];
                 var hand = player.hand;
-                for(var cardId in hand) {
-                    var card = hand[cardId];
-                    var cardTypeId = this.getCardUniqueId(card.type, card.type_arg);
-                    this.playerHand.addToStockWithId(cardTypeId, cardId);
-                }
+                this.loadPlayerHand(hand);
                 this.createPlayerStealthToken(playerId, player.stealth_tokens);
             }
 
@@ -117,17 +113,9 @@ function (dojo, declare) {
                         this[patrolKey].addItemType(id, id, g_gamethemeurl + 'img/patrol.jpg', id);
                     }
                 }
+                
                 var patrolDeckKey = patrolKey + '_discard';
-                var weights = {};
-                for (var cardId in gamedatas[patrolDeckKey]) {
-                    var card = gamedatas[patrolDeckKey][cardId];
-                    var cardType = parseInt(card.type, 10);
-                    var cardIndex = parseInt(card.type_arg, 10) - 1;
-                    var id = ((cardType - 4) * 16) + cardIndex;
-                    this[patrolKey].addToStockWithId(id, cardId);
-                    weights[id] = parseInt(card.location_arg, 10);
-                }
-                this[patrolKey].changeItemsWeight(weights);
+                this.loadPatrolDiscard(floor, gamedatas[patrolDeckKey]);
             }
 
             for (var wallIdx = 0; wallIdx < 24; wallIdx++) {
@@ -279,7 +267,7 @@ function (dojo, declare) {
         },
         
         setupPatrolItem: function(floor, card_div, card_type_id, card_id) {
-            var key = 'patrol' + floor;
+            var key = floor + 3;
             card_div.innerText = this.gamedatas.patrol_types[key].cards[card_type_id % 16].name;
         },
 
@@ -339,6 +327,15 @@ function (dojo, declare) {
                 bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%',
                 name : tile.type + tile.safe_die
             }), div_id + '_container');
+
+            if (tile.type != 'back') {                
+                var tooltipHtml = this.format_block('jstpl_tile_tooltip', {
+                    id : tile.id, 
+                    bg_image: g_gamethemeurl + 'img/tiles.jpg',
+                    bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
+                });
+                this.addTooltipHtml(div_id + '_container', tooltipHtml);
+            }
         },
 
         playWallOnTable : function(wall) {
@@ -430,6 +427,46 @@ function (dojo, declare) {
 
         canHack: function() {
             return this.gamedatas.current.tile.type.endsWith('-computer');
+        },
+
+        loadPatrolDiscard: function(floor, cards) {
+            // var patrolDeckKey = patrolKey + '_discard';
+            var patrolKey = 'patrol' + floor;
+            var weights = {};
+            for (var cardId in cards) {
+                var card = cards[cardId];
+                var cardType = parseInt(card.type, 10);
+                var cardIndex = parseInt(card.type_arg, 10) - 1;
+                var id = ((cardType - 4) * 16) + cardIndex;
+                if (!this[patrolKey].getItemById(id)) {
+                    this[patrolKey].addToStockWithId(id, cardId);
+                }
+                weights[id] = parseInt(card.location_arg, 10);
+            }
+            this[patrolKey].changeItemsWeight(weights);
+        },
+
+        loadPlayerHand: function(hand) {
+            for(var cardId in hand) {
+                var card = hand[cardId];
+                var cardTypeId = this.getCardUniqueId(card.type, card.type_arg);
+                if (!this.playerHand.getItemById(cardId)) {
+                    this.playerHand.addToStockWithId(cardTypeId, cardId);
+
+                    var typeInfo = gamedatas.card_types[card.type];
+                    var index = card.type == 0 ? card.type_arg * 2 : card.type_arg;
+                    var bg_row = Math.floor(index / 2) * -100;
+                    var bg_col = (index % 2) * -100;
+                    var divId = this.playerHand.getItemDivId(cardId);
+                    var tooltipHtml = this.format_block('jstpl_card_tooltip', {
+                        id : cardId, 
+                        bg_image: g_gamethemeurl + 'img/' + typeInfo.name + '.jpg',
+                        bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
+                    });
+                    // console.log(tooltipHtml);
+                    this.addTooltipHtml(divId, tooltipHtml);
+                }
+            }
         },
 
         ///////////////////////////////////////////////////
@@ -559,6 +596,8 @@ function (dojo, declare) {
             dojo.subscribe('peek', this, 'notif_peek');
             dojo.subscribe('tokensPicked', this, 'notif_tokensPicked');
             dojo.subscribe('tileFlipped', this, 'notif_tileFlipped');
+            dojo.subscribe('nextPatrol', this, 'notif_nextPatrol');
+            dojo.subscribe('playerHand', this, 'notif_playerHand');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -614,6 +653,20 @@ function (dojo, declare) {
             deck = 'floor' + floor;
             this.gamedatas[deck][tile.location_arg] = tile;
             this.playTileOnTable(floor, tile);
+        },
+
+        notif_nextPatrol: function(notif) {
+            var deck = 'patrol' + notif.args.floor + '_discard';
+            this.gamedatas[deck] = notif.args[deck];
+            this.loadPatrolDiscard(notif.args.floor, notif.args.cards);
+        },
+
+        notif_playerHand: function(notif) {
+            for(var playerId in notif.args) {
+                var hand = notif.args[playerId];
+                this.gamedatas.players[playerId].hand = hand;
+                this.loadPlayerHand(hand);
+            }
         }
    });             
 });

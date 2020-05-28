@@ -41,7 +41,7 @@
         <h3>Floor {FLOOR}</h3>
         <div class="floor" id="floor{FLOOR}">
         </div>
-        <h4>Patrol {FLOOR}</h4>
+        <!-- <h4>Patrol {FLOOR}</h4> -->
         <div class="patrol" id="patrol{FLOOR}">
         </div>
     </div>
@@ -63,6 +63,10 @@ var jstpl_tile_container = '<div id="tile_${id}_container" class="tile-container
 '</div>';
 
 var jstpl_tile = '<div id="tile_${id}" class="tile" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>';
+
+var jstpl_tile_tooltip = '<div id="tile_${id}_tooltip" class="tile tooltip" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>';
+
+var jstpl_card_tooltip = '<div id="card_${id}_tooltip" class="card tooltip" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>';
 
 var jstpl_wall = '<div id="wall_${wall_id}" class="wall ${wall_direction}" style="left: ${x}px; top: ${y}px"></div>';
 

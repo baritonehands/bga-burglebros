@@ -146,8 +146,6 @@ class burglebros extends Table
         // Activate first player (which is in general a good idea :) )
         $current_player_id = $this->activeNextPlayer();
 
-        $this->cards->pickCard('events_deck', $current_player_id);
-
         // Move first player token to entrance
         $flipped = $this->getFlippedTiles(1);
         $entrance = array_keys($flipped)[0];
@@ -287,7 +285,7 @@ class burglebros extends Table
 
             $deck_name = $desc['name'].'_deck';
             $result[$deck_name] = $this->cards->getCardsInLocation( $deck_name );
-            $result[$prefix.'_types'][$desc['name']] = array('deck' => $deck_name, 'cards' => $card_info);
+            $result[$prefix.'_types'][$type] = array('name' => $desc['name'], 'deck' => $deck_name, 'cards' => $card_info);
             $discard_name = $desc['name'].'_discard';
             $result[$discard_name] = $this->cards->getCardsInLocation( $discard_name );
         }
@@ -362,6 +360,10 @@ SQL;
         return self::getObjectListFromDB($sql);
     }
 
+    function pickPatrolCard($floor) {
+
+    }
+
     function nextPatrol($floor) {
         $alarm_tiles = $this->getFloorAlarmTiles($floor);
         if (count($alarm_tiles) > 0) {
@@ -392,6 +394,10 @@ SQL;
             }
             $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', $count + 1);
             $patrol_entrance = $this->cards->getCardOnTop($patrol.'_discard');
+            self::notifyAllPlayers('nextPatrol', '', array(
+                'floor' => $floor,
+                'cards' => $this->cards->getCardsInLocation($patrol.'_discard')
+            ));
             $tile_id = $this->findTileOnFloor($floor, $patrol_entrance['type_arg'] - 1)['id'];
         }
         $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
@@ -618,6 +624,12 @@ SQL;
         return $result;
     }
 
+    function notifyPlayerHand($player_id) {
+        self::notifyAllPlayers('playerHand', '', array(
+            $player_id => $this->cards->getPlayerHand($player_id)
+        ));
+    }
+
     function performSafeDiceRollDebug($floor,$dice_count) {
         $safe_tile = array_values($this->tiles->getCardsOfTypeInLocation('safe', null, "floor$floor"))[0];
         $this->performSafeDiceRoll($safe_tile,intval($dice_count));
@@ -652,6 +664,8 @@ SQL;
             $current_player_id = self::getCurrentPlayerId();
             $this->cards->pickCard('tools_deck', $current_player_id);
             $this->cards->pickCard('loot_deck', $current_player_id);
+            $this->notifyPlayerHand($current_player_id);
+
             $safe_token = array_values($this->tokens->getCardsOfType('crack', $floor))[0];
             if ($safe_token['location'] == 'tile') {
                 $this->moveToken($safe_token['id'], 'deck');
@@ -1061,6 +1075,7 @@ SQL;
         if ($actionsRemaining >= 2) {
             $current_player_id = self::getCurrentPlayerId();
             $this->cards->pickCard('events_deck', $current_player_id);
+            $this->notifyPlayerHand($current_player_id);
         }
         $this->gamestate->nextState('endTurn');
     }
