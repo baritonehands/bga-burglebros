@@ -41,7 +41,8 @@ class burglebros extends Table
             'motionTileEntered' => 15,
             'patrolDieCount1' => 16,
             'patrolDieCount2' => 17,
-            'patrolDieCount3' => 18, 
+            'patrolDieCount3' => 18,
+            'laboratoryTileEntered' => 19,
         ) ); 
 
         $this->cards = self::getNew( "module.common.deck" );
@@ -98,6 +99,7 @@ class burglebros extends Table
         self::setGameStateInitialValue( 'patrolDieCount1', 2 );
         self::setGameStateInitialValue( 'patrolDieCount2', 3 );
         self::setGameStateInitialValue( 'patrolDieCount3', 4 );
+        self::setGameStateInitialValue( 'laboratoryTileEntered', 0x000 ); // Bit vector
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -871,6 +873,13 @@ SQL;
         }
     }
 
+    function setTileBit($state_name, $tile_id) {
+        $tile_bit = 1 << self::getUniqueValueFromDB("SELECT safe_die FROM tile WHERE card_id = '$tile_id'");
+        $tile_entered = self::getGameStateValue($state_name);
+        self::setGameStateValue($state_name, $tile_entered | $tile_bit);
+        return ($tile_entered & $tile_bit) != 0x0;
+    }
+
     function handleTileMovement($tile, $player_tile, $player_token, $flipped_this_turn) {
         $id = $tile['id'];
         $type = $tile['type'];
@@ -897,9 +906,14 @@ SQL;
                 self::incGameStateValue('actionsRemaining', -1);
             }
         } elseif($type == 'motion') {
-            $motion_bit = 1 << (self::getUniqueValueFromDB("SELECT safe_die FROM tile WHERE card_id = '$id'") - 1);
-            $motion_entered = self::getGameStateValue('motionTileEntered');
-            self::setGameStateValue('motionTileEntered', $motion_entered | $motion_bit);
+            $this->setTileBit('motionTileEntered', $id);
+        } elseif($type == 'laboratory') {
+            $prev_value = $this->setTileBit('laboratoryTileEntered', $id);
+            if (!$prev_value) {
+                $current_player_id = $player_token['type_arg'];
+                $this->cards->pickCard('tools_deck', $current_player_id);
+                $this->notifyPlayerHand($current_player_id);
+            }
         } elseif($type == 'detector') {
             $hand = $this->cards->getPlayerHand($player_token['type_arg']);
             foreach ($hand as $card_id => $card) {
@@ -923,7 +937,7 @@ SQL;
         $exit_type = $player_tile['type'];
         if ($exit_type == 'motion') {
             $exit_id = $player_tile['id'];
-            $motion_bit = 1 << (self::getUniqueValueFromDB("SELECT safe_die FROM tile WHERE card_id = '$exit_id'") - 1);
+            $motion_bit = 1 << self::getUniqueValueFromDB("SELECT safe_die FROM tile WHERE card_id = '$exit_id'");
             $motion_entered = self::getGameStateValue('motionTileEntered');
             if ($motion_entered & $motion_bit) {
                 $this->hackOrTrigger($player_tile);
