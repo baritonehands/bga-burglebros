@@ -502,7 +502,8 @@ SQL;
                 $this->moveToken($guard_token['id'], 'tile', $tile_id);
                 $movement--;
                 $this->checkCameras(array('guard_id'=>$guard_token['id']));
-                $this->checkPlayerStealth($tile_id);
+                $tile = $this->tiles->getCard($tile_id);
+                $this->checkPlayerStealth($tile);
                 $this->clearTileTokens('alarm', $tile_id);
                 if ($tile_id == $patrol_token['location_arg']) {
                     $this->nextPatrol($floor);
@@ -517,11 +518,59 @@ SQL;
         }
     }
 
-    function checkPlayerStealth($tile_id) {
+    function deductStealth($player_id) {
+        self::DbQuery("UPDATE player SET player_stealth_tokens = player_stealth_tokens - 1 WHERE player_id = '$player_id'");
+        self::notifyAllPlayers('message', clienttranslate( '${player_name} lost one stealth' ), array(
+            'player_name' => self::getActivePlayerName()
+        ));
+    }
+
+    function atriumGuardsDebug($tile_id) {
+        var_dump($this->atriumGuards($this->tiles->getCard($tile_id)));
+    }
+
+    function atriumGuards($tile) {
+        $player_floor = $tile['location'];
+        $player_location_arg = $tile['location_arg'];
+        $sql = <<<SQL
+            SELECT count(*) > 0 as seen
+            FROM tile
+            INNER JOIN token ON token.card_location_arg = tile.card_id
+            WHERE tile.card_location != '$player_floor'
+                AND tile.card_location_arg = '$player_location_arg'
+                AND token.card_location = 'tile'
+                AND token.card_type = 'guard'
+SQL;
+        return self::getUniqueValueFromDB($sql);
+    }
+
+    function checkPlayerStealth($tile) {
+        $guard_token = array_values($this->tokens->getCardsOfType('guard', $tile['location'][5]))[0];
+        $guard_tile = $this->tiles->getCard($guard_token['location_arg']);
+
         $current_player_id = self::getCurrentPlayerId();
         $player_token = array_values($this->tokens->getCardsOfType('player', $current_player_id))[0];
-        if ($tile_id == $player_token['location_arg']) {
-            self::DbQuery("UPDATE player SET player_stealth_tokens = player_stealth_tokens - 1 WHERE player_id = '$current_player_id'");
+        $player_tile = $this->tiles->getCard($player_token['location_arg']);
+        
+        $is_guard_tile = $tile['id'] == $guard_token['location_arg'];
+        $is_player_tile = $tile['id'] == $player_token['location_arg'];
+        
+        if ($is_guard_tile && $is_player_tile) {
+            $this->deductStealth($current_player_id);
+            return;
+        }
+
+        $is_foyer = $is_guard_tile && $player_tile['type'] == 'foyer' && $this->isTileAdjacent($player_tile, $guard_tile, null, TRUE);
+        if ($is_foyer) {
+            $this->deductStealth($current_player_id);
+            return;
+        }
+
+        if ($player_tile['type'] == 'atrium') {
+            if (($is_player_tile && $this->atriumGuards($player_tile)) ||
+                    ($is_guard_tile && $guard_tile['location_arg'] == $player_tile['location_arg']))
+            $this->deductStealth($current_player_id);
+            return;
         }
     }
 
@@ -872,6 +921,7 @@ SQL;
         if (!$cancel_move) {
             $this->moveToken($player_token['id'], 'tile', $id);
         }
+        return !$cancel_move;
     }
 
     function checkCameras($params) {
@@ -996,18 +1046,18 @@ SQL;
         if ($flipped_this_turn) {
             $this->handleTilePeek($to_move);
         }
-        $this->handleTileMovement($to_move, $player_tile, $player_token, $flipped_this_turn);
+        $did_move = $this->handleTileMovement($to_move, $player_tile, $player_token, $flipped_this_turn);
         $this->flipTile( $floor, $location_arg );
-        $guard_token = array_values($this->tokens->getCardsOfType('guard', $to_move['location'][5]))[0];
-        if ($guard_token['location'] == 'deck') {
-            $this->setupPatrol($guard_token, $to_move['location'][5]);
-        }
-        // Refetch guard token
-        $guard_token = array_values($this->tokens->getCardsOfType('guard', $to_move['location'][5]))[0];
-        if ($to_move['id'] == $guard_token['location_arg']) {
-            $this->checkPlayerStealth($to_move['id']);
+        if ($did_move) {
+            $guard_token = array_values($this->tokens->getCardsOfType('guard', $to_move['location'][5]))[0];
+            if ($guard_token['location'] == 'deck') {
+                $this->setupPatrol($guard_token, $to_move['location'][5]);
+            }
+            // TODO: Refetch player tile in case token moved by side effect
+            $this->checkPlayerStealth($to_move);
         }
         $this->checkCameras(array('player_id'=>$player_token['id']));
+        // Notify no matter what, might have flipped tiles
         self::notifyAllPlayers('move', '', array(
             'floor' => $floor,
             'tiles' => $this->getTiles($floor),
