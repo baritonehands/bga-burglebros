@@ -438,7 +438,7 @@ SQL;
         }
     }
 
-    function isTileAdjacent($tile, $other_tile, $walls=null, $is_guard=false) {
+    function isTileAdjacent($tile, $other_tile, $walls=null, $variant='move') {
         if (!isset($walls)) {
             $walls = $this->getWalls();
         }
@@ -469,13 +469,19 @@ SQL;
         // if ($tile['location_arg'] == 5) {
         //     var_dump(array('other'=>$other_tile['location_arg'],'sf'=>$same_floor, 'adj'=>$adjacent, 'blk'=>$blocked));
         // }
-        if ($is_guard) {
+        if ($variant == 'guard') {
             return ($same_floor && $adjacent && !$blocked);
-        } else {
+        } elseif($variant == 'peek') {
             return ($same_floor && $adjacent && !$blocked) ||
                 $this->stairsAreAdjacent($tile, $other_tile) ||
                 $this->stairsAreAdjacent($other_tile, $tile) ||
-                $tile['type'] == 'service-duct' && $other_tile['type'] == 'service-duct';
+                $this->atriumIsAdjacent($tile, $other_tile);
+        } else {
+            return ($same_floor && $adjacent && !$blocked) ||
+                ($same_floor && $adjacent && $tile['type'] == 'secret-door') ||
+                $this->stairsAreAdjacent($tile, $other_tile) ||
+                $this->stairsAreAdjacent($other_tile, $tile) ||
+                ($tile['type'] == 'service-duct' && $other_tile['type'] == 'service-duct');
         }
     }
 
@@ -483,6 +489,12 @@ SQL;
         return $tile['type'] == 'stairs' &&
             $tile['location'][5] + 1 == $other_tile['location'][5] &&
             $tile['location_arg'] == $other_tile['location_arg'];
+    }
+
+    function atriumIsAdjacent($tile, $other_tile) {
+        return $other_tile['type'] == 'atrium' &&
+            $tile['location_arg'] == $other_tile['location_arg'] &&
+            ($tile['location'][5] + 1 == $other_tile['location'][5] || $tile['location'][5] - 1 == $other_tile['location'][5]);
     }
 
     function moveGuardDebug($floor) {
@@ -560,7 +572,7 @@ SQL;
             return;
         }
 
-        $is_foyer = $is_guard_tile && $player_tile['type'] == 'foyer' && $this->isTileAdjacent($player_tile, $guard_tile, null, TRUE);
+        $is_foyer = $is_guard_tile && $player_tile['type'] == 'foyer' && $this->isTileAdjacent($player_tile, $guard_tile, null, 'guard');
         if ($is_foyer) {
             $this->deductStealth($current_player_id);
             return;
@@ -628,7 +640,7 @@ SQL;
             unset($open_set[$current]);
             
             $neighbors = array_filter($tiles, function($tile) use ($current_tile,$walls) {
-                return $this->isTileAdjacent($tile, $current_tile, $walls, true);
+                return $this->isTileAdjacent($tile, $current_tile, $walls, 'guard');
             });
             foreach ($neighbors as $id => $neighbor) {
                 $index = intval($neighbor['location_arg']);
@@ -1016,7 +1028,7 @@ SQL;
         if (isset($flipped[$to_peek['id']])) {
             throw new BgaUserException(self::_("Tile is already visible"));
         }
-        if (!$this->isTileAdjacent($to_peek, $player_tile)) {
+        if (!$this->isTileAdjacent($to_peek, $player_tile, null, 'peek')) {
             throw new BgaUserException(self::_("Tile is not adjacent"));
         }
 
@@ -1038,7 +1050,7 @@ SQL;
         $to_move = $this->findTileOnFloor($floor, $location_arg);
         $flipped = $this->getFlippedTiles($floor);
 
-        if (!$this->isTileAdjacent($to_move, $player_tile)) {
+        if (!$this->isTileAdjacent($to_move, $player_tile, null, 'move')) {
             throw new BgaUserException(self::_("Tile is not adjacent"));
         }
 
