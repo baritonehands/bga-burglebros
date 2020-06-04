@@ -69,6 +69,9 @@ function (dojo, declare) {
             this.playerHand = new ebg.stock();
             this.playerHand.create( this, $('myhand'), this.cardwidth, this.cardheight);
             this.playerHand.image_items_per_row = 2;
+            this.playerHand.setSelectionMode(1);
+            this.playerHand.setSelectionAppearance('class');
+            dojo.connect( this.playerHand, 'onChangeSelection', this, 'handleCardSelected' );
 
             // Create cards types:
             for (var type = 0; type < gamedatas.card_types.length; type++) {
@@ -560,6 +563,14 @@ function (dojo, declare) {
 
             var url = '/burglebros/burglebros/pass.html';
             this.ajaxcall(url, { lock: true }, this, function() {
+                console.log(arguments);
+                // location.reload();
+            }, console.error);
+        },
+
+        handleCardSelected: function(control_name, card_id) {
+            console.log(control_name, card_id);
+            this.ajaxcall('/burglebros/burglebros/playCard.html', { lock: true, id: card_id }, this, function() {
                 console.log(arguments);
                 // location.reload();
             }, console.error);

@@ -73,6 +73,10 @@
     border: 1px solid #999999;
 }
 
+.stockitem_selected {
+    border-color: red;
+}
+
 #myhand .stockitem {
     background-size: 300px;
 }

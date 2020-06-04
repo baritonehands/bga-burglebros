@@ -69,7 +69,7 @@ $machinestates = array(
         'descriptionmyturn' => clienttranslate('${you} may do ${actionsRemaining} actions or pass'),
         'type' => 'activeplayer',
         'args' => 'argPlayerTurn',
-        'possibleactions' => array( 'hack', 'move', 'peek', 'addSafeDie', 'rollSafeDice', 'pass' ),
+        'possibleactions' => array( 'hack', 'move', 'peek', 'addSafeDie', 'rollSafeDice', 'playCard', 'pass' ),
         'transitions' => array( 'nextAction' => 9, 'endTurn' => 10 )
     ),    
 

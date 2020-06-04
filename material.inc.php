@@ -187,5 +187,6 @@ $this->token_colors = array(
   'alarm' => 'darkred',
   'open' => 'gold',
   'keypad' => 'gold',
-  'stairs' => 'slategray'
+  'stairs' => 'slategray',
+  'thermal' => 'green'
 );
