@@ -1119,6 +1119,14 @@ SQL;
             $floor = $tile['location'][5];
             $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
             $this->moveToken($patrol_token['id'], 'tile', $tile['id']);
+        } elseif($type == 'dead-drop') {
+            $prev_player_id = self::getPlayerBefore($player_id);
+            $tools = $this->cards->getCardsOfTypeInLocation(1, null, 'hand', $player_id);
+            $this->cards->moveCards(array_keys($tools), 'hand', $prev_player_id);
+            $loot = $this->cards->getCardsOfTypeInLocation(2, null, 'hand', $player_id);
+            $this->cards->moveCards(array_keys($loot), 'hand', $prev_player_id);
+            $this->notifyPlayerHand($player_id);
+            $this->notifyPlayerHand($prev_player_id);
         } elseif ($type == 'freight-elevator') {
             $player_token = $this->getPlayerToken($player_id);
             $tile = $this->getPlayerTile($player_id, $player_token);
@@ -1170,6 +1178,15 @@ SQL;
                             }
                         }
                     }
+                }
+            }
+        } elseif($type == 'shoplifting') {
+            $laboratories = self::getCollectionFromDB("SELECT card_id id, card_type type, card_type_arg type_arg, card_location location, card_location_arg location_arg, safe_die FROM tile WHERE card_type = 'laboratory'");
+            $tile_entered = self::getGameStateValue('laboratoryTileEntered');
+            foreach ($laboratories as $tile_id => $tile) {
+                $tile_bit = 1 << $tile['safe_die'];
+                if (($tile_entered & $tile_bit) != 0x0) {
+                    $this->triggerAlarm($tile);
                 }
             }
         } elseif ($type == 'switch-signs') {
@@ -1486,18 +1503,32 @@ SQL;
         $player_token = $this->getPlayerToken($current_player_id);
         $player_tile = $this->getPlayerTile($current_player_id, $player_token);
         $floor = $player_tile['location'][5];
-        $movement = self::getGameStateValue("patrolDieCount$floor") + count($this->getFloorAlarmTiles($floor));
-        $daydreaming = $this->getActiveEvent('daydreaming');
-        if ($daydreaming) {
-            $movement--;
-            $this->cards->moveCard($daydreaming['id'], 'events_discard');
+        $shift_change = $this->getActiveEvent('shift-change');
+        if ($shift_change) {
+            for ($other_floor=1; $other_floor <= 3; $other_floor++) { 
+                if ($other_floor != $floor) {
+                    $guard_token = array_values($this->tokens->getCardsOfType('guard', $other_floor))[0];;
+                    if ($guard_token['location'] == 'tile') {
+                        $movement = self::getGameStateValue("patrolDieCount$other_floor") + count($this->getFloorAlarmTiles($other_floor));
+                        $this->moveGuard($other_floor, $movement);
+                    }
+                }
+            }
+            $this->cards->moveCard($shift_change['id'], 'events_discard');
+        } else {
+            $movement = self::getGameStateValue("patrolDieCount$floor") + count($this->getFloorAlarmTiles($floor));
+            $daydreaming = $this->getActiveEvent('daydreaming');
+            if ($daydreaming) {
+                $movement--;
+                $this->cards->moveCard($daydreaming['id'], 'events_discard');
+            }
+            $espresso = $this->getActiveEvent('espresso');
+            if ($espresso) {
+                $movement++;
+                $this->cards->moveCard($espresso['id'], 'events_discard');
+            }
+            $this->moveGuard($floor, $movement);
         }
-        $espresso = $this->getActiveEvent('espresso');
-        if ($espresso) {
-            $movement++;
-            $this->cards->moveCard($espresso['id'], 'events_discard');
-        }
-        $this->moveGuard($floor, $movement);
         $this->gamestate->nextState( 'nextPlayer' );
     }
 
