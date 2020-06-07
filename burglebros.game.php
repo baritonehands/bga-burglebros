@@ -1395,10 +1395,10 @@ SQL;
             $this->checkCameras(array('player_id'=>$player_token['id']));
         }
         // Notify no matter what, might have flipped tiles
-        self::notifyAllPlayers('move', '', array(
-            'floor' => $floor,
-            'tiles' => $this->getTiles($floor),
-        ));
+        // self::notifyAllPlayers('move', '', array(
+        //     'floor' => $floor,
+        //     'tiles' => $this->getTiles($floor),
+        // ));
         $this->nextAction();
     }
 

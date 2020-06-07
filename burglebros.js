@@ -604,8 +604,8 @@ function (dojo, declare) {
             // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
             // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
             // 
-            dojo.subscribe('peek', this, 'notif_peek');
             dojo.subscribe('tokensPicked', this, 'notif_tokensPicked');
+            this.notifqueue.setSynchronous( 'tokensPicked', 500 );
             dojo.subscribe('tileFlipped', this, 'notif_tileFlipped');
             dojo.subscribe('nextPatrol', this, 'notif_nextPatrol');
             dojo.subscribe('playerHand', this, 'notif_playerHand');
@@ -627,16 +627,6 @@ function (dojo, declare) {
         },    
         
         */
-        notif_peek: function(notif) {
-            var tiles = notif.args.tiles,
-                floor = notif.args.floor
-                deck = 'floor' + floor;
-            this.gamedatas[deck] = tiles;
-            for ( var tileId in this.gamedatas[deck]) {
-                var tile = this.gamedatas[deck][tileId];
-                this.playTileOnTable(floor, tile);
-            }
-        },
 
         notif_tokensPicked: function(notif) {
             var tokens = notif.args.tokens;
