@@ -31,13 +31,12 @@
     </div>
 </div>
 
-<div id="token_container">
-    <h3>Tokens</h3>
+<div id="token_container" style="display: none;">
 </div>
 
-<div id="board_wrap" class="whiteblock">
+<div id="board_wrap">
     <!-- BEGIN floor -->
-    <div class="floor_container">
+    <div class="floor_containe whiteblock">
         <h3>Floor {FLOOR}</h3>
         <div class="floor" id="floor{FLOOR}">
         </div>

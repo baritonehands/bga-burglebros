@@ -153,9 +153,6 @@ class burglebros extends Table
         // Activate first player (which is in general a good idea :) )
         $current_player_id = $this->activeNextPlayer();
 
-        // TODO: REMOVE!!!
-        $this->cards->pickCardsForLocation(13, 'tools_deck', 'hand', $current_player_id);
-
         // Move first player token to entrance
         $flipped = $this->getFlippedTiles(1);
         $entrance = array_keys($flipped)[0];
@@ -231,14 +228,7 @@ class burglebros extends Table
         }
         $result['patrol_tokens'] = $patrol_tokens;
 
-        $player_token = $this->getPlayerToken($current_player_id);
-        $player_tile = $this->getPlayerTile($current_player_id, $player_token);
-        $result['current'] = array(
-            'player_token' => $player_token,
-            'tile' => $player_tile,
-            'floor' => $player_tile['location'][5],
-            'actions_remaining' => self::getGameStateValue('actionsRemaining')
-        );
+        $result['current'] = $this->gatherCurrentData($current_player_id);
   
         return $result;
     }
@@ -300,6 +290,17 @@ class burglebros extends Table
             $result[$discard_name] = $this->cards->getCardsInLocation( $discard_name );
         }
         return $result;
+    }
+
+    function gatherCurrentData($current_player_id) {
+        $player_token = $this->getPlayerToken($current_player_id);
+        $player_tile = $this->getPlayerTile($current_player_id, $player_token);
+        return array(
+            'player_token' => $player_token,
+            'tile' => $player_tile,
+            'floor' => $player_tile['location'][5],
+            'actions_remaining' => self::getGameStateValue('actionsRemaining')
+        );
     }
 
     function getCardType($card) {
@@ -412,7 +413,7 @@ SQL;
             $tile_id = $this->findTileOnFloor($floor, $patrol_entrance['type_arg'] - 1)['id'];
         }
         $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
-        $this->moveToken($patrol_token['id'], 'tile', $tile_id);
+        $this->moveToken($patrol_token['id'], 'tile', $tile_id, TRUE);
     }
 
     function setupPatrol($guard_token, $floor) {
@@ -422,7 +423,7 @@ SQL;
         $floor_tiles = $this->getTiles($floor);
         foreach ($floor_tiles as $tile) {
             if ($tile['location_arg'] == $guard_entrance['type_arg'] - 1) {
-                $this->moveToken($guard_token['id'], 'tile', $tile['id']);
+                $this->moveToken($guard_token['id'], 'tile', $tile['id'], TRUE);
                 break;
             }   
         }
@@ -442,6 +443,8 @@ SQL;
 
     function nextAction($action_cost = 1) {
         $actionsRemaining = self::incGameStateValue('actionsRemaining', -$action_cost);
+        $current = $this->gatherCurrentData(self::getCurrentPlayerId());
+        $this->notifyAllPlayers('currentState', '', array('current' => $current));
         if ($actionsRemaining == 0) {
             $this->gamestate->nextState('endTurn');
         } else {
@@ -559,7 +562,7 @@ SQL;
         // var_dump($path);
         foreach ($path as $tile_id) {
             if ($tile_id != $guard_token['location_arg']) {
-                $this->moveToken($guard_token['id'], 'tile', $tile_id);
+                $this->moveToken($guard_token['id'], 'tile', $tile_id, TRUE);
                 $movement--;
                 $this->checkCameras(array('guard_id'=>$guard_token['id']));
                 $tile = $this->tiles->getCard($tile_id);
@@ -826,15 +829,16 @@ SQL;
         return self::getObjectListFromDB($sql, TRUE);
     }
 
-    function moveTokens($ids, $location, $location_arg=0) {
+    function moveTokens($ids, $location, $location_arg=0, $synchronous=FALSE) {
         $this->tokens->moveCards($ids, $location, $location_arg);
-        self::notifyAllPlayers('tokensPicked', '', array(
+        $name = $synchronous ? 'tokensPickedSync' : 'tokensPicked';
+        self::notifyAllPlayers($name, '', array(
             'tokens' => $this->getTokens($ids)
         ));
     }
 
-    function moveToken($id, $location, $location_arg=0) {
-        $this->moveTokens(array($id), $location, $location_arg);
+    function moveToken($id, $location, $location_arg=0, $synchronous=FALSE) {
+        $this->moveTokens(array($id), $location, $location_arg, $synchronous);
     }
 
     function pickTokensForTile($type, $tile_id, $nbr = 1) {
@@ -1480,7 +1484,7 @@ SQL;
 
         $bust = $this->getPlayerLoot('bust', $current_player_id);
         if ($bust) {
-            throw new BgaUserException(self::_("You cannot use tools while holding the Bust"));
+            throw new BgaUserException(self::_("You may not use tools while holding the Bust"));
         }
 
         $this->handleCardEffect($current_player_id, $card);
@@ -1650,6 +1654,8 @@ SQL;
             }
         }
 
+        $current = $this->gatherCurrentData($player_id);
+        $this->notifyAllPlayers('currentState', '', array('current' => $current));
         $this->gamestate->nextState( 'playerTurn' );
     }
 

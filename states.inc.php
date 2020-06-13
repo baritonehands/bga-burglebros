@@ -75,7 +75,7 @@ $machinestates = array(
 
     10 => array(
         'name' => 'endTurn',
-        'description' => 'Trigger end of turn effects',
+        'description' => 'Triggering end of turn effects...',
         'type' => 'game',
         'action' => 'stEndTurn',
         'updateGameProgression' => true,
@@ -84,7 +84,7 @@ $machinestates = array(
 
     11 => array(
         'name' => 'moveGuard',
-        'description' => '',
+        'description' => 'Guard is moving...',
         'type' => 'game',
         'action' => 'stMoveGuard',
         'updateGameProgression' => true,

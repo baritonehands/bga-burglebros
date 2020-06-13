@@ -58,5 +58,5 @@ CREATE TABLE IF NOT EXISTS `wall` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
 -- Example 2: add a custom field to the standard "player" table
-ALTER TABLE `player` ADD `player_stealth_tokens` INT UNSIGNED NOT NULL DEFAULT '3';
+ALTER TABLE `player` ADD `player_stealth_tokens` INT(11) NOT NULL DEFAULT '3';
 

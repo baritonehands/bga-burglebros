@@ -252,8 +252,7 @@ function (dojo, declare) {
                     break;
 */
                     case 'playerTurn':
-                        this.addActionButton( 'button_peek', _('Peek'), dojo.hitch(this, 'handleIntentClick', 'peek') );
-                        // this.addActionButton( 'button_move', _('Move'), dojo.hitch(this, 'handleIntentClick', 'move') );
+                        this.addActionButton( 'button_peek', _('Peek'), dojo.hitch(this, 'handlePeekClick') );
                         if (this.canAddSafeDie()) {
                             this.addActionButton( 'button_add_safe_die', _('Add Safe Die'), 'handleAddSafeDie' );
                         }
@@ -283,6 +282,11 @@ function (dojo, declare) {
             script.
         
         */
+        changeMainBar: function(message) {
+            this.removeActionButtons();
+            $("pagemaintitletext").innerHTML = message;
+        },
+
         // Get card unique identifier based on its row and col
         getCardUniqueId : function(type, index) {
             return parseInt(type, 10) * 100 + parseInt(index, 10);
@@ -524,56 +528,75 @@ function (dojo, declare) {
             dojo.stopEvent(evt);
 
             var intent = this.intent || 'move';
-            var url = '/burglebros/burglebros/' + intent + '.html';
-            this.ajaxcall(url, { lock: true, floor: floor, location_arg: location_arg }, this, function() {
-                console.log(arguments);
-                // location.reload();
-            }, console.error);
-            this.intent = 'move';
+            if (this.checkAction(intent)) {
+                var url = '/burglebros/burglebros/' + intent + '.html';
+                this.ajaxcall(url, { lock: true, floor: floor, location_arg: location_arg }, this, function() {
+                    console.log(arguments);
+                    // location.reload();
+                }, console.error);
+                this.intent = 'move';
+            }
         },
 
-        handleIntentClick: function(intent, evt) {
+        handlePeekClick: function(evt) {
             dojo.stopEvent(evt);
-            this.intent = intent;
+            this.intent = 'peek';
+            this.changeMainBar('Select an adjacent tile to peek');
+            this.addActionButton('button_cancel', _('Cancel'), 'handleCancelClick');
+        },
+
+        handleCancelClick: function(evt) {
+            dojo.stopEvent(evt);
+            this.intent = 'move';
+            this.updatePageTitle();
         },
 
         handleAddSafeDie: function(evt) {
             dojo.stopEvent(evt);
-            this.ajaxcall('/burglebros/burglebros/addSafeDie.html', { lock: true }, this, function() {
-                console.log(arguments);
-                // location.reload();
-            }, console.error);
+            if (this.checkAction('addSafeDie')) {
+                this.ajaxcall('/burglebros/burglebros/addSafeDie.html', { lock: true }, this, function() {
+                    console.log(arguments);
+                    // location.reload();
+                }, console.error);
+            }
         },
 
         handleRollSafeDice: function(evt) {
             dojo.stopEvent(evt);
-            this.ajaxcall('/burglebros/burglebros/rollSafeDice.html', { lock: true }, this, function() {
-                console.log(arguments);
-                // location.reload();
-            }, console.error);
+            if (this.checkAction('rollSafeDice')) {
+                this.ajaxcall('/burglebros/burglebros/rollSafeDice.html', { lock: true }, this, function() {
+                    console.log(arguments);
+                    // location.reload();
+                }, console.error);
+            }
         },
 
         handleHack: function(evt) {
             dojo.stopEvent(evt);
-            this.ajaxcall('/burglebros/burglebros/hack.html', { lock: true }, this, console.log, console.error);
+            if (this.checkAction('hack')) {
+                this.ajaxcall('/burglebros/burglebros/hack.html', { lock: true }, this, console.log, console.error);
+            }
         },
 
         handlePassClick: function(evt) {
             dojo.stopEvent(evt);
 
-            var url = '/burglebros/burglebros/pass.html';
-            this.ajaxcall(url, { lock: true }, this, function() {
-                console.log(arguments);
-                // location.reload();
-            }, console.error);
+            if (this.checkAction('pass')) {
+                this.ajaxcall('/burglebros/burglebros/pass.html', { lock: true }, this, function() {
+                    console.log(arguments);
+                    // location.reload();
+                }, console.error);
+            }
         },
 
         handleCardSelected: function(control_name, card_id) {
             console.log(control_name, card_id);
-            this.ajaxcall('/burglebros/burglebros/playCard.html', { lock: true, id: card_id }, this, function() {
-                console.log(arguments);
-                // location.reload();
-            }, console.error);
+            if (this.checkAction('playCard')) {
+                this.ajaxcall('/burglebros/burglebros/playCard.html', { lock: true, id: card_id }, this, function() {
+                    console.log(arguments);
+                    // location.reload();
+                }, console.error);
+            }
         },
 
         
@@ -604,8 +627,10 @@ function (dojo, declare) {
             // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
             // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
             // 
+            dojo.subscribe('currentState', this, 'notif_currentState');
             dojo.subscribe('tokensPicked', this, 'notif_tokensPicked');
-            this.notifqueue.setSynchronous( 'tokensPicked', 500 );
+            dojo.subscribe('tokensPickedSync', this, 'notif_tokensPicked');
+            this.notifqueue.setSynchronous( 'tokensPickedSync', 750 );
             dojo.subscribe('tileFlipped', this, 'notif_tileFlipped');
             dojo.subscribe('nextPatrol', this, 'notif_nextPatrol');
             dojo.subscribe('playerHand', this, 'notif_playerHand');
@@ -627,6 +652,10 @@ function (dojo, declare) {
         },    
         
         */
+
+        notif_currentState: function(notif) {
+            this.gamedatas.current = notif.args.current;
+        },
 
         notif_tokensPicked: function(notif) {
             var tokens = notif.args.tokens;
