@@ -43,9 +43,8 @@
     public function peek() {
       self::setAjaxMode();
       
-      $floor = self::getArg( "floor", AT_posint, true );
-      $location_arg = self::getArg( "location_arg", AT_posint, true );
-      $this->game->peek($floor, $location_arg);
+      $tile_id = self::getArg( "id", AT_posint, true );
+      $this->game->peek($tile_id);
 
       self::ajaxResponse();
     }
@@ -53,9 +52,8 @@
     public function move() {
       self::setAjaxMode();
       
-      $floor = self::getArg( "floor", AT_posint, true );
-      $location_arg = self::getArg( "location_arg", AT_posint, true );
-      $this->game->move($floor, $location_arg);
+      $tile_id = self::getArg( "id", AT_posint, true );
+      $this->game->move($tile_id);
 
       self::ajaxResponse();
     }
@@ -82,6 +80,20 @@
       self::setAjaxMode();
       $card_id = self::getArg( "id", AT_posint, true );
       $this->game->playCard($card_id);
+      self::ajaxResponse();
+    }
+
+    public function selectCardChoice() {
+      self::setAjaxMode();
+      $selected_type = self::getArg( "selected_type", AT_alphanum, true );
+      $selected_id = self::getArg( "selected_id", AT_alphanum, true );
+      $this->game->selectCardChoice($selected_type, $selected_id);
+      self::ajaxResponse();
+    }
+
+    public function cancelCardChoice() {
+      self::setAjaxMode();
+      $this->game->cancelCardChoice();
       self::ajaxResponse();
     }
 

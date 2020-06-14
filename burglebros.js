@@ -121,7 +121,7 @@ function (dojo, declare) {
                 this.loadPatrolDiscard(floor, gamedatas[patrolDeckKey]);
             }
 
-            for (var wallIdx = 0; wallIdx < 24; wallIdx++) {
+            for (var wallIdx = 0; wallIdx < gamedatas.walls.length; wallIdx++) {
                 var wall = gamedatas.walls[wallIdx];
                 this.playWallOnTable(wall);
             }
@@ -264,6 +264,8 @@ function (dojo, declare) {
                         }
                         this.addActionButton( 'button_pass', _('Pass'), 'handlePassClick' );
                         break;
+                    case 'cardChoice':
+                        this.addActionButton('button_cancel', _('Cancel'), 'handleCancelCardChoice');
                 }
             }
         },
@@ -310,7 +312,7 @@ function (dojo, declare) {
             }), 'floor' + floor);
             
             dojo.connect( $(div_id), 'onclick', this, function(evt) {
-                this.handleTileClick(evt, floor, tile.location_arg);
+                this.handleTileClick(evt, tile.id);
             });
 
             var zone = new ebg.zone();
@@ -359,6 +361,15 @@ function (dojo, declare) {
                 x : x,
                 y : y
             }), 'floor' + wall.floor);
+
+            dojo.connect( $(div_id), 'onclick', this, function(evt) {
+                dojo.stopEvent(evt);
+                if (this.checkAction('selectCardChoice')) {
+                    this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: 'wall', selected_id: wall.id }, this, function () {
+                        dojo.destroy(div_id);
+                    }, console.error);
+                }
+            });
         },
 
         createPlayerToken: function(id, player_id) {
@@ -424,16 +435,16 @@ function (dojo, declare) {
         },
 
         canAddSafeDie: function() {
-            return this.gamedatas.current.tile.type === 'safe' &&
-                this.gamedatas.current.actions_remaining >= 2;
+            return this.gamedatas.gamestate.args.tile.type === 'safe' &&
+                this.gamedatas.gamestate.args.actions_remaining >= 2;
         },
 
         canRollSafeDice: function() {
-            return this.gamedatas.current.tile.type === 'safe';
+            return this.gamedatas.gamestate.args.tile.type === 'safe';
         },
 
         canHack: function() {
-            return this.gamedatas.current.tile.type.endsWith('-computer');
+            return this.gamedatas.gamestate.args.tile.type.endsWith('-computer');
         },
 
         loadPatrolDiscard: function(floor, cards) {
@@ -524,17 +535,21 @@ function (dojo, declare) {
         
         */
 
-        handleTileClick: function(evt, floor, location_arg) {
+        handleTileClick: function(evt, id) {
             dojo.stopEvent(evt);
 
-            var intent = this.intent || 'move';
-            if (this.checkAction(intent)) {
-                var url = '/burglebros/burglebros/' + intent + '.html';
-                this.ajaxcall(url, { lock: true, floor: floor, location_arg: location_arg }, this, function() {
-                    console.log(arguments);
-                    // location.reload();
-                }, console.error);
-                this.intent = 'move';
+            if (this.gamedatas.gamestate.name == 'cardChoice' && this.checkAction('selectCardChoice')) {
+                this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: 'tile', selected_id: id }, this, console.log, console.error);
+            } else {
+                var intent = this.intent || 'move';
+                if (this.checkAction(intent)) {
+                    var url = '/burglebros/burglebros/' + intent + '.html';
+                    this.ajaxcall(url, { lock: true, id: id }, this, function() {
+                        console.log(arguments);
+                        // location.reload();
+                    }, console.error);
+                    this.intent = 'move';
+                }
             }
         },
 
@@ -599,6 +614,9 @@ function (dojo, declare) {
             }
         },
 
+        handleCancelCardChoice: function() {
+            this.ajaxcall('/burglebros/burglebros/cancelCardChoice.html', { lock: true }, this, console.log, console.error);
+        },
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
@@ -627,7 +645,6 @@ function (dojo, declare) {
             // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
             // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
             // 
-            dojo.subscribe('currentState', this, 'notif_currentState');
             dojo.subscribe('tokensPicked', this, 'notif_tokensPicked');
             dojo.subscribe('tokensPickedSync', this, 'notif_tokensPicked');
             this.notifqueue.setSynchronous( 'tokensPickedSync', 750 );
@@ -652,10 +669,6 @@ function (dojo, declare) {
         },    
         
         */
-
-        notif_currentState: function(notif) {
-            this.gamedatas.current = notif.args.current;
-        },
 
         notif_tokensPicked: function(notif) {
             var tokens = notif.args.tokens;

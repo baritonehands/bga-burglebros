@@ -188,5 +188,6 @@ $this->token_colors = array(
   'open' => 'gold',
   'keypad' => 'gold',
   'stairs' => 'slategray',
-  'thermal' => 'green'
+  'thermal' => 'green',
+  'crowbar' => 'green'
 );

@@ -65,12 +65,12 @@ $machinestates = array(
 
     9 => array(
         'name' => 'playerTurn',
-        'description' => clienttranslate('${actplayer} may do ${actionsRemaining} actions or pass'),
-        'descriptionmyturn' => clienttranslate('${you} may do ${actionsRemaining} actions or pass'),
+        'description' => clienttranslate('${actplayer} may do ${actions_remaining} actions or pass'),
+        'descriptionmyturn' => clienttranslate('${you} may do ${actions_remaining} actions or pass'),
         'type' => 'activeplayer',
         'args' => 'argPlayerTurn',
         'possibleactions' => array( 'hack', 'move', 'peek', 'addSafeDie', 'rollSafeDice', 'playCard', 'pass' ),
-        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10 )
+        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10, 'cardChoice' => 13 )
     ),    
 
     10 => array(
@@ -97,6 +97,16 @@ $machinestates = array(
         'type' => 'game',
         'action' => 'stNextPlayer',
         'transitions' => array( 'playerTurn' => 9 )
+    ),
+
+    13 => array(
+        'name' => 'cardChoice',
+        'description' => clienttranslate('${card_name}: ${actplayer} must ${choice_description}'),
+        'descriptionmyturn' => clienttranslate('${card_name}: ${you} must ${choice_description}'),
+        'type' => 'activeplayer',
+        'args' => 'argCardChoice',
+        'possibleactions' => array( 'selectCardChoice', 'cancelCardChoice' ),
+        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10 )
     ),
     
 /*
