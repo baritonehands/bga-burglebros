@@ -539,7 +539,12 @@ function (dojo, declare) {
             dojo.stopEvent(evt);
 
             if (this.gamedatas.gamestate.name == 'cardChoice' && this.checkAction('selectCardChoice')) {
-                this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: 'tile', selected_id: id }, this, console.log, console.error);
+                var selected_type = 'tile', selected_id = id;
+                if (dojo.hasClass(evt.target, 'token')) {
+                    selected_type = 'token';
+                    selected_id = evt.target.id.substring(evt.target.id.lastIndexOf('_') + 1);
+                }
+                this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: selected_type, selected_id: selected_id }, this, console.log, console.error);
             } else {
                 var intent = this.intent || 'move';
                 if (this.checkAction(intent)) {

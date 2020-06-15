@@ -293,10 +293,24 @@ class burglebros extends Table
         return $result;
     }
 
+    function getPeekableTiles($player_tile, $variant='peek') {
+        $peekable = array();
+        for ($floor=1; $floor <= 3; $floor++) { 
+            $tiles = $this->getTiles($floor);
+            foreach ($tiles as $tile) {
+                if($tile['id'] != $player_tile['id'] && $tile['type'] == 'back' && $this->isTileAdjacent($tile, $player_tile, null, $variant)) {
+                    $peekable [] = $tile;
+                }
+            }
+        }
+        return $peekable;
+    }
+
     function gatherCurrentData($current_player_id) {
         $player_token = $this->getPlayerToken($current_player_id);
         $player_tile = $this->getPlayerTile($current_player_id, $player_token);
         return array(
+            'peekable' => $this->getPeekableTiles($player_tile),
             'player_token' => $player_token,
             'tile' => $player_tile,
             'floor' => $player_tile['location'][5],
@@ -493,6 +507,8 @@ SQL;
                 $this->atriumIsAdjacent($tile, $other_tile) ||
                 $this->thermalBombStairsAreAdjacent($tile, $other_tile) ||
                 $this->walkwayIsAdjacent($tile, $other_tile);
+        } elseif($variant == 'peekhole') {
+            return ($same_floor && $adjacent) || $this->peekholeIsAdjacent($tile, $other_tile);
         } else {
             $current_player_id = self::getCurrentPlayerId();
             $painting = $this->getPlayerLoot('painting', $current_player_id);
@@ -547,6 +563,11 @@ SQL;
             ($from['type'] == 'walkway' &&
                 $from['location'][5] - 1 == $to['location'][5] &&
                 $to['location_arg'] == $from['location_arg']);
+    }
+
+    function peekholeIsAdjacent($to, $from) {
+        return $to['location_arg'] == $from['location_arg'] &&
+            ($to['location'][5] + 1 == $from['location'][5] || $to['location'][5] - 1 == $from['location'][5]);
     }
 
     function moveGuardDebug($floor) {
@@ -966,10 +987,10 @@ SQL;
         return ($tile_entered & $tile_bit) != 0x0;
     }
 
-    function handleTileMovement($tile, $player_tile, $player_token, $flipped_this_turn) {
+    function handleTileMovement($tile, $player_tile, $player_token, $flipped_this_turn, $context) {
         $id = $tile['id'];
         $type = $tile['type'];
-        $actions_remaining = self::getGameStateValue('actionsRemaining');
+        $actions_remaining = $context != 'action' ? 1 : self::getGameStateValue('actionsRemaining');
         $cancel_move = false;
         $player_id = $player_token['type_arg'];
 
@@ -1177,11 +1198,16 @@ SQL;
         $current_player_id = self::getCurrentPlayerId();
         $type_arg = $this->getCardTypeForName(3, $name);
         $card = array_values($this->cards->getCardsOfType(3, $type_arg))[0];
-        $this->handleEventEffect($current_player_id, $card);
+        $choice = $this->handleEventEffect($current_player_id, $card);
+        if ($choice) {
+            self::setGameStateValue('cardChoice', $card['id']);
+            $this->gamestate->nextState('cardChoice');
+        }
     }
 
     function handleEventEffect($player_id, $card) {
         $type = $this->getCardType($card);
+        $choice = FALSE;
         if ($type == 'brown-out') {
             for ($floor=1; $floor <= 3; $floor++) { 
                 $token_ids = $this->getTokensOnFloor('alarm', $floor);
@@ -1189,6 +1215,10 @@ SQL;
                 foreach ($token_ids as $id) {
                     $this->nextPatrol($floor);
                 }
+            }
+        } elseif($type == 'buddy-system') {
+            if (self::getPlayersNumber() > 1) {
+                $choice = TRUE;
             }
         } elseif ($type == 'change-of-plans') {
             $tile = $this->getPlayerTile($player_id);
@@ -1220,6 +1250,14 @@ SQL;
                     $this->setupPatrol($guard_token, $floor + 1);
                 }
             }
+        } elseif($type == 'go-with-your-gut') {
+            $player_tile = $this->getPlayerTile($player_id);
+            $peekable = $this->getPeekableTiles($player_tile);
+            if (count($peekable) > 1) {
+                $choice = TRUE;
+            } elseif(count($peekable) == 1) {
+                $this->performMove($peekable[0]['id'], 'event');
+            } 
         } elseif($type == 'heads-up') {
             $next_player = $this->getPlayerAfter($player_id);
             $this->cards->moveCard($card['id'], 'active', $next_player);
@@ -1241,6 +1279,14 @@ SQL;
                 $this->moveToken($player_token['id'], 'tile', $lower_tile['id']);
                 $this->flipTile($floor - 1, $tile['location_arg']);
             }
+        } elseif($type == 'peekhole') {
+            $player_tile = $this->getPlayerTile($player_id);
+            $peekable = $this->getPeekableTiles($player_tile, 'peekhole');
+            if (count($peekable) > 1) {
+                $choice = TRUE;
+            } elseif(count($peekable) == 1) {
+                $this->performPeek($peekable[0]['id'], 'peekhole');
+            } 
         } elseif ($type == 'reboot') {
             $types = array('fingerprint-computer', 'motion-computer', 'laser-computer');
             for ($floor=1; $floor <= 3; $floor++) { 
@@ -1293,6 +1339,7 @@ SQL;
             // It will be handled in the appropriate place
             $this->cards->moveCard($card['id'], 'active', $player_id);
         }
+        return $choice;
     }
 
     function getActiveEvent($name) {
@@ -1342,6 +1389,11 @@ SQL;
             }
 
             $this->flipTile($tile['location'][5], $tile['location_arg']);
+        } elseif($type == 'buddy-system') {
+            $this->validateSelection('token', $selected_type);
+            $other_token = $this->tokens->getCard($selected_id);
+            $player_token = $this->getPlayerToken(self::getCurrentPlayerId());
+            $this->moveToken($other_token['id'], 'tile', $player_token['location_arg']);
         } elseif ($type == 'crowbar') {
             $this->validateSelection('tile', $selected_type);
             $tile = $this->tiles->getCard($selected_id);
@@ -1369,8 +1421,9 @@ SQL;
             $tcol = $tindex % 4;
 
             $wall = self::getObjectFromDB("SELECT * FROM wall WHERE id = '$selected_id'");
-            for ($prow=$trow - 1; $prow <= $trow + 1; $prow++) { 
-                for ($pcol=$tcol - 1; $pcol <= $tcol + 1; $pcol++) { 
+            $exit = FALSE;
+            for ($prow=$trow - 1; !$exit && $prow <= $trow + 1; $prow++) { 
+                for ($pcol=$tcol - 1; !$exit && $pcol <= $tcol + 1; $pcol++) { 
                     if ($prow >= 0 && $pcol >= 0 && $prow <= 3 && $pcol <= 3 &&
                             ($prow != $trow || $pcol != $tcol)) {
                         $wrow = $wall['vertical'] == 1 ? floor($wall['position'] / 3) : $wall['position'] % 3;
@@ -1380,12 +1433,25 @@ SQL;
                         if (($wall['vertical'] == 1 && $vertical) || ($wall['vertical'] == 0 && $horizontal)) {
                             self::DbQuery("DELETE FROM wall WHERE id = '$selected_id'");
                             $this->triggerAlarm($player_tile);
-                            return;
+                            $exit = TRUE;
                         }
                     }
                 }
             }
-            throw new BgaUserException(self::_('Wall is not adjacent'));
+            if (!$exit) {
+                throw new BgaUserException(self::_('Wall is not adjacent'));
+            }
+        } elseif($type == 'go-with-your-gut') {
+            $this->validateSelection('tile', $selected_type);
+            $tile = $this->tiles->getCard($selected_id);
+            $flipped = $this->getFlippedTiles($tile['location'][5]);
+            if (isset($flipped[$tile['id']])) {
+                throw new BgaUserException(self::_('Tile is already visible'));
+            }
+            $this->performMove($selected_id, 'event');
+        } elseif($type == 'peekhole') {
+            $this->validateSelection('tile', $selected_type);
+            $this->performPeek($selected_id, 'peekhole');
         } elseif ($type == 'virus') {
             $this->validateSelection('tile', $selected_type);
             $tile = $this->tiles->getCard($selected_id);
@@ -1395,6 +1461,60 @@ SQL;
             $existing = $this->tokensInTile('hack', $tile['id']);
             $nbr = $existing <= 3 ? 3 : 6 - $existing;
             $this->pickTokensForTile('hack', $tile['id'], $nbr);
+        }
+        $this->cards->moveCard($card['id'], $card['type'] == 1 ? 'tools_discard' : 'events_discard');
+    }
+
+    function performPeek($tile_id, $variant='peek') {
+        $current_player_id = self::getCurrentPlayerId();
+        $player_token = $this->getPlayerToken($current_player_id);
+        $player_tile = $this->getPlayerTile($current_player_id, $player_token);
+        $to_peek = $this->tiles->getCard($tile_id);
+        $floor = $to_peek['location'][5];
+        $flipped = $this->getFlippedTiles($floor);
+
+        if (isset($flipped[$to_peek['id']])) {
+            throw new BgaUserException(self::_("Tile is already visible"));
+        }
+        if (!$this->isTileAdjacent($to_peek, $player_tile, null, $variant)) {
+            throw new BgaUserException(self::_("Tile is not adjacent"));
+        }
+
+        $this->handleTilePeek($to_peek);
+        $this->flipTile( $floor, $to_peek['location_arg'] );
+    }
+
+    function performMove($tile_id, $context='action') {
+        $current_player_id = self::getCurrentPlayerId();
+        $player_token = $this->getPlayerToken($current_player_id);
+        $player_tile = $this->getPlayerTile($current_player_id, $player_token);
+        $to_move = $this->tiles->getCard($tile_id);
+        $floor = $to_move['location'][5];
+        $flipped = $this->getFlippedTiles($floor);
+
+        if (!$this->isTileAdjacent($to_move, $player_tile, null, 'move')) {
+            throw new BgaUserException(self::_("Tile is not adjacent"));
+        }
+
+        $flipped_this_turn = !isset($flipped[$to_move['id']]);
+        if ($flipped_this_turn) {
+            $this->handleTilePeek($to_move);
+        }
+        $did_move = $this->handleTileMovement($to_move, $player_tile, $player_token, $flipped_this_turn, $context);
+        $this->flipTile( $floor, $to_move['location_arg'] );
+        $invisible_suit = self::getGameStateValue('invisibleSuitActive') == 1;
+        if ($did_move) {
+            $guard_token = array_values($this->tokens->getCardsOfType('guard', $to_move['location'][5]))[0];
+            if ($guard_token['location'] == 'deck') {
+                $this->setupPatrol($guard_token, $to_move['location'][5]);
+            }
+            // TODO: Refetch player tile in case token moved by side effect
+            if (!$invisible_suit) {
+                $this->checkPlayerStealth($to_move);
+            }
+        }
+        if (!$invisible_suit) {
+            $this->checkCameras(array('player_id'=>$player_token['id']));
         }
     }
 
@@ -1435,60 +1555,13 @@ SQL;
 
     function peek( $tile_id ) {
         self::checkAction('peek');
-        
-        $current_player_id = self::getCurrentPlayerId();
-        $player_token = $this->getPlayerToken($current_player_id);
-        $player_tile = $this->getPlayerTile($current_player_id, $player_token);
-        $to_peek = $this->tiles->getCard($tile_id);
-        $floor = $to_peek['location'][5];
-        $flipped = $this->getFlippedTiles($floor);
-
-        if (isset($flipped[$to_peek['id']])) {
-            throw new BgaUserException(self::_("Tile is already visible"));
-        }
-        if (!$this->isTileAdjacent($to_peek, $player_tile, null, 'peek')) {
-            throw new BgaUserException(self::_("Tile is not adjacent"));
-        }
-
-        $this->handleTilePeek($to_peek);
-        $this->flipTile( $floor, $to_peek['location_arg'] );
+        $this->performPeek($tile_id);
         $this->nextAction();
     }
 
     function move( $tile_id ) {
         self::checkAction('move');
-        
-        $current_player_id = self::getCurrentPlayerId();
-        $player_token = $this->getPlayerToken($current_player_id);
-        $player_tile = $this->getPlayerTile($current_player_id, $player_token);
-        $to_move = $this->tiles->getCard($tile_id);
-        $floor = $to_move['location'][5];
-        $flipped = $this->getFlippedTiles($floor);
-
-        if (!$this->isTileAdjacent($to_move, $player_tile, null, 'move')) {
-            throw new BgaUserException(self::_("Tile is not adjacent"));
-        }
-
-        $flipped_this_turn = !isset($flipped[$to_move['id']]);
-        if ($flipped_this_turn) {
-            $this->handleTilePeek($to_move);
-        }
-        $did_move = $this->handleTileMovement($to_move, $player_tile, $player_token, $flipped_this_turn);
-        $this->flipTile( $floor, $to_move['location_arg'] );
-        $invisible_suit = self::getGameStateValue('invisibleSuitActive') == 1;
-        if ($did_move) {
-            $guard_token = array_values($this->tokens->getCardsOfType('guard', $to_move['location'][5]))[0];
-            if ($guard_token['location'] == 'deck') {
-                $this->setupPatrol($guard_token, $to_move['location'][5]);
-            }
-            // TODO: Refetch player tile in case token moved by side effect
-            if (!$invisible_suit) {
-                $this->checkPlayerStealth($to_move);
-            }
-        }
-        if (!$invisible_suit) {
-            $this->checkCameras(array('player_id'=>$player_token['id']));
-        }
+        $this->performMove($tile_id);
         $this->nextAction();
     }
 
@@ -1607,9 +1680,16 @@ SQL;
             $count = $this->cards->countCardInLocation('events_discard');
             $this->cards->pickCardForLocation('events_deck', 'events_discard', $count + 1);
             $event_card = $this->cards->getCardOnTop('events_discard');
-            $this->handleEventEffect($current_player_id, $event_card);
+            $choice = $this->handleEventEffect($current_player_id, $event_card);
+            if ($choice) {
+                self::setGameStateValue('cardChoice', $card['id']);
+                $this->gamestate->nextState('cardChoice');
+            } else {
+                $this->gamestate->nextState('endTurn');
+            }
+        } else {
+            $this->gamestate->nextState('endTurn');
         }
-        $this->gamestate->nextState('endTurn');
     }
 
     
