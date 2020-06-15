@@ -265,7 +265,19 @@ function (dojo, declare) {
                         this.addActionButton( 'button_pass', _('Pass'), 'handlePassClick' );
                         break;
                     case 'cardChoice':
-                        this.addActionButton('button_cancel', _('Cancel'), 'handleCancelCardChoice');
+                        if (this.isCardChoice('thermal-bomb')) {
+                            var floor = this.currentFloor();
+                            if (floor < 3) {
+                                this.addActionButton('button_up', _('Up'), dojo.hitch(this, 'handleCardChoiceButton', floor + 1));
+                            }
+                            if (floor > 1) {
+                                this.addActionButton('button_down', _('Down'), dojo.hitch(this, 'handleCardChoiceButton', floor - 1));
+                            }
+                        }
+                        if (this.canCancelCardChoice()) {
+                            this.addActionButton('button_cancel', _('Cancel'), 'handleCancelCardChoice');
+                        }
+                        break;
                 }
             }
         },
@@ -447,6 +459,18 @@ function (dojo, declare) {
             return this.gamedatas.gamestate.args.tile.type.endsWith('-computer');
         },
 
+        canCancelCardChoice: function() {
+            return this.gamedatas.gamestate.args.card['type'] == 1; // Tools only
+        },
+
+        isCardChoice: function(name) {
+            return this.gamedatas.gamestate.args.card_name === name;
+        },
+
+        currentFloor: function() {
+            return parseInt(this.gamedatas.gamestate.args.floor, 10);
+        },
+
         loadPatrolDiscard: function(floor, cards) {
             // var patrolDeckKey = patrolKey + '_discard';
             var patrolKey = 'patrol' + floor;
@@ -621,6 +645,10 @@ function (dojo, declare) {
 
         handleCancelCardChoice: function() {
             this.ajaxcall('/burglebros/burglebros/cancelCardChoice.html', { lock: true }, this, console.log, console.error);
+        },
+
+        handleCardChoiceButton: function(id) {
+            this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: 'button', selected_id: id }, this, console.log, console.error);
         },
         
         ///////////////////////////////////////////////////

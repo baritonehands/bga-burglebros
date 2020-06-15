@@ -1149,19 +1149,6 @@ SQL;
         } elseif ($type == 'smoke-bomb') {
             $tile = $this->getPlayerTile($player_id);
             $this->pickTokensForTile('stealth', $tile['id'], 3);
-        } elseif ($type == 'thermal-bomb') {
-            $tile = $this->getPlayerTile($player_id);
-            $this->pickTokensForTile('thermal', $tile['id']);
-            $floor = $tile['location'][5];
-            $other_tile = null;
-            // TODO: Let player choose direction
-            if ($floor < 3) {
-                $other_tile = $this->findTileOnFloor($floor + 1, $tile['location_arg']);
-            } else {
-                $other_tile = $this->findTileOnFloor($floor - 1, $tile['location_arg']);
-            }
-            $this->pickTokensForTile('thermal', $other_tile['id']);
-            $this->triggerAlarm($tile);
         } else {
             $choice = TRUE;
         }
@@ -1452,6 +1439,13 @@ SQL;
         } elseif($type == 'peekhole') {
             $this->validateSelection('tile', $selected_type);
             $this->performPeek($selected_id, 'peekhole');
+        } elseif($type == 'thermal-bomb') {
+            $this->validateSelection('button', $selected_type);
+            $tile = $this->getPlayerTile(self::getCurrentPlayerId());
+            $this->pickTokensForTile('thermal', $tile['id']);
+            $other_tile = $this->findTileOnFloor($selected_id, $tile['location_arg']);
+            $this->pickTokensForTile('thermal', $other_tile['id']);
+            $this->triggerAlarm($tile);
         } elseif ($type == 'virus') {
             $this->validateSelection('tile', $selected_type);
             $tile = $this->tiles->getCard($selected_id);
@@ -1667,6 +1661,10 @@ SQL;
 
     function cancelCardChoice() {
         self::checkAction('cancelCardChoice');
+        $card = $this->cards->getCard(self::getGameStateValue('cardChoice'));
+        if ($card['type'] != 1) {
+            throw new BgaUserException(self::_('You may only cancel tool effects'));
+        }
         // Don't run normal action decrease logic
         $this->gamestate->nextState('nextAction');
     }
@@ -1725,12 +1723,12 @@ SQL;
     }
 
     function argCardChoice() {
+        $args = $this->gatherCurrentData(self::getActivePlayerId());
         $card = $this->cards->getCard(self::getGameStateValue('cardChoice'));
-        return array(
-            'card' => $card,
-            'card_name' => $this->getCardType($card),
-            'choice_description' => 'do something'
-        );
+        $args['card'] = $card;
+        $args['card_name'] = $this->getCardType($card);
+        $args['choice_description'] = 'do something';
+        return $args;
     }
 
 //////////////////////////////////////////////////////////////////////////////
