@@ -97,6 +97,13 @@
       self::ajaxResponse();
     }
 
+    public function selectTileChoice() {
+      self::setAjaxMode();
+      $selected = self::getArg( "selected", AT_posint, true );
+      $this->game->selectTileChoice($selected);
+      self::ajaxResponse();
+    }
+
     public function pass() {
       self::setAjaxMode();
       $this->game->pass();

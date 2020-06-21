@@ -70,7 +70,7 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argPlayerTurn',
         'possibleactions' => array( 'hack', 'move', 'peek', 'addSafeDie', 'rollSafeDice', 'playCard', 'pass' ),
-        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10, 'cardChoice' => 13 )
+        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10, 'cardChoice' => 13, 'tileChoice' => 14 )
     ),    
 
     10 => array(
@@ -106,6 +106,16 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argCardChoice',
         'possibleactions' => array( 'selectCardChoice', 'cancelCardChoice' ),
+        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10, 'tileChoice' => 14 )
+    ),
+
+    14 => array(
+        'name' => 'tileChoice',
+        'description' => clienttranslate('${tile_name}: ${actplayer} must ${choice_description}'),
+        'descriptionmyturn' => clienttranslate('${tile_name}: ${you} must ${choice_description}'),
+        'type' => 'activeplayer',
+        'args' => 'argTileChoice',
+        'possibleactions' => array( 'selectTileChoice' ),
         'transitions' => array( 'nextAction' => 9, 'endTurn' => 10 )
     ),
     

@@ -252,7 +252,9 @@ function (dojo, declare) {
                     break;
 */
                     case 'playerTurn':
-                        this.addActionButton( 'button_peek', _('Peek'), dojo.hitch(this, 'handlePeekClick') );
+                        if (this.canPeek()) {
+                            this.addActionButton( 'button_peek', _('Peek'), dojo.hitch(this, 'handlePeekClick') );
+                        }
                         if (this.canAddSafeDie()) {
                             this.addActionButton( 'button_add_safe_die', _('Add Safe Die'), 'handleAddSafeDie' );
                         }
@@ -276,6 +278,15 @@ function (dojo, declare) {
                         }
                         if (this.canCancelCardChoice()) {
                             this.addActionButton('button_cancel', _('Cancel'), 'handleCancelCardChoice');
+                        }
+                        break;
+                    case 'tileChoice':
+                        this.addActionButton('button_trigger', _('Trigger Alarm'), dojo.hitch(this, 'handleTileChoiceButton', 0));
+                        if (this.gamedatas.gamestate.args.can_hack) {
+                            this.addActionButton('button_hack_alarm', _('Hack Alarm'), dojo.hitch(this, 'handleTileChoiceButton', 1));
+                        }
+                        if (this.gamedatas.gamestate.args.can_use_extra_action) {
+                            this.addActionButton('button_extra_action', _('Use an Extra Action'), dojo.hitch(this, 'handleTileChoiceButton', 2));
                         }
                         break;
                 }
@@ -444,6 +455,10 @@ function (dojo, declare) {
                 token_color : 'darkcyan',
                 token_letter : count
             }), 'player_board_' + id);
+        },
+
+        canPeek: function() {
+            return this.gamedatas.gamestate.args.peekable.length > 0;
         },
 
         canAddSafeDie: function() {
@@ -634,7 +649,6 @@ function (dojo, declare) {
         },
 
         handleCardSelected: function(control_name, card_id) {
-            console.log(control_name, card_id);
             if (this.checkAction('playCard')) {
                 this.ajaxcall('/burglebros/burglebros/playCard.html', { lock: true, id: card_id }, this, function() {
                     console.log(arguments);
@@ -644,11 +658,21 @@ function (dojo, declare) {
         },
 
         handleCancelCardChoice: function() {
-            this.ajaxcall('/burglebros/burglebros/cancelCardChoice.html', { lock: true }, this, console.log, console.error);
+            if (this.checkAction('cancelCardChoice')) {
+                this.ajaxcall('/burglebros/burglebros/cancelCardChoice.html', { lock: true }, this, console.log, console.error);
+            }
         },
 
         handleCardChoiceButton: function(id) {
-            this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: 'button', selected_id: id }, this, console.log, console.error);
+            if (this.checkAction('selectCardChoice')) {
+                this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: 'button', selected_id: id }, this, console.log, console.error);
+            }
+        },
+
+        handleTileChoiceButton: function(selected) {
+            if (this.checkAction('selectTileChoice')) {
+                this.ajaxcall('/burglebros/burglebros/selectTileChoice.html', { lock: true, selected: selected }, this, console.log, console.error);
+            }
         },
         
         ///////////////////////////////////////////////////
