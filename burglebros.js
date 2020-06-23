@@ -80,7 +80,7 @@ function (dojo, declare) {
                     // Build card type id
                     var card = typeInfo.cards[index];
                     var cardTypeId = this.getCardUniqueId(card.type, card.index);
-                    var cardIndex = card.type == 0 ? card.index * 2 : card.index;
+                    var cardIndex = card.type == 0 ? index * 2 : card.index;
                     this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/' + typeInfo.name + '.jpg', cardIndex);
                 }
             }
@@ -282,10 +282,10 @@ function (dojo, declare) {
                         break;
                     case 'tileChoice':
                         this.addActionButton('button_trigger', _('Trigger Alarm'), dojo.hitch(this, 'handleTileChoiceButton', 0));
-                        if (this.gamedatas.gamestate.args.can_hack) {
+                        if (this.canHackAlarm()) {
                             this.addActionButton('button_hack_alarm', _('Hack Alarm'), dojo.hitch(this, 'handleTileChoiceButton', 1));
                         }
-                        if (this.gamedatas.gamestate.args.can_use_extra_action) {
+                        if (this.canUseExtraAction()) {
                             this.addActionButton('button_extra_action', _('Use an Extra Action'), dojo.hitch(this, 'handleTileChoiceButton', 2));
                         }
                         break;
@@ -474,8 +474,16 @@ function (dojo, declare) {
             return this.gamedatas.gamestate.args.tile.type.endsWith('-computer');
         },
 
+        canHackAlarm: function() {
+            return this.gamedatas.gamestate.args.can_hack;
+        },
+
         canCancelCardChoice: function() {
             return this.gamedatas.gamestate.args.card['type'] == 1; // Tools only
+        },
+
+        canUseExtraAction: function() {
+            return this.gamedatas.gamestate.args.can_use_extra_action;
         },
 
         isCardChoice: function(name) {
@@ -511,7 +519,10 @@ function (dojo, declare) {
                     this.playerHand.addToStockWithId(cardTypeId, cardId);
 
                     var typeInfo = gamedatas.card_types[card.type];
-                    var index = card.type == 0 ? card.type_arg * 2 : card.type_arg;
+                    if (card.type == 0) {
+                        debugger;
+                    }
+                    var index = card.type == 0 ? (card.type_arg - 1) * 2 : card.type_arg;
                     var bg_row = Math.floor(index / 2) * -100;
                     var bg_col = (index % 2) * -100;
                     var divId = this.playerHand.getItemDivId(cardId);
