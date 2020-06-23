@@ -519,9 +519,6 @@ function (dojo, declare) {
                     this.playerHand.addToStockWithId(cardTypeId, cardId);
 
                     var typeInfo = gamedatas.card_types[card.type];
-                    if (card.type == 0) {
-                        debugger;
-                    }
                     var index = card.type == 0 ? (card.type_arg - 1) * 2 : card.type_arg;
                     var bg_row = Math.floor(index / 2) * -100;
                     var bg_col = (index % 2) * -100;

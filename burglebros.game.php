@@ -46,8 +46,8 @@ class burglebros extends Table
             'invisibleSuitActive' => 20,
             'empPlayer' => 21,
             'cardChoice' => 22,
-            // 'hawkAbilityUsed' => 23,
-            // 'acrobatEnteredGuardTile' => 24,
+            'hawkAbilityUsed' => 23,
+            'acrobatEnteredGuardTile' => 24,
         ) ); 
 
         $this->cards = self::getNew( "module.common.deck" );
@@ -108,8 +108,8 @@ class burglebros extends Table
         self::setGameStateInitialValue( 'invisibleSuitActive', 0 );
         self::setGameStateInitialValue( 'empPlayer', 0 );
         self::setGameStateInitialValue( 'cardChoice', 0 );
-        // self::setGameStateInitialValue( 'hawkAbilityUsed', 0 );
-        // self::setGameStateInitialValue( 'acrobatEnteredGuardTile', 0 );
+        self::setGameStateInitialValue( 'hawkAbilityUsed', 0 );
+        self::setGameStateInitialValue( 'acrobatEnteredGuardTile', 0 );
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -154,7 +154,12 @@ class burglebros extends Table
         foreach ($players as $player_id => $player) {
             $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
             $this->tokens->createCards(array($player_token), 'hand', $player_id);
-            $this->cards->pickCard('characters_deck', $player_id);
+            $character = $this->cards->pickCard('characters_deck', $player_id);
+            if ($this->getCardType($character) == 'rigger') {
+                $type_arg = $this->getCardTypeForName(1, 'dynamite');
+                $dynamite = array_values($this->cards->getCardsOfType(1, $type_arg))[0];
+                $this->cards->moveCard($dynamite['id'], 'hand', $player_id);
+            }
         }
 
         // Activate first player (which is in general a good idea :) )
@@ -587,7 +592,7 @@ SQL;
 
     function hawkIsAdjacent($detail) {
         return $detail['same_floor'] && $detail['adjacent'] && $detail['blocked'] &&
-            $this->getPlayerCharacter(self::getCurrentPlayerId(), 'hawk') && 
+            $this->getPlayerCharacter(self::getActivePlayerId(), 'hawk') && 
             !self::getGameStateValue('hawkAbilityUsed');
     }
 
