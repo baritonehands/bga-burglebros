@@ -31,9 +31,6 @@
     </div>
 </div>
 
-<div id="token_container" style="display: none;">
-</div>
-
 <div id="board_wrap">
     <div class="floor_container whiteblock">
         
@@ -62,6 +59,17 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- BEGIN player_hand -->
+<div class="player_hand whiteblock">
+    <h3 style="color: #{PLAYER_COLOR};">{PLAYER_NAME}</h3>
+    <div id="player_hand_{PLAYER_ID}">
+    </div>
+</div>
+<!-- END player_hand -->
+
+<div id="token_container" style="display: none;">
 </div>
 
 

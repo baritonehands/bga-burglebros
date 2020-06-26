@@ -89,6 +89,20 @@
         for ($floor=1; $floor <= 3; $floor++) { 
             $this->page->insert_block("floor_preview", array ("FLOOR" => $floor));
         }
+
+        global $g_user;
+        $current_player_id = $g_user->get_id();
+
+        $this->page->begin_block($template, "player_hand");
+        foreach ($players as $player_id => $player) {
+            if ($player_id != $current_player_id) {
+                $this->page->insert_block("player_hand", array (
+                    "PLAYER_NAME" => $player['player_name'],
+                    "PLAYER_COLOR" => $player['player_color'],
+                    "PLAYER_ID" => $player_id
+                ));
+            }
+        }
         // this will make our My Hand text translatable
         $this->tpl['MY_HAND'] = self::_("My hand");
 

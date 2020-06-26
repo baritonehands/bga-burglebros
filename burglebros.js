@@ -66,29 +66,45 @@ function (dojo, declare) {
 
             this.zones = {};
 
-            this.playerHand = new ebg.stock();
-            this.playerHand.create( this, $('myhand'), this.cardwidth, this.cardheight);
-            this.playerHand.image_items_per_row = 2;
-            this.playerHand.setSelectionMode(1);
-            this.playerHand.setSelectionAppearance('class');
-            dojo.connect( this.playerHand, 'onChangeSelection', this, 'handleCardSelected' );
-
-            // Create cards types:
-            for (var type = 0; type < gamedatas.card_types.length; type++) {
-                var typeInfo = gamedatas.card_types[type];
-                for (var index = 0; index < typeInfo.cards.length; index++) {
-                    // Build card type id
-                    var card = typeInfo.cards[index];
-                    var cardTypeId = this.getCardUniqueId(card.type, card.index);
-                    var cardIndex = card.type == 0 ? index * 2 : card.index;
-                    this.playerHand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/' + typeInfo.name + '.jpg', cardIndex);
-                }
-            }
-
+            this.playerHands = {};
             for (var playerId in gamedatas.players) {
+                var hand, handDivId, me = false;
+                if (playerId == this.player_id) {
+                    this.myHand = new ebg.stock();
+                    hand = this.myHand;
+                    handDivId = 'myhand';
+                    me = true;
+                } else {
+                    this.playerHands[playerId] = new ebg.stock();
+                    hand = this.playerHands[playerId];
+                    handDivId = 'player_hand_' + playerId.toString();
+                }
+                
+                hand.create( this, $(handDivId), this.cardwidth, this.cardheight);
+                hand.image_items_per_row = 2;
+                if (me) {
+                    hand.setSelectionMode(1);
+                    hand.setSelectionAppearance('class');
+                    dojo.connect( hand, 'onChangeSelection', this, 'handleCardSelected' );
+                } else {
+                    hand.setSelectionMode(0);
+                }
+
+                // Create cards types:
+                for (var type = 0; type < gamedatas.card_types.length; type++) {
+                    var typeInfo = gamedatas.card_types[type];
+                    for (var index = 0; index < typeInfo.cards.length; index++) {
+                        // Build card type id
+                        var card = typeInfo.cards[index];
+                        var cardTypeId = this.getCardUniqueId(card.type, card.index);
+                        var cardIndex = card.type == 0 ? index * 2 : card.index;
+                        hand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/' + typeInfo.name + '.jpg', cardIndex);
+                    }
+                }
+
                 var player = gamedatas.players[playerId];
-                var hand = player.hand;
-                this.loadPlayerHand(hand);
+                var cards = player.hand;
+                this.loadPlayerHand(playerId, cards);
                 this.createPlayerStealthToken(playerId, player.stealth_tokens);
             }
 
@@ -538,18 +554,19 @@ function (dojo, declare) {
             }
         },
 
-        loadPlayerHand: function(hand) {
+        loadPlayerHand: function(playerId, hand) {
+            var handStock = playerId == this.player_id ? this.myHand : this.playerHands[playerId];
             for(var cardId in hand) {
                 var card = hand[cardId];
                 var cardTypeId = this.getCardUniqueId(card.type, card.type_arg);
-                if (!this.playerHand.getItemById(cardId)) {
-                    this.playerHand.addToStockWithId(cardTypeId, cardId);
+                if (!handStock.getItemById(cardId)) {
+                    handStock.addToStockWithId(cardTypeId, cardId);
 
                     var typeInfo = gamedatas.card_types[card.type];
                     var index = card.type == 0 ? (card.type_arg - 1) * 2 : card.type_arg;
                     var bg_row = Math.floor(index / 2) * -100;
                     var bg_col = (index % 2) * -100;
-                    var divId = this.playerHand.getItemDivId(cardId);
+                    var divId = handStock.getItemDivId(cardId);
                     var tooltipHtml = this.format_block('jstpl_card_tooltip', {
                         id : cardId, 
                         bg_image: g_gamethemeurl + 'img/' + typeInfo.name + '.jpg',
@@ -801,7 +818,7 @@ function (dojo, declare) {
             for(var playerId in notif.args) {
                 var hand = notif.args[playerId];
                 this.gamedatas.players[playerId].hand = hand;
-                this.loadPlayerHand(hand);
+                this.loadPlayerHand(playerId, hand);
             }
         }
    });             

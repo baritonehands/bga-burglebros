@@ -988,7 +988,11 @@ SQL;
     function canHack($tile) {
         $type = $tile['type'];
         $tokens = $this->getPlacedTokens(array('hack'));
-        $computer_tile = array_values($this->tiles->getCardsOfType("$type-computer"))[0];
+        $tiles = $this->tiles->getCardsOfType("$type-computer");
+        if (count($tiles) == 0) {
+            return false;
+        }
+        $computer_tile = array_values($tiles)[0];
         return isset($tokens[$computer_tile['id']]);
     }
 
@@ -1792,6 +1796,7 @@ SQL;
 
     function selectCardChoice($type, $id) {
         self::checkAction('selectCardChoice');
+        // TODO: Buddy system didn't go into correct state
         $tile_choice = $this->handleSelectCardChoice($type, $id);
         if ($tile_choice) {
             $this->gamestate->nextState('tileChoice');
@@ -1828,7 +1833,7 @@ SQL;
             $event_card = $this->cards->getCardOnTop('events_discard');
             $event_result = $this->handleEventEffect($current_player_id, $event_card);
             if ($event_result['card_choice']) {
-                self::setGameStateValue('cardChoice', $card['id']);
+                self::setGameStateValue('cardChoice', $event_card['id']);
                 $this->gamestate->nextState('cardChoice');
             } elseif ($event_result['tile_choice']) {
                 $this->gamestate->nextState('tileChoice');

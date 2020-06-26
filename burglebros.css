@@ -77,7 +77,7 @@
     border-color: red;
 }
 
-#myhand .stockitem {
+#myhand .stockitem, .player_hand .stockitem {
     background-size: 240px;
 }
 
