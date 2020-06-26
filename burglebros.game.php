@@ -422,14 +422,13 @@ SQL;
             if ($count == 0) {
                 $this->cards->moveAllCardsInLocation($patrol.'_discard', $patrol.'_deck');
                 $this->cards->shuffle($patrol.'_deck');
-                $count = 0;
+                $count = 16;
                 $die_count = self::getGameStateValue("patrolDieCount$floor");
                 if ($die_count < 6) {
                     self::setGameStateValue("patrolDieCount$floor", $die_count + 1);
                 }
             }
-            $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', 16 - $count);
-            $patrol_entrance = $this->cards->getCardOnTop($patrol.'_discard');
+            $patrol_entrance = $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', 16 - $count);
             self::notifyAllPlayers('nextPatrol', '', array(
                 'floor' => $floor,
                 'cards' => $this->cards->getCardsInLocation($patrol.'_discard'),
