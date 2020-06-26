@@ -297,6 +297,7 @@ class burglebros extends Table
             $result[$prefix.'_types'][$type] = array('name' => $desc['name'], 'deck' => $deck_name, 'cards' => $card_info);
             $discard_name = $desc['name'].'_discard';
             $result[$discard_name] = $this->cards->getCardsInLocation( $discard_name );
+            $result[$discard_name.'_top'] = $this->cards->getCardOnTop( $discard_name );
         }
         return $result;
     }
@@ -417,8 +418,8 @@ SQL;
             }
         } else {
             $patrol = "patrol".$floor;
-            $count = $this->cards->countCardInLocation($patrol.'_discard');
-            if ($count == 16) {
+            $count = $this->cards->countCardInLocation($patrol.'_deck');
+            if ($count == 0) {
                 $this->cards->moveAllCardsInLocation($patrol.'_discard', $patrol.'_deck');
                 $this->cards->shuffle($patrol.'_deck');
                 $count = 0;
@@ -427,11 +428,12 @@ SQL;
                     self::setGameStateValue("patrolDieCount$floor", $die_count + 1);
                 }
             }
-            $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', $count + 1);
+            $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', 16 - $count);
             $patrol_entrance = $this->cards->getCardOnTop($patrol.'_discard');
             self::notifyAllPlayers('nextPatrol', '', array(
                 'floor' => $floor,
-                'cards' => $this->cards->getCardsInLocation($patrol.'_discard')
+                'cards' => $this->cards->getCardsInLocation($patrol.'_discard'),
+                'top' => $patrol_entrance
             ));
             $tile_id = $this->findTileOnFloor($floor, $patrol_entrance['type_arg'] - 1)['id'];
         }
@@ -441,8 +443,7 @@ SQL;
 
     function setupPatrol($guard_token, $floor) {
         $patrol = "patrol".$floor;
-        $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard');
-        $guard_entrance = $this->cards->getCardOnTop($patrol.'_discard');
+        $guard_entrance = $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard');
         $floor_tiles = $this->getTiles($floor);
         foreach ($floor_tiles as $tile) {
             if ($tile['location_arg'] == $guard_entrance['type_arg'] - 1) {

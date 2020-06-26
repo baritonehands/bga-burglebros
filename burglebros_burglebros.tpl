@@ -35,16 +35,33 @@
 </div>
 
 <div id="board_wrap">
-    <!-- BEGIN floor -->
-    <div class="floor_containe whiteblock">
-        <h3>Floor {FLOOR}</h3>
-        <div class="floor" id="floor{FLOOR}">
+    <div class="floor_container whiteblock">
+        
+        <div  class="tiles">
+            <!-- BEGIN tiles -->
+            <div id="floor{FLOOR}_tiles" class="floor_tiles">
+                <h3>Floor {FLOOR}</h3>
+                <div class="floor" id="floor{FLOOR}">
+                </div>
+            </div>
+            <!-- END tiles -->
         </div>
-        <h4>Patrol {FLOOR}</h4>
-        <div class="patrol" id="patrol{FLOOR}">
+        
+        <div class="patrols">
+            <h3>Patrol</h3>
+            <!-- BEGIN patrol -->
+            <div class="patrol" id="patrol{FLOOR}">
+            </div>
+            <!-- END patrol -->
+            <div class="floor_preview_container">
+                <!-- BEGIN floor_preview -->
+                <div class="floor_preview" id="floor{FLOOR}_preview">
+                {FLOOR}
+                </div>
+                <!-- END floor_preview -->
+            </div>
         </div>
     </div>
-    <!-- END floor -->
 </div>
 
 

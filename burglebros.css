@@ -68,7 +68,7 @@
 */
 
 .stockitem {
-    background-size: 600px;
+    background-size: 480px;
     border-radius: 8px;
     border: 1px solid #999999;
 }
@@ -78,7 +78,7 @@
 }
 
 #myhand .stockitem {
-    background-size: 300px;
+    background-size: 240px;
 }
 
 #board_wrap {
@@ -90,25 +90,58 @@
 }
 
 .floor_container {
-    /* float: left;
-    clear: both; */
+    display: flex;
+    flex-direction: row;
 }
 
 .floor {
     position: relative;
-    /* float: left; */
-    width: 750px;
-    height: 750px;
+    width: 610px;
+    height: 650px;
+    margin: -10px -10px;
+}
+
+.tiles > *, .patrols > * {
+    display: flex;
+    flex-direction: column;
+}
+
+.tiles > .hidden, .patrols > .hidden {
+    display: none;
+}
+
+.patrols {
+    width: 120px;
+    margin-left: 32px;
 }
 
 .patrol {
-    /* float: left; */
+    top: 10px;
+}
+
+.floor_preview_container {
+    margin-top: 42.5px;
+}
+
+.floor_preview {
+    width: 120px;
+    height: 120px;
+    border: 1px solid #999999;
+    margin-bottom: 32px;
+    font-size: 60px;
+    line-height: 120px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.floor_preview.selected {
+    background-color: #999999;
 }
 
 .tile-container {
     position: absolute;
-    width: 150px;
-    height: 150px;
+    width: 120px;
+    height: 120px;
     margin: 20px 10px;
 }
 
@@ -117,7 +150,7 @@
     position: relative;
     width: 100%;
     height: 100%;
-    background-size: 300px;
+    background-size: 240px;
     border: 1px solid #999999;
     border-radius: 8px;
     z-index: 0;
@@ -133,9 +166,9 @@
 .tile-zone {
     cursor: pointer;
     position: absolute;
-    left: 15px;
-    top: 45px;
-    width: 120px;
+    left: 12px;
+    top: 36px;
+    width: 90px;
     z-index: 1;
 }
 
@@ -147,19 +180,20 @@
 
 .wall.vertical {
     width: 10px;
-    height: 150px;
+    height: 120px;
 }
 
 .wall.horizontal {
-    width: 150px;
+    width: 120px;
     height: 10px;
 }
 
 .token {
-    width: 30px;
-    height: 30px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
-    line-height: 30px;;
+    line-height: 24px;
+    font-size: 12px;
     text-align: center;
     color: white;
     filter: drop-shadow(1px 1px 3px #000000);

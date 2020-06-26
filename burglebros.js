@@ -30,8 +30,8 @@ function (dojo, declare) {
             // Here, you can init the global variables of your user interface
             // Example:
             // this.myGlobalValue = 0;
-            this.cardwidth = 150;
-            this.cardheight = 150;
+            this.cardwidth = 120;
+            this.cardheight = 120;
             this.nonGenericTokenTypes = ['player', 'guard', 'patrol', 'crack'];
         },
         
@@ -105,8 +105,7 @@ function (dojo, declare) {
                 this[patrolKey] = new ebg.stock();
                 this[patrolKey].create(this, $(patrolKey), this.cardwidth, this.cardheight);
                 this[patrolKey].image_items_per_row = 4;
-                this[patrolKey].onItemCreate = dojo.hitch(this, 'setupPatrolItem', floor);
-                console.log(this[patrolKey].jstpl_stock_item);
+                this[patrolKey].setSelectionMode(0);
 
                 for (var type in gamedatas.patrol_types) {
                     var typeInfo = gamedatas.patrol_types[type];
@@ -116,9 +115,12 @@ function (dojo, declare) {
                         this[patrolKey].addItemType(id, id, g_gamethemeurl + 'img/patrol.jpg', id);
                     }
                 }
+                // Patrol back
+                this[patrolKey].addItemType(51, 51, g_gamethemeurl + 'img/patrol.jpg', 51);
                 
-                var patrolDeckKey = patrolKey + '_discard';
-                this.loadPatrolDiscard(floor, gamedatas[patrolDeckKey]);
+                var patrolTopKey = patrolKey + '_discard_top';
+                this.loadPatrolDiscard(floor, gamedatas[patrolTopKey]);
+                dojo.connect( $('floor' + floor.toString() + '_preview'), 'onclick', dojo.hitch(this, 'showFloor', floor));
             }
 
             for (var wallIdx = 0; wallIdx < gamedatas.walls.length; wallIdx++) {
@@ -165,6 +167,8 @@ function (dojo, declare) {
                     this.moveToken('generic', token_id, token.location_arg);
                 }
             }
+
+            this.showFloor(this.currentFloor());
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -195,6 +199,9 @@ function (dojo, declare) {
                 
                 break;
            */
+            case 'playerTurn':
+                this.showFloor(this.currentFloor());
+                break;
            
            
             case 'dummmy':
@@ -221,6 +228,9 @@ function (dojo, declare) {
                 
                 break;
            */
+            case 'playerTurn':
+                this.showFloor(this.currentFloor());
+                break;
            
            
             case 'dummmy':
@@ -329,8 +339,8 @@ function (dojo, declare) {
             var col = idx % 4;
             dojo.place(this.format_block('jstpl_tile_container', {
                 id : tile.id, 
-                x : (this.cardwidth + 40) * col,
-                y : (this.cardheight + 40) * row,
+                x : (this.cardwidth + 36) * col,
+                y : (this.cardheight + 36) * row,
                 name : tile.type + tile.safe_die
             }), 'floor' + floor);
             
@@ -340,7 +350,7 @@ function (dojo, declare) {
 
             var zone = new ebg.zone();
             var zoneId = 'tile_' + tile.id + '_tokens';
-            zone.create( this, zoneId, 30, 30 );
+            zone.create( this, zoneId, 24, 24 );
             zone.setPattern( 'grid' );
             this.zones[zoneId] = zone;
         },
@@ -376,8 +386,9 @@ function (dojo, declare) {
             var idx = parseInt(wall.position, 10);
             var row = Math.floor(idx / 3);
             var col = idx % 3;
-            var x = wall.vertical == '1' ?  175 + (col * 190) : 10 + (row * 190);
-            var y = wall.vertical == '1' ? 20 + (row * 190) : 185 + (col * 190);
+            var sizePlusPadding = 120 + 36;
+            var x = wall.vertical == '1' ? 142.5 + (col * sizePlusPadding) : 10 + (row * sizePlusPadding);
+            var y = wall.vertical == '1' ? 20 + (row * sizePlusPadding) : 152.5 + (col * sizePlusPadding);
             dojo.place(this.format_block('jstpl_wall', {
                 wall_id : wall.id,
                 wall_direction : wall.vertical == '1' ? 'vertical' : 'horizontal', 
@@ -494,21 +505,37 @@ function (dojo, declare) {
             return parseInt(this.gamedatas.gamestate.args.floor, 10);
         },
 
-        loadPatrolDiscard: function(floor, cards) {
+        showFloor: function(floorNum) {
+            this.selected_floor = floorNum;
+            for (var floor = 1; floor <= 3; floor++) {
+                var floorId = 'floor' + floor.toString() + '_tiles';
+                var patrolId = 'patrol' + floor.toString();
+                var previewId = 'floor' + floor.toString() + '_preview';
+                if (floor == floorNum) {
+                    dojo.removeClass(floorId, 'hidden');
+                    dojo.removeClass(patrolId, 'hidden');
+                    dojo.addClass(previewId, 'selected');
+                } else {
+                    dojo.addClass(floorId, 'hidden');
+                    dojo.addClass(patrolId, 'hidden');
+                    dojo.removeClass(previewId, 'selected');
+                }
+            }
+        },
+
+        loadPatrolDiscard: function(floor, card) {
             // var patrolDeckKey = patrolKey + '_discard';
             var patrolKey = 'patrol' + floor;
-            var weights = {};
-            for (var cardId in cards) {
-                var card = cards[cardId];
+            this[patrolKey].removeAll();
+    
+            if (card) {
                 var cardType = parseInt(card.type, 10);
                 var cardIndex = parseInt(card.type_arg, 10) - 1;
                 var id = ((cardType - 4) * 16) + cardIndex;
-                if (!this[patrolKey].getItemById(id)) {
-                    this[patrolKey].addToStockWithId(id, cardId);
-                }
-                weights[id] = parseInt(card.location_arg, 10);
+                this[patrolKey].addToStockWithId(id, card.id);
+            } else {
+                this[patrolKey].addToStockWithId(51, 51);
             }
-            this[patrolKey].changeItemsWeight(weights);
         },
 
         loadPlayerHand: function(hand) {
@@ -766,7 +793,8 @@ function (dojo, declare) {
         notif_nextPatrol: function(notif) {
             var deck = 'patrol' + notif.args.floor + '_discard';
             this.gamedatas[deck] = notif.args[deck];
-            this.loadPatrolDiscard(notif.args.floor, notif.args.cards);
+            this.gamedatas[deck + '_top'] = notif.args.top;
+            this.loadPatrolDiscard(notif.args.floor, notif.args.top);
         },
 
         notif_playerHand: function(notif) {
