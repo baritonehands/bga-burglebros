@@ -110,6 +110,12 @@
       self::ajaxResponse();
     }
 
+    public function escape() {
+      self::setAjaxMode();
+      $this->game->escape();
+      self::ajaxResponse();
+    }
+
     /*
     
     Example:

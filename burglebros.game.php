@@ -315,10 +315,23 @@ class burglebros extends Table
         return $peekable;
     }
 
+    function canEscape($player_tile) {
+        $safes = $this->tiles->getCardsOfType('safe');
+        $escape = true;
+        foreach ($safes as $tile_id => $tile) {
+            if ($this->tokensInTile('open', $tile_id) == 0) {
+                $escape = false;
+                break;
+            }
+        }
+        return $player_tile['type'] == 'stairs' && $player_tile['location'][5] == '3' && $escape;
+    }
+
     function gatherCurrentData($current_player_id) {
         $player_token = $this->getPlayerToken($current_player_id);
         $player_tile = $this->getPlayerTile($current_player_id, $player_token);
         return array(
+            'escape' => $this->canEscape($player_tile),
             'peekable' => $this->getPeekableTiles($player_tile),
             'player_token' => $player_token,
             'tile' => $player_tile,
@@ -684,6 +697,7 @@ SQL;
             if ($this->getPlayerCharacter($current_player_id, 'acrobat') && $state['name'] != 'moveGuard') {
                 self::setGameStateValue('acrobatEnteredGuardTile', TRUE);
             } else {
+                // TODO: Deduct stealth from each player in tile
                 $this->deductStealth($current_player_id);
             }
             return;
@@ -695,14 +709,18 @@ SQL;
             (($is_guard_tile && $player_tile['type'] == 'foyer') ||
                 ($is_player_tile && ($player_tile['type'] == 'foyer' || $tiara)));
         if ($is_foyer) {
+            // TODO: Deduct stealth from each player in tile?
             $this->deductStealth($current_player_id);
             return;
         }
 
         if ($player_tile['type'] == 'atrium') {
             if (($is_player_tile && $this->atriumGuards($player_tile)) ||
-                    ($is_guard_tile && $guard_tile['location_arg'] == $player_tile['location_arg']))
-            $this->deductStealth($current_player_id);
+                    ($is_guard_tile && $guard_tile['location_arg'] == $player_tile['location_arg'])) {
+                // TODO: Deduct stealth from each player in tile
+                $this->deductStealth($current_player_id);
+            }
+            
             return;
         }
     }
@@ -1647,6 +1665,11 @@ SQL;
         return $move_result['tile_choice'];
     }
 
+    function gameOver() {
+        // TODO: Also check all the loot escaped
+        return count($this->tokens->getCardsOfTypeInLocation('player', null, 'roof')) == self::getPlayersNumber();
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -1845,6 +1868,24 @@ SQL;
         }
     }
 
+    function escape() {
+        self::checkAction('escape');
+        $current_player_id = self::getCurrentPlayerId();
+        $player_token = $this->getPlayerToken($current_player_id);
+        $player_tile = $this->getPlayerTile($current_player_id, $player_token);
+        if (!$this->canEscape($player_tile)) {
+            throw new BgaUserException(self::_('All safes have not been opened yet'));
+        }
+        $this->moveToken($player_token['id'], 'roof');
+
+        if ($this->gameOver()) {
+            $this->DbQuery("UPDATE player SET player_score='1'");
+            $this->gamestate->nextState('gameOver');
+        } else {
+            $this->gamestate->nextState('nextPlayer');
+        }
+    }
+
     
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state arguments
@@ -1980,6 +2021,11 @@ SQL;
             ));
             $player_id = self::activeNextPlayer();
             // Will auto cleanup in active events for player logic
+        }
+        $player_token = $this->getPlayerToken($player_id);
+        while ($player_token['location'] == 'roof') {
+            $player_id = self::activeNextPlayer();
+            $player_token = $this->getPlayerToken($player_id);
         }
         self::giveExtraTime( $player_id );
         $heads_up = $this->getActiveEvent('heads-up');

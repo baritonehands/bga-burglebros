@@ -278,6 +278,9 @@ function (dojo, declare) {
                     break;
 */
                     case 'playerTurn':
+                        if (this.canEscape()) {
+                            this.addActionButton( 'button_escape', _('Escape'), dojo.hitch(this, 'handleEscape') );
+                        }
                         if (this.canPeek()) {
                             this.addActionButton( 'button_peek', _('Peek'), dojo.hitch(this, 'handlePeekClick') );
                         }
@@ -484,6 +487,10 @@ function (dojo, declare) {
             }), 'player_board_' + id);
         },
 
+        canEscape: function() {
+            return this.gamedatas.gamestate.args.escape;
+        },
+
         canPeek: function() {
             return this.gamedatas.gamestate.args.peekable.length > 0;
         },
@@ -649,6 +656,13 @@ function (dojo, declare) {
             }
         },
 
+        handleEscape: function(evt) {
+            dojo.stopEvent(evt);
+            if (this.checkAction('escape')) {
+                this.ajaxcall('/burglebros/burglebros/escape.html', { lock: true }, this, console.log, console.error);
+            }
+        },
+
         handlePeekClick: function(evt) {
             dojo.stopEvent(evt);
             this.intent = 'peek';
@@ -665,10 +679,7 @@ function (dojo, declare) {
         handleAddSafeDie: function(evt) {
             dojo.stopEvent(evt);
             if (this.checkAction('addSafeDie')) {
-                this.ajaxcall('/burglebros/burglebros/addSafeDie.html', { lock: true }, this, function() {
-                    console.log(arguments);
-                    // location.reload();
-                }, console.error);
+                this.ajaxcall('/burglebros/burglebros/addSafeDie.html', { lock: true }, this, console.log, console.error);
             }
         },
 
