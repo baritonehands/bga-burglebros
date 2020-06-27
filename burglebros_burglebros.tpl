@@ -106,6 +106,8 @@ var jstpl_patrol_die = '<div id="patrol_token_${token_id}" class="token die patr
 
 var jstpl_safe_die = '<div id="crack_token_${token_id}" class="token die safe">${die_num}</div>';
 
+var jstpl_event_card = '<div id="event_card_dialog" class="card" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>'
+
 </script>  
 
 {OVERALL_GAME_FOOTER}

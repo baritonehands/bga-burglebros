@@ -433,9 +433,13 @@ SQL;
             $patrol = "patrol".$floor;
             $count = $this->cards->countCardInLocation($patrol.'_deck');
             if ($count == 0) {
+                // Out of play
+                $this->cards->moveAllCardsInLocation($patrol.'_oop', $patrol.'_deck');
                 $this->cards->moveAllCardsInLocation($patrol.'_discard', $patrol.'_deck');
                 $this->cards->shuffle($patrol.'_deck');
                 $count = 16;
+                $to_remove = $this->removePatrolPerPlayerCount($patrol);
+                $count -= $to_remove;
                 $die_count = self::getGameStateValue("patrolDieCount$floor");
                 if ($die_count < 6) {
                     self::setGameStateValue("patrolDieCount$floor", $die_count + 1);
@@ -453,8 +457,23 @@ SQL;
         $this->moveToken($patrol_token['id'], 'tile', $tile_id, TRUE);
     }
 
+    function removePatrolPerPlayerCount($patrol) {
+        $num_players = self::getPlayersNumber();
+        $to_remove = 0;
+        if ($num_players == 1) {
+            $to_remove = 9;
+        } elseif ($num_players == 2) {
+            $to_remove = 6;
+        } elseif ($num_players == 3) {
+            $to_remove = 3;
+        }
+        $this->cards->pickCardsForLocation($to_remove, $patrol.'_deck', $patrol.'_oop');
+        return $to_remove;
+    }
+
     function setupPatrol($guard_token, $floor) {
         $patrol = "patrol".$floor;
+        $this->removePatrolPerPlayerCount($patrol);
         $guard_entrance = $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard');
         $floor_tiles = $this->getTiles($floor);
         foreach ($floor_tiles as $tile) {
@@ -1854,6 +1873,10 @@ SQL;
             $count = $this->cards->countCardInLocation('events_discard');
             $this->cards->pickCardForLocation('events_deck', 'events_discard', $count + 1);
             $event_card = $this->cards->getCardOnTop('events_discard');
+            $type = $this->getCardType($event_card);
+            self::notifyAllPlayers('eventCard', self::_("Event Card: $type"), array(
+                'card' => $event_card
+            ));
             $event_result = $this->handleEventEffect($current_player_id, $event_card);
             if ($event_result['card_choice']) {
                 self::setGameStateValue('cardChoice', $event_card['id']);

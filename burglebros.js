@@ -771,6 +771,7 @@ function (dojo, declare) {
             dojo.subscribe('tileFlipped', this, 'notif_tileFlipped');
             dojo.subscribe('nextPatrol', this, 'notif_nextPatrol');
             dojo.subscribe('playerHand', this, 'notif_playerHand');
+            dojo.subscribe('eventCard', this, 'notif_eventCard');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -831,6 +832,31 @@ function (dojo, declare) {
                 this.gamedatas.players[playerId].hand = hand;
                 this.loadPlayerHand(playerId, hand);
             }
+        },
+
+        notif_eventCard: function(notif) {
+            var dialog = new ebg.popindialog();
+            dialog.create( 'eventCardDialog' );
+            dialog.setTitle( _("Event Card") );
+            
+            var card = notif.args.card;
+            var bg_row = Math.floor(card.type_arg / 2) * -100;
+            var bg_col = (card.type_arg % 2) * -100;
+            var html = this.format_block('jstpl_event_card', {
+                bg_image: g_gamethemeurl + 'img/events.jpg',
+                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
+            });
+            
+            // Show the dialog
+            dialog.setContent( html ); // Must be set before calling show() so that the size of the content is defined before positioning the dialog
+            dialog.show();
+            
+            // Now that the dialog has been displayed, you can connect your method to some dialog elements
+            // Example, if you have an "OK" button in the HTML of your dialog:
+            // dojo.connect( $('my_ok_button'), 'onclick', this, function(evt){
+            //     evt.preventDefault();
+            //     dialog.destroy();
+            // } );
         }
    });             
 });
