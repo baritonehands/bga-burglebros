@@ -92,7 +92,9 @@ var jstpl_tile_tooltip = '<div id="tile_${id}_tooltip" class="tile tooltip" styl
 
 var jstpl_card_tooltip = '<div id="card_${id}_tooltip" class="card tooltip" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>';
 
-var jstpl_patrol_discard = '<div id="patrol_discard_${patrol_floor}" class="card" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>';
+var jstpl_patrol_tooltip = '<div id="patrol_tooltip_${patrol_floor}" class="card tooltip" style="background-image: url(${bg_image}); background-position: ${bg_position}; background-size: 1440px;">${patrol_discards}</div>';
+
+var jstpl_patrol_tooltip_discard = '<div class="patrol-discard" style="left: ${discard_left}px; top: ${discard_top}px;">X</div>'
 
 var jstpl_wall = '<div id="wall_${wall_id}" class="wall ${wall_direction}" style="left: ${x}px; top: ${y}px"></div>';
 

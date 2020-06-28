@@ -547,7 +547,6 @@ function (dojo, declare) {
         },
 
         loadPatrolDiscard: function(floor, card) {
-            // var patrolDeckKey = patrolKey + '_discard';
             var patrolKey = 'patrol' + floor;
             this[patrolKey].removeAll();
     
@@ -556,6 +555,31 @@ function (dojo, declare) {
                 var cardIndex = parseInt(card.type_arg, 10) - 1;
                 var id = ((cardType - 4) * 16) + cardIndex;
                 this[patrolKey].addToStockWithId(id, card.id);
+
+                var bg_row = Math.floor(id / 4) * -100;
+                var bg_col = (id % 4) * -100;
+                var divId = this[patrolKey].getItemDivId(card.id);
+                var discardHtml = '<div class="patrol-discard-container">';
+                for(var discardId in this.gamedatas[patrolKey + '_discard']) {
+                    if (discardId != card.id) {   
+                        var discard = this.gamedatas[patrolKey + '_discard'][discardId];
+                        var discardIndex = parseInt(discard.type_arg, 10) - 1;
+                        var discard_left = Math.floor(discardIndex / 4) * 62;
+                        var discard_top = (discardIndex % 4) * 62;
+                        discardHtml += this.format_block('jstpl_patrol_tooltip_discard', {
+                            discard_left: discard_left,
+                            discard_top: discard_top
+                        });
+                    }
+                }
+                discardHtml += '</div>';
+                var tooltipHtml = this.format_block('jstpl_patrol_tooltip', {
+                    patrol_floor: floor,
+                    patrol_discards: discardHtml,
+                    bg_image: g_gamethemeurl + 'img/patrol.jpg',
+                    bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
+                });
+                this.addTooltipHtml(divId, tooltipHtml);
             } else {
                 this[patrolKey].addToStockWithId(51, 51);
             }
@@ -579,7 +603,6 @@ function (dojo, declare) {
                         bg_image: g_gamethemeurl + 'img/' + typeInfo.name + '.jpg',
                         bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
                     });
-                    // console.log(tooltipHtml);
                     this.addTooltipHtml(divId, tooltipHtml);
                 }
             }
