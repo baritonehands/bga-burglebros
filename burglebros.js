@@ -548,6 +548,11 @@ function (dojo, declare) {
 
         loadPatrolDiscard: function(floor, card) {
             var patrolKey = 'patrol' + floor;
+            var existing = this[patrolKey].getAllItems();
+            for(var idx = 0; idx < existing.length; idx++) {
+                var discardDiv = this[patrolKey].getItemDivId(existing[idx].id);
+                this.removeTooltip(discardDiv);
+            }
             this[patrolKey].removeAll();
     
             if (card) {
@@ -844,7 +849,7 @@ function (dojo, declare) {
 
         notif_nextPatrol: function(notif) {
             var deck = 'patrol' + notif.args.floor + '_discard';
-            this.gamedatas[deck] = notif.args[deck];
+            this.gamedatas[deck] = notif.args.cards;
             this.gamedatas[deck + '_top'] = notif.args.top;
             this.loadPatrolDiscard(notif.args.floor, notif.args.top);
         },
