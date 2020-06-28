@@ -569,8 +569,8 @@ function (dojo, declare) {
                     if (discardId != card.id) {   
                         var discard = this.gamedatas[patrolKey + '_discard'][discardId];
                         var discardIndex = parseInt(discard.type_arg, 10) - 1;
-                        var discard_left = Math.floor(discardIndex / 4) * 62;
-                        var discard_top = (discardIndex % 4) * 62;
+                        var discard_top = Math.floor(discardIndex / 4) * 62;
+                        var discard_left = (discardIndex % 4) * 62;
                         discardHtml += this.format_block('jstpl_patrol_tooltip_discard', {
                             discard_left: discard_left,
                             discard_top: discard_top,
