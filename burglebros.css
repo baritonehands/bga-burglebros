@@ -174,13 +174,10 @@
 .patrol-discard {
     position: absolute;
     color: white;
-    background-color: #cc4b33;
-    font-family: sans-serif;
-    font-size: 52px;
-    line-height: 58px;
-    text-align: center;
     width: 58px;
     height: 58px;
+    background-position: -300% -1200%;
+    background-size: 232px
 }
 
 .tile-zone {

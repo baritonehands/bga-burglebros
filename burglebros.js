@@ -573,7 +573,8 @@ function (dojo, declare) {
                         var discard_top = (discardIndex % 4) * 62;
                         discardHtml += this.format_block('jstpl_patrol_tooltip_discard', {
                             discard_left: discard_left,
-                            discard_top: discard_top
+                            discard_top: discard_top,
+                            bg_image: g_gamethemeurl + 'img/patrol.jpg',
                         });
                     }
                 }
@@ -585,6 +586,7 @@ function (dojo, declare) {
                     bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
                 });
                 this.addTooltipHtml(divId, tooltipHtml);
+                // dojo.place(tooltipHtml, 'tooltip_debug');
             } else {
                 this[patrolKey].addToStockWithId(51, 51);
             }
