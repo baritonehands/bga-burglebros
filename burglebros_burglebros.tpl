@@ -55,6 +55,7 @@
             <div class="floor_preview_container">
                 <!-- BEGIN floor_preview -->
                 <div class="floor_preview whiteblock" id="floor{FLOOR}_preview">
+                    <div class="floor_preview_number whiteblock">{FLOOR}</div>
                 </div>
                 <!-- END floor_preview -->
             </div>
