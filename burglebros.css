@@ -127,15 +127,69 @@
     width: 120px;
     height: 120px;
     border: 1px solid #999999;
+    border-radius: 8px;
+    margin-top: 0;
     margin-bottom: 32px;
     font-size: 60px;
     line-height: 120px;
     text-align: center;
     cursor: pointer;
+    position: relative;
+    padding: 0;
 }
 
 .floor_preview.selected {
     background-color: #999999;
+}
+
+.tile-preview {
+    width: 18px;
+    height: 18px;
+    position: absolute;
+    border-radius: 3px;
+    border: 1px solid #999999;
+    border-style: solid;
+}
+
+.back {
+    background-color: transparent;
+    border-color: #3A5A6E
+}
+
+.atrium, .foyer {
+    background-color: #F2D649;
+}
+
+.camera {
+    background-color: #CC3F73;
+}
+
+.fingerprint-computer, .laser-computer, .motion-computer {
+    background-color: #C6A7BE;
+}
+
+.deadbolt, .keypad {
+    background-color: #DDA860;
+}
+
+.detector, .fingerprint, .laser, .motion, .thermo {
+    background-color: #CE5638;
+}
+
+.laboratory, .lavatory, .walkway {
+    background-color: #ADD0E0;
+}
+
+.safe {
+    background-color: #74B189;
+}
+
+.secret-door, .service-duct {
+    background-color: #908A43;
+}
+
+.stairs {
+    background-color: #86939D;
 }
 
 .tile-container {

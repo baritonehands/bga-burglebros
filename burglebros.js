@@ -375,9 +375,13 @@ function (dojo, declare) {
         },
 
         playTileOnTable : function(floor, tile) {
-            var div_id = 'tile_' + tile.id;
+            var div_id = 'tile_' + tile.id,
+                preview_div_id = 'tile_' + tile.id + '_preview';
             if ($(div_id)) {
                 dojo.destroy(div_id);
+            }
+            if ($(preview_div_id)) {
+                dojo.destroy(preview_div_id);
             }
                 
             var bg_row = Math.floor(tile.type_arg / 2) * -100;
@@ -388,6 +392,14 @@ function (dojo, declare) {
                 bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%',
                 name : tile.type + tile.safe_die
             }), div_id + '_container');
+            var preview_row = Math.floor(tile.location_arg / 4) * 28 + 8;
+            var preview_col = (tile.location_arg % 4) * 28 + 8;
+            dojo.place(this.format_block('jstpl_tile_preview', {
+                id : tile.id,
+                tile_type : tile.type,
+                preview_row: preview_row,
+                preview_col: preview_col
+            }), 'floor' + floor.toString() + '_preview');
 
             if (tile.type != 'back') {                
                 var tooltipHtml = this.format_block('jstpl_tile_tooltip', {

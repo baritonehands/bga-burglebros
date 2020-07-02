@@ -54,8 +54,7 @@
             <!-- END patrol -->
             <div class="floor_preview_container">
                 <!-- BEGIN floor_preview -->
-                <div class="floor_preview" id="floor{FLOOR}_preview">
-                {FLOOR}
+                <div class="floor_preview whiteblock" id="floor{FLOOR}_preview">
                 </div>
                 <!-- END floor_preview -->
             </div>
@@ -91,6 +90,8 @@ var jstpl_tile_container = '<div id="tile_${id}_container" class="tile-container
 var jstpl_tile = '<div id="tile_${id}" class="tile" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>';
 
 var jstpl_tile_tooltip = '<div id="tile_${id}_tooltip" class="tile tooltip" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>';
+
+var jstpl_tile_preview = '<div id="tile_${id}_preview" title="${tile_type}" class="tile-preview ${tile_type}" style="left: ${preview_col}px; top: ${preview_row}px;"></div>'
 
 var jstpl_card_tooltip = '<div id="card_${id}_tooltip" class="card tooltip" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>';
 

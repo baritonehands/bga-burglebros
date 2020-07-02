@@ -181,13 +181,13 @@ $this->default_walls = array(
 );
 
 $this->token_colors = array(
-  'hack' => 'purple',
-  'safe' => 'green',
+  'hack' => '#C6A7BE',
+  'safe' => '#74B189',
   'stealth' => 'darkcyan',
-  'alarm' => 'darkred',
-  'open' => 'gold',
-  'keypad' => 'gold',
-  'stairs' => 'slategray',
-  'thermal' => 'green',
-  'crowbar' => 'green'
+  'alarm' => '#CE5638',
+  'open' => '#DDA860',
+  'keypad' => '#DDA860',
+  'stairs' => '#86939D',
+  'thermal' => '#74B189',
+  'crowbar' => '#74B189'
 );
