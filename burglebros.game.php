@@ -416,9 +416,9 @@ SQL;
     }
 
     function nextPatrol($floor) {
+        $guard_token = array_values($this->tokens->getCardsOfType('guard', $floor))[0];
         $alarm_tiles = $this->getFloorAlarmTiles($floor);
         if (count($alarm_tiles) > 0) {
-            $guard_token = array_values($this->tokens->getCardsOfType('guard', $floor))[0];
             $guard_tile = $this->tiles->getCard($guard_token['location_arg']);
 
             $min_count = 100; // longest is 6, but I'm paranoid
@@ -433,27 +433,29 @@ SQL;
             }
         } else {
             $patrol = "patrol".$floor;
-            $count = $this->cards->countCardInLocation($patrol.'_deck');
-            if ($count == 0) {
-                // Out of play
-                $this->cards->moveAllCardsInLocation($patrol.'_oop', $patrol.'_deck');
-                $this->cards->moveAllCardsInLocation($patrol.'_discard', $patrol.'_deck');
-                $this->cards->shuffle($patrol.'_deck');
-                $count = 16;
-                $to_remove = $this->removePatrolPerPlayerCount($patrol);
-                $count -= $to_remove;
-                $die_count = self::getGameStateValue("patrolDieCount$floor");
-                if ($die_count < 6) {
-                    self::setGameStateValue("patrolDieCount$floor", $die_count + 1);
+            do {
+                $count = $this->cards->countCardInLocation($patrol.'_deck');
+                if ($count == 0) {
+                    // Out of play
+                    $this->cards->moveAllCardsInLocation($patrol.'_oop', $patrol.'_deck');
+                    $this->cards->moveAllCardsInLocation($patrol.'_discard', $patrol.'_deck');
+                    $this->cards->shuffle($patrol.'_deck');
+                    $count = 16;
+                    $to_remove = $this->removePatrolPerPlayerCount($patrol);
+                    $count -= $to_remove;
+                    $die_count = self::getGameStateValue("patrolDieCount$floor");
+                    if ($die_count < 6) {
+                        self::setGameStateValue("patrolDieCount$floor", $die_count + 1);
+                    }
                 }
-            }
-            $patrol_entrance = $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', 16 - $count);
-            self::notifyAllPlayers('nextPatrol', '', array(
-                'floor' => $floor,
-                'cards' => $this->cards->getCardsInLocation($patrol.'_discard'),
-                'top' => $patrol_entrance
-            ));
-            $tile_id = $this->findTileOnFloor($floor, $patrol_entrance['type_arg'] - 1)['id'];
+                $patrol_entrance = $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', 16 - $count);
+                self::notifyAllPlayers('nextPatrol', '', array(
+                    'floor' => $floor,
+                    'cards' => $this->cards->getCardsInLocation($patrol.'_discard'),
+                    'top' => $patrol_entrance
+                ));
+                $tile_id = $this->findTileOnFloor($floor, $patrol_entrance['type_arg'] - 1)['id'];
+            } while($tile_id == $guard_token['location_arg']);
         }
         $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
         $this->moveToken($patrol_token['id'], 'tile', $tile_id, TRUE);
@@ -670,13 +672,27 @@ SQL;
         }
     }
 
-    function deductStealth($player_id, $amount = 1) {
+    function decrementPlayerStealth($player_id, $amount = 1) {
         self::DbQuery("UPDATE player SET player_stealth_tokens = player_stealth_tokens - $amount WHERE player_id = '$player_id'");
         $players = self::loadPlayersBasicInfos();
         self::notifyAllPlayers('message', clienttranslate( '${player_name} ${action} one stealth' ), array(
             'action' => $amount < 0 ? 'gained' : 'lost',
             'player_name' => $players[$player_id]['player_name']
         ));
+    }
+
+    function deductTileStealth($tile_id) {
+        $player_tokens = $this->tokens->getCardsOfTypeInLocation('player', null, 'tile', $tile_id);
+        $tile_stealth = $this->tokens->getCardsOfTypeInLocation('stealth', null, 'tile', $tile_id);
+        foreach ($player_tokens as $token) {
+            if (count($tile_stealth) > 0) {
+                // TODO: pick which players
+                $stealth_token = array_shift($tile_stealth);
+                $this->tokens->moveCard($stealth_token['id'], 'deck');
+            } else {
+                $this->decrementPlayerStealth($token['type_arg']);
+            }
+        }
     }
 
     function getPlayerStealth($player_id) {
@@ -718,8 +734,7 @@ SQL;
             if ($this->getPlayerCharacter($current_player_id, 'acrobat') && $state['name'] != 'moveGuard') {
                 self::setGameStateValue('acrobatEnteredGuardTile', TRUE);
             } else {
-                // TODO: Deduct stealth from each player in tile
-                $this->deductStealth($current_player_id);
+                $this->deductTileStealth($player_tile['id']);
             }
             return;
         }
@@ -730,16 +745,14 @@ SQL;
             (($is_guard_tile && $player_tile['type'] == 'foyer') ||
                 ($is_player_tile && ($player_tile['type'] == 'foyer' || $tiara)));
         if ($is_foyer) {
-            // TODO: Deduct stealth from each player in tile?
-            $this->deductStealth($current_player_id);
+            $this->deductTileStealth($player_tile['id']);
             return;
         }
 
         if ($player_tile['type'] == 'atrium') {
             if (($is_player_tile && $this->atriumGuards($player_tile)) ||
                     ($is_guard_tile && $guard_tile['location_arg'] == $player_tile['location_arg'])) {
-                // TODO: Deduct stealth from each player in tile
-                $this->deductStealth($current_player_id);
+                $this->deductTileStealth($player_tile['id']);
             }
             
             return;
@@ -890,7 +903,7 @@ SQL;
             if ($type == 'cursed-goblet') {
                 $stealth = $this->getPlayerStealth($current_player_id);
                 if ($stealth > 0) {
-                    $this->deductStealth($current_player_id);
+                    $this->decrementPlayerStealth($current_player_id);
                 }
             }
             $this->notifyPlayerHand($current_player_id);
@@ -1261,7 +1274,7 @@ SQL;
             $tile = $this->getPlayerTile($player_id);
             $player_tokens = $this->tokens->getCardsOfTypeInLocation('player', null, 'tile', $tile['id']);
             foreach ($player_tokens as $token) {
-                $this->deductStealth($token['type_arg'], -1); // Give them back one
+                $this->decrementPlayerStealth($token['type_arg'], -1); // Give them back one
             }
         } elseif($type == 'rollerskates') {
             self::incGameStateValue('actionsRemaining', 2);
@@ -1385,11 +1398,13 @@ SQL;
             $this->cards->pickCard('tools_deck', $player_id);
             $this->notifyPlayerHand($player_id);
         } elseif ($type == 'keycode-change') {
-            // TODO: Check for keypad vs safe
-            $this->clearTileTokens('open');
+            $safes = $this->tiles->getCardsOfType('keypad');
+            foreach ($safes as $tile_id => $safe) {
+                $this->clearTileTokens('open', $tile_id);    
+            }
         } elseif ($type == 'lampshade') {
             $player_token = $this->getPlayerToken($player_id);
-            $this->deductStealth($player_id, -1); // Give them back one
+            $this->decrementPlayerStealth($player_id, -1); // Give them back one
         } elseif($type == 'lost-grip') {
             $player_token = $this->getPlayerToken($player_id);
             $tile = $this->getPlayerTile($player_id, $player_token);
@@ -2012,7 +2027,7 @@ SQL;
         self::setGameStateValue('invisibleSuitActive', 0);
         self::setGameStateValue('hawkAbilityUsed', 0);
         if (self::getGameStateValue('acrobatEnteredGuardTile')) {
-            $this->deductStealth($current_player_id);
+            $this->decrementPlayerStealth($current_player_id);
         }
         self::setGameStateValue('acrobatEnteredGuardTile', 0);
         $this->gamestate->nextState( 'moveGuard' );
