@@ -43,11 +43,12 @@ class burglebros extends Table
             'patrolDieCount2' => 17,
             'patrolDieCount3' => 18,
             'laboratoryTileEntered' => 19,
-            'invisibleSuitActive' => 20,
+            'invisibleSuitActive' => 20, 
             'empPlayer' => 21,
             'cardChoice' => 22,
             'hawkAbilityUsed' => 23,
             'acrobatEnteredGuardTile' => 24,
+            'tileChoice' => 25
         ) ); 
 
         $this->cards = self::getNew( "module.common.deck" );
@@ -110,6 +111,7 @@ class burglebros extends Table
         self::setGameStateInitialValue( 'cardChoice', 0 );
         self::setGameStateInitialValue( 'hawkAbilityUsed', 0 );
         self::setGameStateInitialValue( 'acrobatEnteredGuardTile', 0 );
+        self::setGameStateInitialValue( 'tileChoice', 0 );
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -1076,6 +1078,7 @@ SQL;
             return TRUE;
         } else {
             $this->triggerAlarm($tile, TRUE);
+            return FALSE;
         }
     }
 
@@ -1105,6 +1108,7 @@ SQL;
         $actions_remaining = $context != 'action' ? 1 : self::getGameStateValue('actionsRemaining');
         $cancel_move = false;
         $tile_choice = false;
+        $tile_choice_id = $id;
         $player_id = $player_token['type_arg'];
 
         $action_penalty = $this->getGemstonePenalty($player_id, $tile);
@@ -1171,6 +1175,7 @@ SQL;
                 $motion_entered = self::getGameStateValue('motionTileEntered');
                 if ($motion_entered & $motion_bit) {
                     $tile_choice = $this->hackOrTrigger($player_tile);
+                    $tile_choice_id = $player_tile['id'];
                 }
             }
         
@@ -1181,7 +1186,7 @@ SQL;
         }
         return array(
             'perform_move' => !$cancel_move,
-            'tile_choice' => $tile_choice
+            'tile_choice' => $tile_choice ? $tile_choice_id : FALSE
         );
     }
 
@@ -1603,7 +1608,7 @@ SQL;
 
     function handleSelectTileChoice($selected) {
         $player_id = self::getCurrentPlayerId();
-        $tile = $this->getPlayerTile($player_id);
+        $tile = $this->tiles->getCard(self::getGameStateValue('tileChoice'));
         $type = $tile['type'];
         if ($selected == 0) { // trigger
             $this->triggerAlarm($tile);
@@ -1734,6 +1739,7 @@ SQL;
         self::checkAction('move');
         $tile_choice = $this->performMove($tile_id);
         if ($tile_choice) {
+            self::setGameStateValue('tileChoice', $tile_choice);
             $this->gamestate->nextState('tileChoice');
         } else {
             $this->nextAction();
@@ -1841,6 +1847,7 @@ SQL;
         // TODO: Buddy system didn't go into correct state
         $tile_choice = $this->handleSelectCardChoice($type, $id);
         if ($tile_choice) {
+            self::setGameStateValue('tileChoice', $tile_choice);
             $this->gamestate->nextState('tileChoice');
         } else {
             // Don't run normal action decrease logic
@@ -1861,6 +1868,7 @@ SQL;
     function selectTileChoice($selected) {
         self::checkAction('selectTileChoice');
         $this->handleSelectTileChoice($selected);
+        self::setGameStateValue('tileChoice', 0);
         $this->nextAction();
     }
 
@@ -1882,6 +1890,7 @@ SQL;
                 self::setGameStateValue('cardChoice', $event_card['id']);
                 $this->gamestate->nextState('cardChoice');
             } elseif ($event_result['tile_choice']) {
+                self::setGameStateValue('tileChoice', $event_result['tile_choice']);
                 $this->gamestate->nextState('tileChoice');
             } else {
                 $this->gamestate->nextState('endTurn');
@@ -1952,12 +1961,20 @@ SQL;
 
     function argTileChoice() {
         $player_id = self::getActivePlayerId();
-        $args = $this->gatherCurrentData($player_id);
-        $player_tile = $args['tile'];
-        $args['tile_name'] = $player_tile['type'];
-        $args['can_hack'] = $this->canHack($player_tile);
+        $player_token = $this->getPlayerToken($player_id);
+        $tile = $this->tiles->getCard(self::getGameStateValue('tileChoice'));
+        $args = array(
+            'escape' => false,
+            'peekable' => array(),
+            'player_token' => $player_token,
+            'tile' => $tile,
+            'floor' => $tile['location'][5],
+            'actions_remaining' => self::getGameStateValue('actionsRemaining')
+        );
+        $args['tile_name'] = $tile['type'];
+        $args['can_hack'] = $this->canHack($tile);
         $args['choice_description'] = 'do something';
-        $args['can_use_extra_action'] = $this->canUseExtraAction($player_id, $player_tile);
+        $args['can_use_extra_action'] = $this->canUseExtraAction($player_id, $tile);
 
         return $args;
     }
