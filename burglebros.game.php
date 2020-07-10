@@ -134,7 +134,6 @@ class burglebros extends Table
         self::DbQuery($sql.implode($values, ','));
 
         $this->setupTiles();
-        $this->flipTile(1, 6);
 
         // Guards
         $tokens = array ();
@@ -165,19 +164,9 @@ class burglebros extends Table
         }
 
         // Activate first player (which is in general a good idea :) )
-        $current_player_id = $this->activeNextPlayer();
+        $this->activeNextPlayer();
 
-        // Move first player token to entrance
-        $flipped = $this->getFlippedTiles(1);
-        $entrance = array_keys($flipped)[0];
-        $this->handleTilePeek($this->tiles->getCard($entrance));
-        self::setGameStateInitialValue( 'entranceTile', $entrance );
-        $hand = $this->tokens->getPlayerHand($current_player_id);
-        $current_player_token = array_shift($hand);
-        $this->tokens->moveCard($current_player_token['id'], 'tile', $entrance);
-        $this->pickTokensForTile('stairs', $entrance);
-
-        // Move guard and patrol
+        // Move starting guard
         $guard_token = array_values($this->tokens->getCardsOfType('guard', 1))[0];
         $this->setupPatrol($guard_token, 1);
 
@@ -269,6 +258,27 @@ class burglebros extends Table
     /*
         In this space, you can put any utility methods useful for your game logic
     */
+    function chooseStartingTile($tile_id) {
+        $entrance = $this->tiles->getCard($tile_id);
+        $floor = $entrance['location'][5];
+        if ($floor != 1) {
+            throw new BgaException(self::_("Starting tile must be on the first floor"));
+        }
+        $this->handleTilePeek($entrance);
+        $this->flipTile( $floor, $entrance['location_arg'] );
+
+        // Move first player token to entrance
+        self::setGameStateInitialValue( 'entranceTile', $tile_id );
+        $hand = $this->tokens->getPlayerHand(self::getCurrentPlayerId());
+        $current_player_token = array_shift($hand);
+        $this->moveToken($current_player_token['id'], 'tile', $tile_id);
+        $this->pickTokensForTile('stairs', $tile_id);
+
+        $this->nextPatrol(1);
+
+        $this->gamestate->nextState();
+    }
+
     function createDecks($types, $info) {
         // Create cards
         foreach ( $types as $type => $desc ) {
@@ -486,7 +496,6 @@ SQL;
                 break;
             }   
         }
-        $this->nextPatrol($floor);
     }
 
     function findTileOnFloor($floor, $location_arg) {
@@ -1381,6 +1390,7 @@ SQL;
                 $guard_token = array_values($this->tokens->getCardsOfType('guard', $floor + 1))[0];
                 if ($guard_token['location'] == 'deck') {
                     $this->setupPatrol($guard_token, $floor + 1);
+                    $this->nextPatrol($floor + 1);
                 }
             }
         } elseif($type == 'go-with-your-gut') {
@@ -1688,9 +1698,10 @@ SQL;
         $this->flipTile( $floor, $to_move['location_arg'] );
         $invisible_suit = self::getGameStateValue('invisibleSuitActive') == 1;
         if ($move_result['perform_move']) {
-            $guard_token = array_values($this->tokens->getCardsOfType('guard', $to_move['location'][5]))[0];
+            $guard_token = array_values($this->tokens->getCardsOfType('guard', $floor))[0];
             if ($guard_token['location'] == 'deck') {
-                $this->setupPatrol($guard_token, $to_move['location'][5]);
+                $this->setupPatrol($guard_token, $floor);
+                $this->nextPatrol($floor);
             }
             self::setGameStateValue('acrobatEnteredGuardTile', 0);
             // TODO: Refetch player tile in case token moved by side effect
@@ -1960,6 +1971,12 @@ SQL;
         );
     }    
     */
+    function argStartingTile() {
+        return array(
+            'floor' => 1
+        );
+    }
+
     function argPlayerTurn() {
         // Can't get current player here for some reason
         return $this->gatherCurrentData(self::getActivePlayerId());

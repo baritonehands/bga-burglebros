@@ -37,9 +37,17 @@
             $this->view = "burglebros_burglebros";
             self::trace( "Complete reinitialization of board game" );
       }
-  	} 
+    } 
+    
+    public function chooseStartingTile() {
+      self::setAjaxMode();
+      
+      $tile_id = self::getArg( "id", AT_posint, true );
+      $this->game->chooseStartingTile($tile_id);
+
+      self::ajaxResponse();
+    }
   	
-  	// TODO: defines your action entry points there
     public function peek() {
       self::setAjaxMode();
       

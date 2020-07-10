@@ -685,6 +685,8 @@ function (dojo, declare) {
                     selected_id = evt.target.id.substring(evt.target.id.lastIndexOf('_') + 1);
                 }
                 this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: selected_type, selected_id: selected_id }, this, console.log, console.error);
+            } else if(this.gamedatas.gamestate.name == 'startingTile' && this.checkAction('chooseStartingTile')) {
+                this.ajaxcall('/burglebros/burglebros/chooseStartingTile.html', { lock: true, id: id }, this, console.log, console.error);
             } else {
                 var intent = this.intent || 'move';
                 if (this.checkAction(intent)) {

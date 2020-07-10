@@ -58,10 +58,20 @@ $machinestates = array(
         'description' => '',
         'type' => 'manager',
         'action' => 'stGameSetup',
-        'transitions' => array( '' => 9 )
+        'transitions' => array( '' => 8 )
     ),
     
     // Note: ID=2 => your first state
+
+    8 => array(
+        'name' => 'startingTile',
+        'description' => clienttranslate('${actplayer} must choose a starting tile'),
+        'descriptionmyturn' => clienttranslate('${you} must choose a starting tile'),
+        'type' => 'activeplayer',
+        'args' => 'argStartingTile',
+        'possibleactions' => array( 'chooseStartingTile' ),
+        'transitions' => array( '' => 9 )
+    ),
 
     9 => array(
         'name' => 'playerTurn',
