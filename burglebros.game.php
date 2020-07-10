@@ -1132,6 +1132,7 @@ SQL;
         $tile_choice = false;
         $tile_choice_id = $id;
         $player_id = $player_token['type_arg'];
+        $crowbar = $this->tokensInTile('crowbar', $id);
 
         $action_penalty = $this->getGemstonePenalty($player_id, $tile);
         if ($action_penalty > 0 && $actions_remaining < 2) {
@@ -1139,28 +1140,36 @@ SQL;
         }
 
         if ($type == 'deadbolt') {
-            $people = $this->getPlacedTokens(array('player', 'guard'));
-            if (!isset($people[$id]) || count($people[$id]) == 0) {
-                if ($actions_remaining < (3 + $action_penalty)) {
-                    if ($flipped_this_turn) {
-                        $cancel_move = true;
+            if (!$crowbar) {
+                $people = $this->getPlacedTokens(array('player', 'guard'));
+                if (!isset($people[$id]) || count($people[$id]) == 0) {
+                    if ($actions_remaining < (3 + $action_penalty)) {
+                        if ($flipped_this_turn) {
+                            $cancel_move = true;
+                        } else {
+                            throw new BgaUserException(self::_('You do not have enough actions to enter the Deadbolt'));
+                        }
                     } else {
-                        throw new BgaUserException(self::_('You do not have enough actions to enter the Deadbolt'));
+                        self::incGameStateValue('actionsRemaining', -2); // One is deducted already
                     }
-                } else {
-                    self::incGameStateValue('actionsRemaining', -2); // One is deducted already
                 }
             }
         } elseif ($type == 'keypad') {
-            $cancel_move = !$this->attemptKeypadRoll($tile);
+            if (!$crowbar) {
+                $cancel_move = !$this->attemptKeypadRoll($tile);
+            }
         } elseif ($type == 'fingerprint') {
-            $tile_choice = $this->hackOrTrigger($tile);
+            if (!$crowbar) {
+                $tile_choice = $this->hackOrTrigger($tile);
+            }
         } elseif ($type == 'laser') {
-            if (!$this->getPlayerLoot('mirror', $player_id) && !$this->hackerDoesNotTrigger($tile)) {
+            if (!$crowbar && !$this->getPlayerLoot('mirror', $player_id) && !$this->hackerDoesNotTrigger($tile)) {
                 $tile_choice = $actions_remaining >= (2 + $action_penalty) || $this->hackOrTrigger($tile);
             }
         } elseif($type == 'motion') {
-            $this->setTileBit('motionTileEntered', $id);
+            if (!$crowbar) {
+                $this->setTileBit('motionTileEntered', $id);
+            }
         } elseif($type == 'laboratory') {
             $prev_value = $this->setTileBit('laboratoryTileEntered', $id);
             if (!$prev_value) {
@@ -1168,11 +1177,13 @@ SQL;
                 $this->notifyPlayerHand($player_id);
             }
         } elseif($type == 'detector') {
-            $hand = $this->cards->getPlayerHand($player_id);
-            foreach ($hand as $card_id => $card) {
-                if ($card['type'] == 1 || $card['type'] == 2) {
-                    $this->triggerAlarm($tile);
-                    break;
+            if (!$crowbar) {
+                $hand = $this->cards->getPlayerHand($player_id);
+                foreach ($hand as $card_id => $card) {
+                    if ($card['type'] == 1 || $card['type'] == 2) {
+                        $this->triggerAlarm($tile);
+                        break;
+                    }
                 }
             }
         } elseif ($type == 'walkway' && $flipped_this_turn) {
@@ -1185,7 +1196,9 @@ SQL;
                 $this->flipTile($floor - 1, $lower_tile['location_arg']);
             }
         } elseif ($type == 'thermo' && $this->getPlayerLoot('isotope', $player_id)) {
-            $this->triggerAlarm($tile);
+            if (!$crowbar) {
+                $this->triggerAlarm($tile);
+            }
         }
 
         if (!$cancel_move) {
@@ -1238,7 +1251,9 @@ SQL;
 SQL;
         $camera_tiles = self::getObjectListFromDB($sql);
         foreach ($camera_tiles as $tile) {
-            $this->triggerAlarm($tile);
+            if (!$this->tokensInTile('crowbar', $tile['id'])) {
+                $this->triggerAlarm($tile);
+            }
         }
     }
 
@@ -1534,8 +1549,7 @@ SQL;
         }
     }
 
-    function handleSelectCardChoice($selected_type, $selected_id) {
-        $card = $this->cards->getCard(self::getGameStateValue('cardChoice'));
+    function handleSelectCardChoice($card, $selected_type, $selected_id) {
         $type = $this->getCardType($card);
         $tile_choice = FALSE;
         if ($type == 'blueprints') {
@@ -1550,6 +1564,9 @@ SQL;
         } elseif($type == 'buddy-system') {
             $this->validateSelection('token', $selected_type);
             $other_token = $this->tokens->getCard($selected_id);
+            if ($other_token['type'] != 'player') {
+                throw new BgaUserException(self::_("Must choose a player token"));
+            }
             $player_token = $this->getPlayerToken(self::getCurrentPlayerId());
             $this->moveToken($other_token['id'], 'tile', $player_token['location_arg']);
         } elseif ($type == 'crowbar') {
@@ -1560,7 +1577,6 @@ SQL;
                 throw new BgaUserException(self::_('Tile is not adjacent'));
             }
             $this->pickTokensForTile('crowbar', $tile['id']);
-            // TODO: Handle crowbar token on tiles
         } elseif ($type == 'donuts') {
             $this->validateSelection('tile', $selected_type);
             $tile = $this->tiles->getCard($selected_id);
@@ -1870,14 +1886,18 @@ SQL;
 
     function selectCardChoice($type, $id) {
         self::checkAction('selectCardChoice');
-        // TODO: Buddy system didn't go into correct state
-        $tile_choice = $this->handleSelectCardChoice($type, $id);
+        $card = $this->cards->getCard(self::getGameStateValue('cardChoice'));
+        $tile_choice = $this->handleSelectCardChoice($card, $type, $id);
         if ($tile_choice) {
             self::setGameStateValue('tileChoice', $tile_choice);
             $this->gamestate->nextState('tileChoice');
         } else {
-            // Don't run normal action decrease logic
-            $this->gamestate->nextState('nextAction');
+            if ($card['type'] == 3) {
+                $this->gamestate->nextState('endTurn');    
+            } else {
+                // Don't run normal action decrease logic
+                $this->gamestate->nextState('nextAction');
+            }
         }
     }
 
@@ -2038,7 +2058,7 @@ SQL;
         $player_token = $this->getPlayerToken($current_player_id);
         $player_tile = $this->getPlayerTile($current_player_id, $player_token);
         $type = $player_tile['type'];
-        if ($type == 'thermo') {
+        if ($type == 'thermo' && !$this->tokensInTile('crowbar', $player_tile['id'])) {
             $this->triggerAlarm($player_tile);
         }
         self::setGameStateValue('invisibleSuitActive', 0);
