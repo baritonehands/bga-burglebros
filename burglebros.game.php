@@ -868,9 +868,9 @@ SQL;
         return $tokens;
     }
 
-    function getPlacedTokens($types) {
+    function getPlacedTokens($types, $location='tile') {
         $types_arg = "('".implode($types,"','")."')";
-        $rows = self::getObjectListFromDB("SELECT card_location_arg id, card_id token_id FROM token WHERE card_type in $types_arg AND card_location = 'tile'");
+        $rows = self::getObjectListFromDB("SELECT card_location_arg id, card_id token_id FROM token WHERE card_type in $types_arg AND card_location = '$location'");
         $result = array();
         foreach ($rows as $row) {
             if (!isset($result[$row['id']])) {
@@ -1006,13 +1006,17 @@ SQL;
         $this->moveTokens(array($id), $location, $location_arg, $synchronous);
     }
 
-    function pickTokensForTile($type, $tile_id, $nbr = 1) {
+    function pickTokens($type, $to_location='tile', $to_location_arg=null, $nbr = 1) {
         $token_ids = array_keys($this->tokens->getCardsOfTypeInLocation($type, null, 'deck'));
         $ids = array();
         for ($i=0; $i < $nbr; $i++) { 
             $ids [] = $token_ids[$i];
         }
-        $this->moveTokens($ids, 'tile', $tile_id);
+        $this->moveTokens($ids, $to_location, $to_location_arg);
+    }
+
+    function pickTokensForTile($type, $tile_id, $nbr = 1) {
+        $this->pickTokens($type, 'tile', $tile_id, $nbr);
     }
 
     function clearTileTokens($type, $tile_id=null) {
@@ -1090,11 +1094,16 @@ SQL;
     }
 
     function canHack($tile) {
+        $hacker2 = $this->getPlacedTokens(array('hack'),'card');
+        if (count($hacker2) > 0) {
+            return TRUE;
+        }
+
         $type = $tile['type'];
         $tokens = $this->getPlacedTokens(array('hack'));
         $tiles = $this->tiles->getCardsOfType("$type-computer");
-        if (count($tiles) == 0) {
-            return false;
+        if (count($tokens) == 0) {
+            return FALSE;
         }
         $computer_tile = array_values($tiles)[0];
         return isset($tokens[$computer_tile['id']]);
@@ -1120,7 +1129,7 @@ SQL;
             return FALSE;
         }
 
-        $type_arg = $this->getCardTypeForName(0, 'hacker');
+        $type_arg = $this->getCardTypeForName(0, 'hacker1');
         $hackers = $this->cards->getCardsOfTypeInLocation(0, $type_arg, 'hand');
         if (count($hackers) > 0) {
             $hacker = array_values($hackers)[0];
@@ -1755,8 +1764,15 @@ SQL;
             }
             $tokens = $this->getPlacedTokens(array('hack'));
             $computer_tile = array_values($this->tiles->getCardsOfType("$type-computer"))[0];
-            $to_move = $tokens[$computer_tile['id']][0];
+            if (isset($tokens[$computer_tile['id']])) {
+                // Use computer first
+                $to_move = $tokens[$computer_tile['id']][0];
+            } else {
+                // Otherwise use hacker2's token
+                $to_move = array_values($this->getPlacedTokens(array('hack'), 'card'))[0][0];
+            }
             $this->moveToken($to_move, 'deck');
+            
         } elseif($selected == 2) { // Extra action
             if (!$this->canUseExtraAction($player_id, $tile)) {
                 throw new BgaUserException(self::_('Cannot use an extra action to enter this tile'));
@@ -1977,6 +1993,7 @@ SQL;
             } elseif($card['type'] == 0) {
                 $type = $this->getCardType($card);
                 self::setGameStateValue('characterAbilityUsed', TRUE);
+                // TODO: hacker2 not taking action away
                 if (in_array($type, array('hacker2', 'rook1', 'rook2', 'spotter1', 'spotter2'))) {
                     $this->nextAction(); // Spent action
                 } else if($type == 'peterman2') {
@@ -2030,7 +2047,11 @@ SQL;
             self::setGameStateValue('cardChoice', $character['id']);
             $this->gamestate->nextState('cardChoice');
         } else if($type == 'hacker2') {
-            throw new BgaUserException(self::_('TODO: Not implemented'));
+            $character = $this->getPlayerCharacter($current_player_id);
+            if (count($this->tokens->getCardsOfTypeInLocation('hack', null, 'card', $character['id'])) > 0) {
+                throw new BgaUserException(self::_('You already have a hack token'));
+            }
+            $this->pickTokens('hack', 'card', $character['id']);
         } else if($type == 'raven2') {
             $crow = array_values($this->tokens->getCardsOfType('crow'))[0];
             $player_tile = $this->getPlayerTile($current_player_id);

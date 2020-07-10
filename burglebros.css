@@ -263,6 +263,13 @@
     z-index: 1;
 }
 
+.card-zone {
+    position: absolute;
+    left: 10px;
+    bottom: 12px;
+    width: 100px;
+}
+
 .wall {
     position: absolute;
     background-color: #deb887;

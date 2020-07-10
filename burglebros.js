@@ -82,6 +82,7 @@ function (dojo, declare) {
                 
                 hand.create( this, $(handDivId), this.cardwidth, this.cardheight);
                 hand.image_items_per_row = 2;
+                hand.onItemCreate = dojo.hitch(this, 'createCardZone', hand);
                 if (me) {
                     hand.setSelectionMode(1);
                     hand.setSelectionAppearance('class');
@@ -148,7 +149,7 @@ function (dojo, declare) {
                 var token = gamedatas.player_tokens[token_id];
                 this.createPlayerToken(token_id, token.type_arg);
                 if (token.location === 'tile') {
-                    this.moveToken('player', token_id, token.location_arg);
+                    this.moveToken('player', token);
                 }
             }
 
@@ -156,7 +157,7 @@ function (dojo, declare) {
                 var token = gamedatas.guard_tokens[token_id];
                 this.createGuardToken(token_id);
                 if (token.location === 'tile') {
-                    this.moveToken('guard', token_id, token.location_arg);
+                    this.moveToken('guard', token);
                 }
             }
 
@@ -164,7 +165,7 @@ function (dojo, declare) {
                 var token = gamedatas.patrol_tokens[token_id];
                 this.createPatrolToken(token_id, token.die_num);
                 if (token.location === 'tile') {
-                    this.moveToken('patrol', token_id, token.location_arg);
+                    this.moveToken('patrol', token);
                 }
             }
 
@@ -172,15 +173,15 @@ function (dojo, declare) {
                 var token = gamedatas.crack_tokens[token_id];
                 this.createSafeToken(token_id, token.die_num);
                 if (token.location === 'tile') {
-                    this.moveToken('crack', token_id, token.location_arg);
+                    this.moveToken('crack', token);
                 }
             }
 
             for (var token_id in gamedatas.generic_tokens) {
                 var token = gamedatas.generic_tokens[token_id];
                 this.createGenericToken(token);
-                if (token.location === 'tile') {
-                    this.moveToken('generic', token_id, token.location_arg);
+                if (token.location !== 'deck') {
+                    this.moveToken('generic', token);
                 }
             }
 
@@ -394,6 +395,20 @@ function (dojo, declare) {
             this.zones[zoneId] = zone;
         },
 
+        createCardZone: function(stock, card_div, card_type_id, card_div_id) {
+            var card = stock.getFirstItemOfType(card_type_id);
+            var card_type = Math.floor(card_type_id / 100);
+            if (card_type === 0) { // Character
+                dojo.place('<div id="card_' + card.id + '_tokens" class="card-zone"></div>', card_div_id);
+
+                var zone = new ebg.zone();
+                var zoneId = 'card_' + card.id + '_tokens';
+                zone.create( this, zoneId, 24, 24 );
+                zone.setPattern( 'grid' );
+                this.zones[zoneId] = zone;
+            }
+        },
+
         playTileOnTable : function(floor, tile) {
             var div_id = 'tile_' + tile.id,
                 preview_div_id = 'tile_' + tile.id + '_preview';
@@ -464,16 +479,16 @@ function (dojo, declare) {
             }), 'token_container');
         },
 
-        moveToken: function(token_type, id, tile_id) {
-            var zoneId = 'tile_' + tile_id + '_tokens';
-            this.zones[zoneId].placeInZone(token_type + '_token_' + id);
+        moveToken: function(token_type, token) {
+            var zoneId = token.location + '_' + token.location_arg + '_tokens';
+            this.zones[zoneId].placeInZone(token_type + '_token_' + token.id);
         },
 
         removeToken: function(token_type, id) {
             var deck = this.gamedatas[token_type + '_tokens'];
             var token = deck[id];
-            if (token && token.location === 'tile') {
-                var zoneId = 'tile_' + token.location_arg + '_tokens';
+            if (token && token.location !== 'deck') {
+                var zoneId = token.location + '_' + token.location_arg + '_tokens';
                 this.zones[zoneId].removeFromZone(token_type + '_token_' + id, token_type === 'generic');
             }
         },
@@ -899,11 +914,11 @@ function (dojo, declare) {
                 if(isGeneric) {
                     delete this.gamedatas.generic_tokens[tokenId];
                 }
-                if (token.location === 'tile') {
+                if (token.location !== 'deck') {
                     if (isGeneric) {
                         this.createGenericToken(token);
                     }
-                    this.moveToken(type, token.id, token.location_arg);
+                    this.moveToken(type, token);
                     this.gamedatas[type + '_tokens'][tokenId] = token;
                 }
             }
