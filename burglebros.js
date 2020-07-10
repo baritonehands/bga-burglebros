@@ -97,7 +97,7 @@ function (dojo, declare) {
                         // Build card type id
                         var card = typeInfo.cards[index];
                         var cardTypeId = this.getCardUniqueId(card.type, card.index);
-                        var cardIndex = card.type == 0 ? index * 2 : card.index;
+                        var cardIndex = card.type == 0 ? card.index - 1 : card.index;
                         hand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/' + typeInfo.name + '.jpg', cardIndex);
                     }
                 }
@@ -305,6 +305,17 @@ function (dojo, declare) {
                             if (floor > 1) {
                                 this.addActionButton('button_down', _('Down'), dojo.hitch(this, 'handleCardChoiceButton', floor - 1));
                             }
+                        } else if(this.isCardChoice('peterman2')) {
+                            var floor = this.currentFloor();
+                            // XY, X = 0 is add, X = 1 is roll, Y is floor
+                            if (floor < 3) {
+                                this.addActionButton('button_add_die_up', _('Add Safe Die (Up)'), dojo.hitch(this, 'handleCardChoiceButton', floor + 1));
+                                this.addActionButton('button_roll_dice_up', _('Roll Safe Dice (Up)'), dojo.hitch(this, 'handleCardChoiceButton', floor + 11));
+                            }
+                            if (floor > 1) {
+                                this.addActionButton('button_add_die_down', _('Add Safe Die (Down)'), dojo.hitch(this, 'handleCardChoiceButton', floor - 1));
+                                this.addActionButton('button_roll_dice_down', _('Roll Safe Dice (Down)'), dojo.hitch(this, 'handleCardChoiceButton', floor + 9));
+                            }
                         }
                         if (this.canCancelCardChoice()) {
                             this.addActionButton('button_cancel', _('Cancel'), 'handleCancelCardChoice');
@@ -504,21 +515,26 @@ function (dojo, declare) {
 
         addCharacterAction: function() {
             var character = this.gamedatas.gamestate.args.character.name;
-            var title = null;
-            if(character === 'hawk') {
-                title = 'Hawk: X-Ray';
-            } else if (character === 'juicer') {
-                title = 'Juicer: Crybaby';
-            } else if(character === 'raven') {
-                title = 'Raven: Distract';
-            } else if(character === 'rook') {
-                title = 'Rook: Orders';
-            } else if(character === 'spotter') {
-                title = 'Spotter: Clairvoyance';
+
+            typeToTitle = {
+                acrobat2: 'Acrobat: Climb Window',
+                hacker2: 'Hacker: Laptop',
+                hawk1: 'Hawk: X-Ray',
+                hawk2: 'Hawk: Enhance',
+                juicer1: 'Juicer: Crybaby',
+                juicer2: 'Juicer: Reroute',
+                peterman2: 'Peterman: Drill',
+                raven1: 'Raven: Distract',
+                raven2: 'Raven: Disrupt',
+                rigger2: 'Rigger: Tinker',
+                rook1: 'Rook: Orders',
+                rook2: 'Rook: Orders',
+                spotter1: 'Spotter: Clairvoyance',
+                spotter2: 'Spotter: Precognition'
             }
 
-            if (title) {
-                this.addActionButton('button_character', _(title), 'handleCharacterAction');
+            if (typeToTitle[character]) {
+                this.addActionButton('button_character', _(typeToTitle[character]), 'handleCharacterAction');
             }
         },
 
@@ -637,7 +653,7 @@ function (dojo, declare) {
                     handStock.addToStockWithId(cardTypeId, cardId);
 
                     var typeInfo = gamedatas.card_types[card.type];
-                    var index = card.type == 0 ? (card.type_arg - 1) * 2 : card.type_arg;
+                    var index = card.type == 0 ? card.type_arg - 1 : card.type_arg;
                     var bg_row = Math.floor(index / 2) * -100;
                     var bg_col = (index % 2) * -100;
                     var divId = handStock.getItemDivId(cardId);
