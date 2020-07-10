@@ -515,8 +515,6 @@ SQL;
 
     function nextAction($action_cost = 1) {
         $actions_remaining = self::incGameStateValue('actionsRemaining', -$action_cost);
-        $current = $this->gatherCurrentData(self::getCurrentPlayerId());
-        $this->notifyAllPlayers('currentState', '', array('current' => $current));
         if ($actions_remaining == 0) {
             $this->gamestate->nextState('endTurn');
         } else {
@@ -579,6 +577,9 @@ SQL;
             return ($same_floor && $adjacent) || $this->peekholeIsAdjacent($tile, $other_tile);
         } elseif($variant == 'hawk1') {
             return $this->hawkIsAdjacent($detail);
+        } elseif($variant == 'acrobat2') {
+            return $this->acrobat2IsAdjacent($tile, $other_tile) ||
+                $this->acrobat2IsAdjacent($other_tile, $tile);
         } else {
             $current_player_id = self::getCurrentPlayerId();
             $painting = $this->getPlayerLoot('painting', $current_player_id);
@@ -644,6 +645,11 @@ SQL;
         return $detail['same_floor'] && $detail['adjacent'] && $detail['blocked'] &&
             $this->getPlayerCharacter(self::getActivePlayerId(), 'hawk1') && 
             !self::getGameStateValue('characterAbilityUsed');
+    }
+
+    function acrobat2IsAdjacent($to, $from) {
+        return $to['location'][5] + 1 == $from['location'][5] &&
+            $to['location_arg'] == $from['location_arg'];
     }
 
     function moveGuardDebug($floor) {
@@ -1164,7 +1170,7 @@ SQL;
     function handleTileMovement($tile, $player_tile, $player_token, $flipped_this_turn, $context) {
         $id = $tile['id'];
         $type = $tile['type'];
-        $actions_remaining = $context != 'action' ? 1 : self::getGameStateValue('actionsRemaining');
+        $actions_remaining = !in_array($context, array('action', 'acrobat2')) ? 1 : self::getGameStateValue('actionsRemaining');
         $cancel_move = false;
         $tile_choice = false;
         $tile_choice_id = $id;
@@ -1176,6 +1182,11 @@ SQL;
             throw new BgaUserException(self::_('Entering a tile with another player costs an additional action with the Gemstone'));
         }
 
+        if ($context == 'acrobat2') {
+            // No FAQ for this, I'm interpreting it as spend 3 actions to move + additional for the tile
+            $action_penalty += 2;
+        }
+        
         if ($type == 'deadbolt') {
             if (!$crowbar) {
                 $people = $this->getPlacedTokens(array('player', 'guard'));
@@ -1589,7 +1600,13 @@ SQL;
     function handleSelectCardChoice($card, $selected_type, $selected_id) {
         $type = $this->getCardType($card);
         $tile_choice = FALSE;
-        if ($type == 'blueprints') {
+        if($type == 'acrobat2') {
+            $this->validateSelection('button', $selected_type);
+            $tile = $this->getPlayerTile(self::getCurrentPlayerId());
+            $floor = $selected_id;
+            $other_tile = $this->findTileOnFloor($floor, $tile['location_arg']);
+            $this->performMove($other_tile['id'], 'acrobat2');
+        } else if ($type == 'blueprints') {
             $this->validateSelection('tile', $selected_type);
             $tile = $this->tiles->getCard($selected_id);
             $flipped = $this->getFlippedTiles($tile['location'][5]);
@@ -1778,7 +1795,7 @@ SQL;
         $floor = $to_move['location'][5];
         $flipped = $this->getFlippedTiles($floor);
 
-        if (!$this->isTileAdjacent($to_move, $player_tile, null, 'move')) {
+        if (!$this->isTileAdjacent($to_move, $player_tile, null, $context)) {
             throw new BgaUserException(self::_("Tile is not adjacent"));
         }
 
@@ -1964,6 +1981,9 @@ SQL;
                     $this->nextAction(); // Spent action
                 } else if($type == 'peterman2') {
                     $this->nextAction($id < 10 ? 2 : 1); // Spent 1 or 2 actions
+                } else if($type == 'acrobat2') {
+                    self::setGameStateValue('actionsRemaining', 0);
+                    $this->gamestate->nextState('endTurn');
                 } else {
                     $this->gamestate->nextState('nextAction'); // Free action
                 }
@@ -1999,13 +2019,32 @@ SQL;
         $used = self::getGameStateValue('characterAbilityUsed');
         if ($used && in_array($type, array('hawk1', 'hawk2', 'juicer2', 'rook1', 'spotter1', 'spotter2'))) {
             throw new BgaUserException(self::_('Character action can be used once per turn'));
+        } else if($type == 'acrobat2') {
+            $player_tile = $this->getPlayerTile($current_player_id);
+            if (in_array($player_tile['location_arg'], array(5, 6, 9, 10))) {
+                throw new BgaUserException(self::_('Must be on an outer tile'));
+            }
+            if(self::getGameStateValue('actionsRemaining') < 3) {
+                throw new BgaUserException(self::_('Must have at least 3 actions'));
+            }
+            self::setGameStateValue('cardChoice', $character['id']);
+            $this->gamestate->nextState('cardChoice');
         } else if($type == 'hacker2') {
             throw new BgaUserException(self::_('TODO: Not implemented'));
         } else if($type == 'raven2') {
             $crow = array_values($this->tokens->getCardsOfType('crow'))[0];
             $player_tile = $this->getPlayerTile($current_player_id);
             $this->moveToken($crow['id'], 'tile', $player_tile['id']);
-        } else if (in_array($type, array('acrobat2', 'hawk1', 'hawk2', 'juicer1', 'peterman2', 'raven1', 'rook1', 'spotter1', 'spotter2'))) {
+        } else if($type == 'rigger2') {
+            // TODO: Draw two pick one for rigger1/2
+            $stealth = $this->getPlayerStealth($current_player_id);
+            if ($stealth <= 0) {
+                throw new BgaUserException(self::_('You cannot discard a stealth'));
+            }
+            $this->decrementPlayerStealth($current_player_id);
+            $this->cards->pickCard('tools_deck', $current_player_id);
+            $this->notifyPlayerHand($current_player_id);
+        } else if (in_array($type, array('hawk1', 'hawk2', 'juicer1', 'peterman2', 'raven1', 'rook1', 'spotter1', 'spotter2'))) {
             self::setGameStateValue('cardChoice', $character['id']);
             $this->gamestate->nextState('cardChoice');
         } else {

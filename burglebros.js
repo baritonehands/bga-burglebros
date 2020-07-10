@@ -316,6 +316,14 @@ function (dojo, declare) {
                                 this.addActionButton('button_add_die_down', _('Add Safe Die (Down)'), dojo.hitch(this, 'handleCardChoiceButton', floor - 1));
                                 this.addActionButton('button_roll_dice_down', _('Roll Safe Dice (Down)'), dojo.hitch(this, 'handleCardChoiceButton', floor + 9));
                             }
+                        } else if(this.isCardChoice('acrobat2') && this.gamedatas.gamestate.args.actions_remaining >= 3) {
+                            var floor = this.currentFloor();
+                            if (floor < 3) {
+                                this.addActionButton('button_acrobat_up', _('Move Up'), dojo.hitch(this, 'handleCardChoiceButton', floor + 1));
+                            }
+                            if (floor > 1) {
+                                this.addActionButton('button_acrobat_down', _('Move Down'), dojo.hitch(this, 'handleCardChoiceButton', floor - 1));
+                            }
                         }
                         if (this.canCancelCardChoice()) {
                             this.addActionButton('button_cancel', _('Cancel'), 'handleCancelCardChoice');
