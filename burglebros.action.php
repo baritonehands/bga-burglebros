@@ -112,6 +112,12 @@
       self::ajaxResponse();
     }
 
+    public function characterAction() {
+      self::setAjaxMode();
+      $this->game->characterAction();
+      self::ajaxResponse();
+    }
+
     public function pass() {
       self::setAjaxMode();
       $this->game->pass();

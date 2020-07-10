@@ -189,5 +189,6 @@ $this->token_colors = array(
   'keypad' => '#DDA860',
   'stairs' => '#86939D',
   'thermal' => '#74B189',
-  'crowbar' => '#74B189'
+  'crowbar' => '#74B189',
+  'crow' => 'white'
 );

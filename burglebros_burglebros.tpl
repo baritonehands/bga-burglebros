@@ -106,7 +106,7 @@ var jstpl_player_token = '<div id="player_token_${token_id}" class="token" style
 
 var jstpl_guard_token = '<div id="guard_token_${token_id}" class="token" style="background-color: black;">G</div>';
 
-var jstpl_generic_token = '<div id="generic_token_${token_id}" class="token" style="background-color: ${token_color};">${token_letter}</div>';
+var jstpl_generic_token = '<div id="generic_token_${token_id}" class="token ${token_type}" style="background-color: ${token_color};">${token_letter}</div>';
 
 var jstpl_patrol_die = '<div id="patrol_token_${token_id}" class="token die patrol">${num_spaces}</div>';
 

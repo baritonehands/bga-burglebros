@@ -178,7 +178,7 @@ function (dojo, declare) {
 
             for (var token_id in gamedatas.generic_tokens) {
                 var token = gamedatas.generic_tokens[token_id];
-                this.createGenericToken(token_id, token.color, token.letter);
+                this.createGenericToken(token);
                 if (token.location === 'tile') {
                     this.moveToken('generic', token_id, token.location_arg);
                 }
@@ -293,6 +293,7 @@ function (dojo, declare) {
                         if (this.canHack()) {
                             this.addActionButton( 'button_hack' , _('Hack'), 'handleHack' );
                         }
+                        this.addCharacterAction();
                         this.addActionButton( 'button_pass', _('Pass'), 'handlePassClick' );
                         break;
                     case 'cardChoice':
@@ -478,12 +479,13 @@ function (dojo, declare) {
             }), 'token_container');
         },
 
-        createGenericToken: function(id, color, letter) {
+        createGenericToken: function(token) {
             
             dojo.place(this.format_block('jstpl_generic_token', {
-                token_id : id,
-                token_color : color,
-                token_letter : letter
+                token_id : token.id,
+                token_color : token.color,
+                token_type : token.type,
+                token_letter : token.letter
             }), 'token_container');
         },
 
@@ -495,8 +497,29 @@ function (dojo, declare) {
             dojo.place(this.format_block('jstpl_generic_token', {
                 token_id : 'p' + id,
                 token_color : 'darkcyan',
+                token_type : 'stealth',
                 token_letter : count
             }), 'player_board_' + id);
+        },
+
+        addCharacterAction: function() {
+            var character = this.gamedatas.gamestate.args.character.name;
+            var title = null;
+            if(character === 'hawk') {
+                title = 'Hawk: X-Ray';
+            } else if (character === 'juicer') {
+                title = 'Juicer: Crybaby';
+            } else if(character === 'raven') {
+                title = 'Raven: Distract';
+            } else if(character === 'rook') {
+                title = 'Rook: Orders';
+            } else if(character === 'spotter') {
+                title = 'Spotter: Clairvoyance';
+            }
+
+            if (title) {
+                this.addActionButton('button_character', _(title), 'handleCharacterAction');
+            }
         },
 
         canEscape: function() {
@@ -525,7 +548,8 @@ function (dojo, declare) {
         },
 
         canCancelCardChoice: function() {
-            return this.gamedatas.gamestate.args.card['type'] == 1; // Tools only
+            var type = this.gamedatas.gamestate.args.card['type'];
+            return type == 1 || type == 0; // Tools and Characters
         },
 
         canUseExtraAction: function() {
@@ -781,6 +805,12 @@ function (dojo, declare) {
                 this.ajaxcall('/burglebros/burglebros/selectTileChoice.html', { lock: true, selected: selected }, this, console.log, console.error);
             }
         },
+
+        handleCharacterAction: function() {
+            if (this.checkAction('characterAction')) {
+                this.ajaxcall('/burglebros/burglebros/characterAction.html', { lock: true }, this, console.log, console.error);
+            }
+        },
         
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
@@ -847,7 +877,7 @@ function (dojo, declare) {
                 }
                 if (token.location === 'tile') {
                     if (isGeneric) {
-                        this.createGenericToken(tokenId, token.color, token.letter);
+                        this.createGenericToken(token);
                     }
                     this.moveToken(type, token.id, token.location_arg);
                     this.gamedatas[type + '_tokens'][tokenId] = token;
