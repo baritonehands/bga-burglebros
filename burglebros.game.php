@@ -1992,8 +1992,7 @@ SQL;
                 $this->gamestate->nextState('endTurn');    
             } elseif($card['type'] == 0) {
                 $type = $this->getCardType($card);
-                self::setGameStateValue('characterAbilityUsed', TRUE);
-                // TODO: hacker2 not taking action away
+                self::setGameStateValue('characterAbilityUsed', 1);
                 if (in_array($type, array('hacker2', 'rook1', 'rook2', 'spotter1', 'spotter2'))) {
                     $this->nextAction(); // Spent action
                 } else if($type == 'peterman2') {
@@ -2047,11 +2046,29 @@ SQL;
             self::setGameStateValue('cardChoice', $character['id']);
             $this->gamestate->nextState('cardChoice');
         } else if($type == 'hacker2') {
-            $character = $this->getPlayerCharacter($current_player_id);
             if (count($this->tokens->getCardsOfTypeInLocation('hack', null, 'card', $character['id'])) > 0) {
                 throw new BgaUserException(self::_('You already have a hack token'));
             }
             $this->pickTokens('hack', 'card', $character['id']);
+            $this->nextAction();
+        } else if($type == 'juicer2') {
+            $player_tile = $this->getPlayerTile($current_player_id);
+            $tile_alarms = $this->tokens->getCardsOfTypeInLocation('alarm', null, 'tile', $player_tile['id']);
+            $character_alarms = $this->tokens->getCardsOfTypeInLocation('alarm', null, 'card', $character['id']);
+            
+            if (count($character_alarms) > 0) {
+                if (count($tile_alarms) > 0) {
+                    throw new BgaUserException(self::_('Tile already has an alarm token'));
+                }
+                $this->moveToken(array_values($character_alarms)[0]['id'], 'deck');
+                $this->triggerAlarm($player_tile);
+            } else {
+                if (count($tile_alarms) == 0) {
+                    throw new BgaUserException(self::_('Tile does not have an alarm token'));
+                }
+                $this->moveToken(array_values($tile_alarms)[0]['id'], 'card', $character['id']);
+                $this->nextPatrol($player_tile['location'][5]);
+            }
         } else if($type == 'raven2') {
             $crow = array_values($this->tokens->getCardsOfType('crow'))[0];
             $player_tile = $this->getPlayerTile($current_player_id);
@@ -2071,6 +2088,7 @@ SQL;
         } else {
             throw new BgaUserException(self::_('Character does not have a special action'));
         }
+        self::setGameStateValue('characterAbilityUsed', 1);
     }
 
     function pass() {
