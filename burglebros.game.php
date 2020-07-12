@@ -153,6 +153,14 @@ class burglebros extends Table
         $tokens [] = array('type' => 'crowbar', 'type_arg' => 0, 'nbr' => 1);
         $tokens [] = array('type' => 'crow', 'type_arg' => 0, 'nbr' => 1);
         $this->tokens->createCards( $tokens );
+
+        // Remove cards that don't make sense for the number of players
+        if (count($players) == 1) {
+            $this->moveCardsOutOfPlay('loot', 'gold-bar');
+            $this->moveCardsOutOfPlay('characters', 'rook1');
+            $this->moveCardsOutOfPlay('characters', 'rook2');
+        }
+
         foreach ($players as $player_id => $player) {
             $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
             $this->tokens->createCards(array($player_token), 'hand', $player_id);
@@ -259,6 +267,13 @@ class burglebros extends Table
     /*
         In this space, you can put any utility methods useful for your game logic
     */
+    function moveCardsOutOfPlay($deck, $name) {
+        $type_id = $this->getDeckTypeForName($deck);
+        $type_arg = $this->getCardTypeForName($type_id, $name);
+        $oop = $this->cards->getCardsOfType($type_id, $type_arg);
+        $this->cards->moveCards(array_keys($oop), "${deck}_oop");
+    }
+
     function chooseStartingTile($tile_id) {
         $entrance = $this->tiles->getCard($tile_id);
         $floor = $entrance['location'][5];
@@ -359,6 +374,11 @@ class burglebros extends Table
     function getCardType($card) {
         $info = $this->card_info[$card['type']];
         return $info[$card['type_arg'] - 1]['name'];
+    }
+
+    function getCardChoiceDescription($card) {
+        $info = $this->card_info[$card['type']];
+        return $info[$card['type_arg'] - 1]['choice_description'];
     }
 
     function setupTiles() {
@@ -1368,6 +1388,15 @@ SQL;
         return $choice;
     }
 
+    function getDeckTypeForName($name) {
+        foreach ($this->card_types as $type_id => $value) {
+            if ($value['name'] == $name) {
+                return $type_id;
+            }
+        }
+        return null;
+    }
+
     function getCardTypeForName($type_id, $name) {
         $type_arg = null;
         foreach ($this->card_info[$type_id] as $index => $value) {
@@ -1829,7 +1858,6 @@ SQL;
                 $this->nextPatrol($floor);
             }
             self::setGameStateValue('acrobatEnteredGuardTile', 0);
-            // TODO: Refetch player tile in case token moved by side effect
             if (!$invisible_suit) {
                 $this->checkPlayerStealth($to_move);
             }
@@ -2180,7 +2208,7 @@ SQL;
         $card = $this->cards->getCard(self::getGameStateValue('cardChoice'));
         $args['card'] = $card;
         $args['card_name'] = $this->getCardType($card);
-        $args['choice_description'] = 'do something';
+        $args['choice_description'] = $this->getCardChoiceDescription($card);
         return $args;
     }
 
@@ -2198,7 +2226,6 @@ SQL;
         );
         $args['tile_name'] = $tile['type'];
         $args['can_hack'] = $this->canHack($tile);
-        $args['choice_description'] = 'do something';
         $args['can_use_extra_action'] = $this->canUseExtraAction($player_id, $tile);
 
         return $args;

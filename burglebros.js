@@ -551,7 +551,7 @@ function (dojo, declare) {
                 raven2: 'Raven: Disrupt',
                 rigger2: 'Rigger: Tinker',
                 rook1: 'Rook: Orders',
-                rook2: 'Rook: Orders',
+                rook2: 'Rook: Disguise',
                 spotter1: 'Spotter: Clairvoyance',
                 spotter2: 'Spotter: Precognition'
             }

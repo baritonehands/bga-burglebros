@@ -111,8 +111,8 @@ $machinestates = array(
 
     13 => array(
         'name' => 'cardChoice',
-        'description' => clienttranslate('${card_name}: ${actplayer} must ${choice_description}'),
-        'descriptionmyturn' => clienttranslate('${card_name}: ${you} must ${choice_description}'),
+        'description' => clienttranslate('${card_name}: ${actplayer} must choose ${choice_description}'),
+        'descriptionmyturn' => clienttranslate('${card_name}: ${you} must choose ${choice_description}'),
         'type' => 'activeplayer',
         'args' => 'argCardChoice',
         'possibleactions' => array( 'selectCardChoice', 'cancelCardChoice' ),
@@ -121,8 +121,8 @@ $machinestates = array(
 
     14 => array(
         'name' => 'tileChoice',
-        'description' => clienttranslate('${tile_name}: ${actplayer} must ${choice_description}'),
-        'descriptionmyturn' => clienttranslate('${tile_name}: ${you} must ${choice_description}'),
+        'description' => clienttranslate('${tile_name}: ${actplayer} must choose an option'),
+        'descriptionmyturn' => clienttranslate('${tile_name}: ${you} must choose an option'),
         'type' => 'activeplayer',
         'args' => 'argTileChoice',
         'possibleactions' => array( 'selectTileChoice' ),
