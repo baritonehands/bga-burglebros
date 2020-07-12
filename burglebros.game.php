@@ -216,6 +216,12 @@ class burglebros extends Table
         }
         $result['tile_types'] = $tiles;
 
+        $tokens = array();
+        foreach ( $this->token_types as $index => $desc ) {
+            $tokens[$desc['name']] = array('id'=> $index, 'color' => $desc['color']);
+        }
+        $result['token_types'] = $tokens;
+
         $result['floor1'] = $this->getTiles(1);
         $result['floor2'] = $this->getTiles(2);
         $result['floor3'] = $this->getTiles(3);
@@ -879,11 +885,13 @@ SQL;
     }
 
     function getGenericTokens() {
-        $types = implode(array_keys($this->token_colors), "','");
+        $types = implode(array_map(function($type) {
+            return $type['name'];
+        }, $this->token_types), "','");
         $tokens = self::getCollectionFromDB("SELECT card_id id, card_type type, card_location location, card_location_arg location_arg FROM token WHERE card_location != 'deck' and card_type in ('$types')");
         foreach ($tokens as &$token) {
             $token['letter'] = strtoupper($token['type'][0]);
-            $token['color'] = $this->token_colors[$token['type']];
+            // $token['color'] = $this->token_colors[$token['type']];
         }
         return $tokens;
     }
@@ -996,9 +1004,9 @@ SQL;
     function getTokens($ids) {
         $tokens = $this->tokens->getCards($ids);
         foreach ($tokens as $token_id => &$token) {
-            if (isset($this->token_colors[$token['type']])) {
+            if (isset($this->token_types[$token['type']])) {
                 $token['letter'] = strtoupper($token['type'][0]);
-                $token['color'] = $this->token_colors[$token['type']];
+                // $token['color'] = $this->token_colors[$token['type']];
             }
         }
         return $tokens;

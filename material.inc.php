@@ -189,15 +189,16 @@ $this->default_walls = array(
   )
 );
 
-$this->token_colors = array(
-  'hack' => '#C6A7BE',
-  'safe' => '#74B189',
-  'stealth' => 'darkcyan',
-  'alarm' => '#CE5638',
-  'open' => '#DDA860',
-  'keypad' => '#DDA860',
-  'stairs' => '#86939D',
-  'thermal' => '#74B189',
-  'crowbar' => '#74B189',
-  'crow' => 'white'
+$this->token_types = array(
+  array('name' => 'alarm', 'color' => '#CE5638'),
+  array('name' => 'cat', 'color' => '#8E8644'),
+  array('name' => 'safe', 'color' => '#74B189'),
+  array('name' => 'crow', 'color' => '#C9C0BD'),
+  array('name' => 'hack', 'color' => '#C6A7BE'),
+  array('name' => 'open', 'color' => '#DDA860'),
+  array('name' => 'stairs', 'color' => '#86939D'),
+  array('name' => 'stealth', 'color' => '#568F9F'),
+  array('name' => 'thermal', 'color' => '#74B189'),
+  array('name' => 'keypad', 'color' => '#DDA860'),
+  array('name' => 'crowbar', 'color' => '#74B189')
 );

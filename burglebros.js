@@ -515,11 +515,13 @@ function (dojo, declare) {
         },
 
         createGenericToken: function(token) {
-            
+            var tokenType = this.gamedatas.token_types[token.type];
             dojo.place(this.format_block('jstpl_generic_token', {
                 token_id : token.id,
-                token_color : token.color,
+                token_color : tokenType.color,
                 token_type : token.type,
+                token_background : g_gamethemeurl + '/img/tokens.jpg',
+                token_bg_pos : (tokenType.id * -32) - 4,
                 token_letter : token.letter
             }), 'token_container');
         },
@@ -529,10 +531,13 @@ function (dojo, declare) {
         },
 
         createPlayerStealthToken: function(id, count) {
+            var tokenType = this.gamedatas.token_types['stealth'];
             dojo.place(this.format_block('jstpl_generic_token', {
                 token_id : 'p' + id,
-                token_color : 'darkcyan',
+                token_color : tokenType.color,
                 token_type : 'stealth',
+                token_background : g_gamethemeurl + '/img/tokens.jpg',
+                token_bg_pos : (tokenType.id * -32) - 4,
                 token_letter : count
             }), 'player_board_' + id);
         },
