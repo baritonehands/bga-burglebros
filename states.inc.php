@@ -87,6 +87,7 @@ $machinestates = array(
         'name' => 'endTurn',
         'description' => 'Triggering end of turn effects...',
         'type' => 'game',
+        'args' => 'argPlayerTurn',
         'action' => 'stEndTurn',
         'updateGameProgression' => true,
         'transitions' => array( 'moveGuard' => 11 )

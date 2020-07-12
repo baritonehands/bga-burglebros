@@ -106,7 +106,7 @@ $this->card_info = array(
     array('name'=>'keycode-change'),
     array('name'=>'lampshade'),
     array('name'=>'lost-grip'),
-    array('name'=>'peekhole', 'choice_description' => self::_('an adjacent tile (also through a well or up/down floors) to peek')),
+    array('name'=>'peekhole', 'choice_description' => self::_('an adjacent tile (also through a wall or up/down floors) to peek')),
     array('name'=>'reboot'),
     array('name'=>'shift-change'),
     array('name'=>'shoplifting'),

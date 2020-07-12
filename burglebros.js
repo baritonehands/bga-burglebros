@@ -217,6 +217,7 @@ function (dojo, declare) {
                 break;
            */
             case 'playerTurn':
+            case 'endTurn':
                 this.showFloor(this.currentFloor());
                 break;
            
