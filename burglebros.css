@@ -254,12 +254,21 @@
     background-size: 232px
 }
 
-.tile-zone {
+.tile-tokens {
     cursor: pointer;
     position: absolute;
     left: 12px;
     top: 36px;
     width: 90px;
+    z-index: 2;
+}
+
+.tile-meeples {
+    cursor: pointer;
+    position: absolute;
+    left: 10px;
+    bottom: 8px;
+    width: 100px;
     z-index: 1;
 }
 

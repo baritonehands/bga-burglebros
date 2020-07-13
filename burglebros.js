@@ -394,6 +394,12 @@ function (dojo, declare) {
             zone.create( this, zoneId, 24, 24 );
             zone.setPattern( 'grid' );
             this.zones[zoneId] = zone;
+
+            zone = new ebg.zone();
+            zoneId = 'tile_' + tile.id + '_meeples';
+            zone.create( this, zoneId, 35, 50 );
+            zone.setPattern( 'grid' );
+            this.zones[zoneId] = zone;
         },
 
         createCardZone: function(stock, card_div, card_type_id, card_div_id) {
@@ -474,11 +480,6 @@ function (dojo, declare) {
         },
 
         createPlayerToken: function(id, player_id) {
-            dojo.place(this.format_block('jstpl_player_token', {
-                token_id : id,
-                player_color: this.gamedatas.players[player_id].color
-            }), 'token_container');
-
             var character = this.gamedatas.players[player_id].character,
                 index = character.type_arg - 1,
                 bg_col = index % 2,
@@ -492,16 +493,26 @@ function (dojo, declare) {
         },
 
         moveToken: function(token_type, token) {
-            var zoneId = token.location + '_' + token.location_arg + '_tokens';
-            this.zones[zoneId].placeInZone(token_type + '_token_' + token.id);
+            if (token_type === 'player') {
+                var meepleZoneId = 'tile_' + token.location_arg + '_meeples';
+                this.zones[meepleZoneId].placeInZone('meeple_' + token.id);
+            } else {
+                var zoneId = token.location + '_' + token.location_arg + '_tokens';
+                this.zones[zoneId].placeInZone(token_type + '_token_' + token.id);
+            }
         },
 
         removeToken: function(token_type, id) {
             var deck = this.gamedatas[token_type + '_tokens'];
             var token = deck[id];
             if (token && (token.location === 'tile' || token.location === 'card')) {
-                var zoneId = token.location + '_' + token.location_arg + '_tokens';
-                this.zones[zoneId].removeFromZone(token_type + '_token_' + id, token_type === 'generic');
+                if (token_type === 'player') {
+                    var meepleZoneId = 'tile_' + token.location_arg + '_meeples';
+                    this.zones[meepleZoneId].removeFromZone('meeple_' + token.id, false);
+                } else {
+                    var zoneId = token.location + '_' + token.location_arg + '_tokens';
+                    this.zones[zoneId].removeFromZone(token_type + '_token_' + id, token_type === 'generic');
+                }
             }
         },
 
