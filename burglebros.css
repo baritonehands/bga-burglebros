@@ -314,3 +314,10 @@
     background-color: green;
 }
 
+.meeple {
+    width: 35px;
+    height: 50px;
+    background-size: 70px 450px;
+    filter: drop-shadow(1px 1px 3px #000000);
+}
+

@@ -31,7 +31,8 @@
     </div>
 </div>
 
-<div id="tooltip_debug"><div>
+<div id="debug">
+<div>
 
 <div id="board_wrap">
     <div class="floor_container whiteblock">
@@ -103,6 +104,8 @@ var jstpl_patrol_tooltip_discard = '<div class="patrol-discard" style="left: ${d
 var jstpl_wall = '<div id="wall_${wall_id}" class="wall ${wall_direction}" style="left: ${x}px; top: ${y}px"></div>';
 
 var jstpl_player_token = '<div id="player_token_${token_id}" class="token" style="background-color: #${player_color}">P</div>';
+
+var jstpl_meeple = '<div id="meeple_${meeple_id}" class="meeple" style="background-color: #${player_color}; background-image: url(${meeple_background}); background-position: ${meeple_bg_pos};"></div>';
 
 var jstpl_guard_token = '<div id="guard_token_${token_id}" class="token" style="background-color: black;">G</div>';
 

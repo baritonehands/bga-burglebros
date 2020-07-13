@@ -180,7 +180,7 @@ function (dojo, declare) {
             for (var token_id in gamedatas.generic_tokens) {
                 var token = gamedatas.generic_tokens[token_id];
                 this.createGenericToken(token);
-                if (token.location !== 'deck') {
+                if (token.location === 'tile' || token.location === 'card') {
                     this.moveToken('generic', token);
                 }
             }
@@ -478,6 +478,17 @@ function (dojo, declare) {
                 token_id : id,
                 player_color: this.gamedatas.players[player_id].color
             }), 'token_container');
+
+            var character = this.gamedatas.players[player_id].character,
+                index = character.type_arg - 1,
+                bg_col = index % 2,
+                bg_row = Math.floor(index / 2);
+            dojo.place(this.format_block('jstpl_meeple', {
+                meeple_id : id,
+                meeple_background : g_gamethemeurl + '/img/meeples.png',
+                meeple_bg_pos : -(bg_col * 35) + 'px ' + -(bg_row * 50) + 'px',
+                player_color: this.gamedatas.players[player_id].color
+            }), 'debug');
         },
 
         moveToken: function(token_type, token) {
@@ -488,7 +499,7 @@ function (dojo, declare) {
         removeToken: function(token_type, id) {
             var deck = this.gamedatas[token_type + '_tokens'];
             var token = deck[id];
-            if (token && token.location !== 'deck') {
+            if (token && (token.location === 'tile' || token.location === 'card')) {
                 var zoneId = token.location + '_' + token.location_arg + '_tokens';
                 this.zones[zoneId].removeFromZone(token_type + '_token_' + id, token_type === 'generic');
             }
@@ -920,7 +931,7 @@ function (dojo, declare) {
                 if(isGeneric) {
                     delete this.gamedatas.generic_tokens[tokenId];
                 }
-                if (token.location !== 'deck') {
+                if (token.location === 'tile' || token.location === 'card') {
                     if (isGeneric) {
                         this.createGenericToken(token);
                     }

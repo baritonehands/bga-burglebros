@@ -203,6 +203,7 @@ class burglebros extends Table
         $result['players'] = self::getCollectionFromDb( $sql );
         foreach ($result['players'] as $player_id => &$player) {
             $player['hand'] = $this->cards->getPlayerHand($player_id);
+            $player['character'] = $this->getPlayerCharacter($player_id);
         }
   
         $result = array_merge($result, $this->gatherCardData('card', $this->card_types, $this->card_info));
