@@ -2,7 +2,7 @@
  /**
   *------
   * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
-  * burglebros implementation : © <Your name here> <Your email address here>
+  * burglebros implementation : © Brian Gregg baritonehands@gmail.com
   * 
   * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
   * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -373,6 +373,7 @@ class burglebros extends Table
             'player_token' => $player_token,
             'character' => $character,
             'tile' => $player_tile,
+            'tile_tokens' => $this->tokens->getCardsInLocation('tile', $player_tile['id']),
             'floor' => $player_tile['location'][5],
             'actions_remaining' => self::getGameStateValue('actionsRemaining')
         );
@@ -487,6 +488,10 @@ SQL;
                     $die_count = self::getGameStateValue("patrolDieCount$floor");
                     if ($die_count < 6) {
                         self::setGameStateValue("patrolDieCount$floor", $die_count + 1);
+                        self::notifyAllPlayers('patrolDieIncreased', '', array(
+                            'die_num' => $die_count + 1,
+                            'token' => array_values($this->tokens->getCardsOfType('patrol', $floor))[0]
+                        ));
                     }
                 }
                 $patrol_entrance = $this->cards->pickCardForLocation($patrol.'_deck', $patrol.'_discard', 16 - $count);
@@ -738,7 +743,7 @@ SQL;
             if (count($tile_stealth) > 0) {
                 // TODO: pick which players
                 $stealth_token = array_shift($tile_stealth);
-                $this->tokens->moveCard($stealth_token['id'], 'deck');
+                $this->moveToken($stealth_token['id'], 'deck');
             } else {
                 $this->decrementPlayerStealth($token['type_arg']);
             }
@@ -925,6 +930,10 @@ SQL;
         if ($safe_tile['type'] != 'safe') {
             throw new BgaUserException(self::_("Tile is not a safe"));
         }
+        if ($this->tokensInTile('open', $safe_tile['id'])) {
+            throw new BgaUserException(self::_("Safe is already open"));
+        }
+
         $floor = $safe_tile['location'][5];
         $dice_count = self::getGameStateValue("safeDieCount$floor");
         $current_player_id = self::getCurrentPlayerId();
@@ -938,7 +947,7 @@ SQL;
         $keycard = $this->getPlayerLoot('keycard');
         if ($keycard) {
             $keycard_holder = $this->getPlayerToken($keycard['location_arg']);
-            if ($keycard_holder['location_arg'] != $player_tile['id']) {
+            if ($keycard_holder['location_arg'] != $safe_tile['id']) {
                 throw new BgaUserException(self::_("The player holding the keycard must be present"));
             }
         }
@@ -1886,13 +1895,20 @@ SQL;
         if ($tile['type'] != 'safe') {
             throw new BgaUserException(self::_("Tile is not a safe"));
         }
+        if ($this->tokensInTile('open', $tile['id'])) {
+            throw new BgaUserException(self::_("Safe is already open"));
+        }
         $floor = $tile['location'][5];
         $safe_token = array_values($this->tokens->getCardsOfType('crack', $floor))[0];
         if ($safe_token['location'] != 'tile') {
             $this->moveToken($safe_token['id'], 'tile', $tile['id']);
+            $safe_token = array_values($this->tokens->getCardsOfType('crack', $floor))[0];
         }
-        self::incGameStateValue("safeDieCount$floor", 1);
-        
+        $die_num = self::incGameStateValue("safeDieCount$floor", 1);
+        self::notifyAllPlayers('safeDieIncreased', '', array(
+            'die_num' => $die_num,
+            'token' => $safe_token
+        ));
     }
 
 //////////////////////////////////////////////////////////////////////////////

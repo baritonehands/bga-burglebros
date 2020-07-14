@@ -1,7 +1,7 @@
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * burglebros implementation : © <Your name here> <Your email address here>
+ * burglebros implementation : © Brian Gregg baritonehands@gmail.com
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -163,18 +163,12 @@ function (dojo, declare) {
 
             for (var token_id in gamedatas.patrol_tokens) {
                 var token = gamedatas.patrol_tokens[token_id];
-                this.createPatrolToken(token_id, token.die_num);
-                if (token.location === 'tile') {
-                    this.moveToken('patrol', token);
-                }
+                this.createPatrolToken(token, token.die_num);
             }
 
             for (var token_id in gamedatas.crack_tokens) {
                 var token = gamedatas.crack_tokens[token_id];
-                this.createSafeToken(token_id, token.die_num);
-                if (token.location === 'tile') {
-                    this.moveToken('crack', token);
-                }
+                this.createSafeToken(token, token.die_num);
             }
 
             for (var token_id in gamedatas.generic_tokens) {
@@ -218,6 +212,7 @@ function (dojo, declare) {
            */
             case 'playerTurn':
             case 'endTurn':
+            case 'tileChoice':
                 this.showFloor(this.currentFloor());
                 break;
            
@@ -508,10 +503,10 @@ function (dojo, declare) {
             if (token && (token.location === 'tile' || token.location === 'card')) {
                 if (token_type === 'player') {
                     var meepleZoneId = 'tile_' + token.location_arg + '_meeples';
-                    this.zones[meepleZoneId].removeFromZone('meeple_' + token.id, false);
+                    this.zones[meepleZoneId].removeFromZone('meeple_' + token.id, token.location === 'roof');
                 } else {
                     var zoneId = token.location + '_' + token.location_arg + '_tokens';
-                    this.zones[zoneId].removeFromZone(token_type + '_token_' + id, token_type === 'generic');
+                    this.zones[zoneId].removeFromZone(token_type + '_token_' + id, token_type === 'generic' || token.location === 'deck');
                 }
             }
         },
@@ -522,18 +517,36 @@ function (dojo, declare) {
             }), 'token_container');
         },
 
-        createPatrolToken: function(token_id, die_num) {
-            dojo.place(this.format_block('jstpl_patrol_die', {
-                token_id : token_id,
-                num_spaces : die_num,
-            }), 'token_container');
+        createPatrolToken: function(token, die_num) {
+            var div_id = 'patrol_token_' + token.id;
+            if ($(div_id)) {
+                $(div_id).innerText = die_num;
+            } else {
+                dojo.place(this.format_block('jstpl_patrol_die', {
+                    token_id : token.id,
+                    num_spaces : die_num,
+                }), 'token_container');
+            }
+
+            if (token.location !== 'deck') {
+                this.moveToken(token.type, token);
+            }
         },
 
-        createSafeToken: function(token_id, die_num) {
-            dojo.place(this.format_block('jstpl_safe_die', {
-                token_id : token_id,
-                die_num : die_num,
-            }), 'token_container');
+        createSafeToken: function(token, die_num) {
+            var div_id = 'crack_token_' + token.id;
+            if ($(div_id)) {
+                $(div_id).innerText = die_num;
+            } else {
+                dojo.place(this.format_block('jstpl_safe_die', {
+                    token_id : token.id,
+                    die_num : die_num,
+                }), 'token_container');
+            }
+
+            if (token.location !== 'deck') {
+                this.moveToken('crack', token);
+            } 
         },
 
         createGenericToken: function(token) {
@@ -599,11 +612,12 @@ function (dojo, declare) {
 
         canAddSafeDie: function() {
             return this.gamedatas.gamestate.args.tile.type === 'safe' &&
-                this.gamedatas.gamestate.args.actions_remaining >= 2;
+                this.gamedatas.gamestate.args.actions_remaining >= 2 &&
+                !this.tileContainsToken('open');
         },
 
         canRollSafeDice: function() {
-            return this.gamedatas.gamestate.args.tile.type === 'safe';
+            return this.gamedatas.gamestate.args.tile.type === 'safe' && !this.tileContainsToken('open');
         },
 
         canHack: function() {
@@ -629,6 +643,16 @@ function (dojo, declare) {
 
         currentFloor: function() {
             return parseInt(this.gamedatas.gamestate.args.floor, 10);
+        },
+
+        tileContainsToken: function(name) {
+            var tokens = this.gamedatas.gamestate.args.tile_tokens;
+            for(var tokenId in this.gamedatas.gamestate.args.tile_tokens) {
+                if (tokens[tokenId].type == name) {
+                    return true;
+                }
+            }
+            return false;
         },
 
         showFloor: function(floorNum) {
@@ -913,6 +937,8 @@ function (dojo, declare) {
             dojo.subscribe('nextPatrol', this, 'notif_nextPatrol');
             dojo.subscribe('playerHand', this, 'notif_playerHand');
             dojo.subscribe('eventCard', this, 'notif_eventCard');
+            dojo.subscribe('safeDieIncreased', this, 'notif_safeDieIncreased');
+            dojo.subscribe('patrolDieIncreased', this, 'notif_patrolDieIncreased');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -998,6 +1024,14 @@ function (dojo, declare) {
             //     evt.preventDefault();
             //     dialog.destroy();
             // } );
+        },
+
+        notif_safeDieIncreased: function(notif) {
+            this.createSafeToken(notif.args.token, notif.args.die_num);
+        },
+
+        notif_patrolDieIncreased: function(notif) {
+            this.createPatrolToken(notif.args.token, notif.args.die_num);
         }
    });             
 });
