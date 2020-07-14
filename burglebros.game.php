@@ -165,6 +165,10 @@ class burglebros extends Table
             $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
             $this->tokens->createCards(array($player_token), 'hand', $player_id);
             $character = $this->cards->pickCard('characters_deck', $player_id);
+            $type = $this->getCardType($character);
+            $name = substr($type, 0, -1);
+            $nbr = substr($type, -1);
+            $this->moveCardsOutOfPlay('characters', $name.($nbr == 1 ? 2 : 1));
             if ($this->getCardType($character) == 'rigger1') {
                 $type_arg = $this->getCardTypeForName(1, 'dynamite');
                 $dynamite = array_values($this->cards->getCardsOfType(1, $type_arg))[0];
