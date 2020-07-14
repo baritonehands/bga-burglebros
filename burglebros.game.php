@@ -616,6 +616,7 @@ SQL;
             $current_player_id = self::getCurrentPlayerId();
             $painting = $this->getPlayerLoot('painting', $current_player_id);
             $secret_door = $same_floor && $adjacent && $tile['type'] == 'secret-door';
+            // TODO: This allows you to guess and reveal the other
             $service_duct = $tile['type'] == 'service-duct' && $other_tile['type'] == 'service-duct';
             if ($painting && (($secret_door && $blocked) || $service_duct)) {
                 throw new BgaUserException(self::_('Cannot move this way while holding the Painting'));
@@ -995,7 +996,7 @@ SQL;
             } else if($type == 'gold-bar') {
                 // TODO: Show cards in a tile
                 $gold_type = $this->getCardTypeForName(2, 'gold-bar');
-                $other_gold = $this->cards->getCardsOfTypeInLocation(2, $gold_type, 'loot_deck');
+                $other_gold = array_values($this->cards->getCardsOfTypeInLocation(2, $gold_type, 'loot_deck'))[0];
                 $this->cards->moveCard($other_gold['id'], 'tile', $safe_tile['id']);
             }
             $this->notifyPlayerHand($current_player_id);
@@ -2132,6 +2133,7 @@ SQL;
                 $this->moveToken(array_values($tile_alarms)[0]['id'], 'card', $character['id']);
                 $this->nextPatrol($player_tile['location'][5]);
             }
+            self::setGameStateValue('characterAbilityUsed', 1);
         } else if($type == 'raven2') {
             $crow = array_values($this->tokens->getCardsOfType('crow'))[0];
             $player_tile = $this->getPlayerTile($current_player_id);
@@ -2151,7 +2153,6 @@ SQL;
         } else {
             throw new BgaUserException(self::_('Character does not have a special action'));
         }
-        self::setGameStateValue('characterAbilityUsed', 1);
     }
 
     function pass() {
