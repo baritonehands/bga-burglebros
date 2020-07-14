@@ -915,9 +915,11 @@ SQL;
         return $result;
     }
 
-    function notifyPlayerHand($player_id) {
+    function notifyPlayerHand($player_id, $discard_ids=array()) {
         self::notifyAllPlayers('playerHand', '', array(
-            $player_id => $this->cards->getPlayerHand($player_id)
+            'player_id' => $player_id,
+            'hand' => $this->cards->getPlayerHand($player_id),
+            'discard_ids' => $discard_ids
         ));
     }
 
@@ -1006,6 +1008,10 @@ SQL;
                 $die_count = self::getGameStateValue("patrolDieCount$lower_floor");
                 if ($die_count < 6) {
                     self::setGameStateValue("patrolDieCount$lower_floor", $die_count + 1);
+                    self::notifyAllPlayers('patrolDieIncreased', '', array(
+                        'die_num' => $die_count + 1,
+                        'token' => array_values($this->tokens->getCardsOfType('patrol', $lower_floor))[0]
+                    ));
                 }
             }
         }
@@ -1438,7 +1444,7 @@ SQL;
         $type_arg = $this->getCardTypeForName(2, $name);
         $card = array_values($this->cards->getCardsOfType(2, $type_arg))[0];
         $this->cards->moveCard($card['id'], 'loot_deck');
-        $this->notifyPlayerHand($current_player_id);
+        $this->notifyPlayerHand($current_player_id, array($card['id']));
     }
 
     function drawCharacterDebug($name) {
@@ -1449,7 +1455,7 @@ SQL;
         $type_arg = $this->getCardTypeForName(0, $name);
         $card = array_values($this->cards->getCardsOfType(0, $type_arg))[0];
         $this->cards->moveCard($card['id'], 'hand', $current_player_id);
-        $this->notifyPlayerHand($current_player_id);
+        $this->notifyPlayerHand($current_player_id, array($current_char['id']));
     }
 
     function handleEventEffectDebug($name) {
@@ -1492,11 +1498,12 @@ SQL;
             $this->moveToken($patrol_token['id'], 'tile', $tile['id']);
         } elseif($type == 'dead-drop') {
             $prev_player_id = self::getPlayerBefore($player_id);
-            $tools = $this->cards->getCardsOfTypeInLocation(1, null, 'hand', $player_id);
-            $this->cards->moveCards(array_keys($tools), 'hand', $prev_player_id);
-            $loot = $this->cards->getCardsOfTypeInLocation(2, null, 'hand', $player_id);
-            $this->cards->moveCards(array_keys($loot), 'hand', $prev_player_id);
-            $this->notifyPlayerHand($player_id);
+            $cards = array_merge(
+                $this->cards->getCardsOfTypeInLocation(1, null, 'hand', $player_id),
+                $this->cards->getCardsOfTypeInLocation(2, null, 'hand', $player_id)
+            );
+            $this->cards->moveCards(array_keys($cards), 'hand', $prev_player_id);
+            $this->notifyPlayerHand($player_id, array_keys(cards));
             $this->notifyPlayerHand($prev_player_id);
         } elseif ($type == 'freight-elevator') {
             $player_token = $this->getPlayerToken($player_id);
@@ -1795,6 +1802,9 @@ SQL;
         }
         if ($card['type'] != 0) {
             $this->cards->moveCard($card['id'], $card['type'] == 1 ? 'tools_discard' : 'events_discard');
+            if ($card['type'] == 1) {
+                $this->notifyPlayerHand(self::getCurrentPlayerId(), array($card['id']));
+            }
         }
         return $tile_choice;
     }
@@ -2027,7 +2037,7 @@ SQL;
             $this->gamestate->nextState('cardChoice');
         } else {
             $this->cards->moveCard($card['id'], 'tools_discard');
-            $this->notifyPlayerHand($current_player_id);
+            $this->notifyPlayerHand($current_player_id, array($card['id']));
 
             $this->gamestate->nextState('nextAction');
         }

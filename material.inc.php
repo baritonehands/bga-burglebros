@@ -65,7 +65,7 @@ $this->card_info = array(
     array('name'=>'crowbar', 'choice_description' => self::_('an adjacent tile to disable')),
     array('name'=>'crystal-ball'),
     array('name'=>'donuts', 'choice_description' => self::_('any guard to lose all movement for one turn')),
-    array('name'=>'dynamite'),
+    array('name'=>'dynamite', 'choice_description' => self::_('an adjacent wall to remove')),
     array('name'=>'emp'),
     array('name'=>'invisible-suit'),
     array('name'=>'makeup-kit'),

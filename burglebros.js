@@ -105,7 +105,7 @@ function (dojo, declare) {
 
                 var player = gamedatas.players[playerId];
                 var cards = player.hand;
-                this.loadPlayerHand(playerId, cards);
+                this.loadPlayerHand(playerId, cards, []);
                 this.createPlayerStealthToken(playerId, player.stealth_tokens);
             }
 
@@ -719,7 +719,7 @@ function (dojo, declare) {
             }
         },
 
-        loadPlayerHand: function(playerId, hand) {
+        loadPlayerHand: function(playerId, hand, discard_ids) {
             var handStock = playerId == this.player_id ? this.myHand : this.playerHands[playerId];
             for(var cardId in hand) {
                 var card = hand[cardId];
@@ -738,6 +738,13 @@ function (dojo, declare) {
                         bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
                     });
                     this.addTooltipHtml(divId, tooltipHtml);
+                }
+            }
+            debugger;
+            for(var idx = 0; idx < discard_ids.length; idx++) {
+                var discard_id = discard_ids[idx];
+                if (handStock.getItemById(discard_id)) {
+                    handStock.removeFromStockById(discard_id);
                 }
             }
         },
@@ -994,11 +1001,9 @@ function (dojo, declare) {
         },
 
         notif_playerHand: function(notif) {
-            for(var playerId in notif.args) {
-                var hand = notif.args[playerId];
-                this.gamedatas.players[playerId].hand = hand;
-                this.loadPlayerHand(playerId, hand);
-            }
+            var hand = notif.args.hand;
+            this.gamedatas.players[notif.args.player_id].hand = hand;
+            this.loadPlayerHand(notif.args.player_id, hand, notif.args.discard_ids);
         },
 
         notif_eventCard: function(notif) {
