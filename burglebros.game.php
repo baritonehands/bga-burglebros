@@ -155,11 +155,22 @@ class burglebros extends Table
         $this->tokens->createCards( $tokens );
 
         // Remove cards that don't make sense for the number of players
-        if (count($players) == 1) {
-            $this->moveCardsOutOfPlay('loot', 'gold-bar');
-            $this->moveCardsOutOfPlay('characters', 'rook1');
-            $this->moveCardsOutOfPlay('characters', 'rook2');
-        }
+        // if (count($players) == 1) {
+        //     $this->moveCardsOutOfPlay('loot', 'gold-bar');
+        //     $this->moveCardsOutOfPlay('characters', 'rook1');
+        //     $this->moveCardsOutOfPlay('characters', 'rook2');
+        // }
+        // TODO: Add back cards once implemented
+        $this->moveCardsOutOfPlay('loot', 'gold-bar');
+        $this->moveCardsOutOfPlay('loot', 'persian-kitty');
+        $this->moveCardsOutOfPlay('tools', 'crystal-ball');
+        $this->moveCardsOutOfPlay('tools', 'stethoscope');
+        $this->moveCardsOutOfPlay('characters', 'hawk2');
+        $this->moveCardsOutOfPlay('characters', 'peterman2');
+        $this->moveCardsOutOfPlay('characters', 'rook1');
+        $this->moveCardsOutOfPlay('characters', 'rook2');
+        $this->moveCardsOutOfPlay('characters', 'spotter1');
+        $this->moveCardsOutOfPlay('characters', 'spotter2');
 
         foreach ($players as $player_id => $player) {
             $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
@@ -1508,7 +1519,7 @@ SQL;
                 $this->cards->getCardsOfTypeInLocation(2, null, 'hand', $player_id)
             );
             $this->cards->moveCards(array_keys($cards), 'hand', $prev_player_id);
-            $this->notifyPlayerHand($player_id, array_keys(cards));
+            $this->notifyPlayerHand($player_id, array_keys($cards));
             $this->notifyPlayerHand($prev_player_id);
         } elseif ($type == 'freight-elevator') {
             $player_token = $this->getPlayerToken($player_id);

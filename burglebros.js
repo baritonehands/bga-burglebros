@@ -484,7 +484,7 @@ function (dojo, declare) {
                 meeple_background : g_gamethemeurl + '/img/meeples.png',
                 meeple_bg_pos : -(bg_col * 35) + 'px ' + -(bg_row * 50) + 'px',
                 player_color: this.gamedatas.players[player_id].color
-            }), 'debug');
+            }), 'token_container');
         },
 
         moveToken: function(token_type, token) {
