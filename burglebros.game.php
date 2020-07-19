@@ -48,7 +48,10 @@ class burglebros extends Table
             'cardChoice' => 22,
             'characterAbilityUsed' => 23,
             'acrobatEnteredGuardTile' => 24,
-            'tileChoice' => 25
+            'tileChoice' => 25,
+
+            // Options
+            'characterAssignment' => 100
         ) ); 
 
         $this->cards = self::getNew( "module.common.deck" );
@@ -165,12 +168,24 @@ class burglebros extends Table
         $this->moveCardsOutOfPlay('loot', 'persian-kitty');
         $this->moveCardsOutOfPlay('tools', 'crystal-ball');
         $this->moveCardsOutOfPlay('tools', 'stethoscope');
-        $this->moveCardsOutOfPlay('characters', 'hawk2');
-        $this->moveCardsOutOfPlay('characters', 'peterman2');
         $this->moveCardsOutOfPlay('characters', 'rook1');
-        $this->moveCardsOutOfPlay('characters', 'rook2');
         $this->moveCardsOutOfPlay('characters', 'spotter1');
-        $this->moveCardsOutOfPlay('characters', 'spotter2');
+        if ($options[100] == 1) {
+            $this->moveCardsOutOfPlay('characters', 'acrobat2');
+            $this->moveCardsOutOfPlay('characters', 'hacker2');
+            $this->moveCardsOutOfPlay('characters', 'hawk2');
+            $this->moveCardsOutOfPlay('characters', 'juicer2');
+            $this->moveCardsOutOfPlay('characters', 'peterman2');
+            $this->moveCardsOutOfPlay('characters', 'raven2');
+            $this->moveCardsOutOfPlay('characters', 'rigger2');
+            $this->moveCardsOutOfPlay('characters', 'rook2');
+            $this->moveCardsOutOfPlay('characters', 'spotter2'); 
+        } else {
+            $this->moveCardsOutOfPlay('characters', 'hawk2');
+            $this->moveCardsOutOfPlay('characters', 'peterman2');
+            $this->moveCardsOutOfPlay('characters', 'rook2');
+            $this->moveCardsOutOfPlay('characters', 'spotter2');
+        }
 
         foreach ($players as $player_id => $player) {
             $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
@@ -1621,6 +1636,7 @@ SQL;
             $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
             
             $this->moveToken($guard_token['id'], 'tile', $patrol_token['location_arg']);
+            // TODO: This gets stuck if tile has alarm token and patrol die
             $this->nextPatrol($floor);
         } else {
             // It will be handled in the appropriate place
