@@ -818,10 +818,9 @@ SQL;
         if ($is_guard_tile && $is_player_tile) {
             $state = $this->gamestate->state();
             if ($this->getPlayerCharacter($current_player_id, 'acrobat1') && $state['name'] != 'moveGuard') {
-                self::setGameStateValue('acrobatEnteredGuardTile', TRUE);
-            } else {
-                $this->deductTileStealth($player_tile['id']);
+                return;
             }
+            $this->deductTileStealth($player_tile['id']);
             return;
         }
 
@@ -1695,12 +1694,16 @@ SQL;
     function handleSelectCardChoice($card, $selected_type, $selected_id) {
         $type = $this->getCardType($card);
         $tile_choice = FALSE;
-        if($type == 'acrobat2') {
+        if($type == 'acrobat1') {
+            $this->validateSelection('tile', $selected_type);
+            // Don't do tile_choice here, since we'll never trigger an alarm
+            $this->performMove($selected_id, 'acrobat1');
+        } else if($type == 'acrobat2') {
             $this->validateSelection('button', $selected_type);
             $tile = $this->getPlayerTile(self::getCurrentPlayerId());
             $floor = $selected_id;
             $other_tile = $this->findTileOnFloor($floor, $tile['location_arg']);
-            $this->performMove($other_tile['id'], 'acrobat2');
+            $tile_choice = $this->performMove($other_tile['id'], 'acrobat2');
         } else if ($type == 'blueprints') {
             $this->validateSelection('tile', $selected_type);
             $tile = $this->tiles->getCard($selected_id);
@@ -1899,9 +1902,18 @@ SQL;
         $to_move = $this->tiles->getCard($tile_id);
         $floor = $to_move['location'][5];
         $flipped = $this->getFlippedTiles($floor);
+        $guard_token = array_values($this->tokens->getCardsOfType('guard', $floor))[0];
+        $acrobat_entered = 0;
 
         if (!$this->isTileAdjacent($to_move, $player_tile, null, $context)) {
             throw new BgaUserException(self::_("Tile is not adjacent"));
+        }
+
+        if($context == 'acrobat1') {
+            if ($guard_token['location'] != 'tile' || $guard_token['location_arg'] != $tile_id) {
+                throw new BgaUserException(self::_("Tile does not contain a guard"));
+            }
+            $acrobat_entered = 1;
         }
 
         $flipped_this_turn = !isset($flipped[$to_move['id']]);
@@ -1912,12 +1924,11 @@ SQL;
         $this->flipTile( $floor, $to_move['location_arg'] );
         $invisible_suit = self::getGameStateValue('invisibleSuitActive') == 1;
         if ($move_result['perform_move']) {
-            $guard_token = array_values($this->tokens->getCardsOfType('guard', $floor))[0];
             if ($guard_token['location'] == 'deck') {
                 $this->setupPatrol($guard_token, $floor);
                 $this->nextPatrol($floor);
             }
-            self::setGameStateValue('acrobatEnteredGuardTile', 0);
+            self::setGameStateValue('acrobatEnteredGuardTile', $acrobat_entered);
             if (!$invisible_suit) {
                 $this->checkPlayerStealth($to_move);
             }
@@ -2178,7 +2189,7 @@ SQL;
             $this->decrementPlayerStealth($current_player_id);
             $this->cards->pickCard('tools_deck', $current_player_id);
             $this->notifyPlayerHand($current_player_id);
-        } else if (in_array($type, array('hawk1', 'hawk2', 'juicer1', 'peterman2', 'raven1', 'rook1', 'spotter1', 'spotter2'))) {
+        } else if (in_array($type, array('acrobat1', 'hawk1', 'hawk2', 'juicer1', 'peterman2', 'raven1', 'rook1', 'spotter1', 'spotter2'))) {
             self::setGameStateValue('cardChoice', $character['id']);
             $this->gamestate->nextState('cardChoice');
         } else {

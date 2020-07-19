@@ -41,8 +41,8 @@ $this->card_types = array(
 
 $this->card_info = array(
   0 => array(
-    array('name'=>'acrobat1'),
-    array('name'=>'acrobat2'),
+    array('name'=>'acrobat1', 'choice_description' => self::_('an adjacent tile containing a guard')),
+    array('name'=>'acrobat2', 'choice_description' => self::_('an option')),
     array('name'=>'hacker1'),
     array('name'=>'hacker2'),
     array('name'=>'hawk1', 'choice_description' => self::_('an adjacent tile behind a wall to peek')),

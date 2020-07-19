@@ -581,6 +581,7 @@ function (dojo, declare) {
             var character = this.gamedatas.gamestate.args.character.name;
 
             typeToTitle = {
+                acrobat1: 'Acrobat: Flexibility',
                 acrobat2: 'Acrobat: Climb Window',
                 hacker2: 'Hacker: Laptop',
                 hawk1: 'Hawk: X-Ray',
