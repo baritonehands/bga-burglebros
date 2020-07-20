@@ -397,6 +397,10 @@ class burglebros extends Table
         $player_tile = $this->getPlayerTile($current_player_id, $player_token);
         $character = $this->getPlayerCharacter($current_player_id);
         $character['name'] = $this->getCardType($character);
+        $actions_remaining = self::getGameStateValue('actionsRemaining'); 
+        $actions_description = $actions_remaining > 0 ?
+            self::_("$actions_remaining actions, free actions,") :
+            self::_('free actions');
         return array(
             'escape' => $this->canEscape($player_tile),
             'peekable' => $this->getPeekableTiles($player_tile),
@@ -405,7 +409,8 @@ class burglebros extends Table
             'tile' => $player_tile,
             'tile_tokens' => $this->tokens->getCardsInLocation('tile', $player_tile['id']),
             'floor' => $player_tile['location'][5],
-            'actions_remaining' => self::getGameStateValue('actionsRemaining')
+            'actions_remaining' => $actions_remaining,
+            'actions_description' => $actions_description,
         );
     }
 
@@ -577,11 +582,7 @@ SQL;
 
     function nextAction($action_cost = 1) {
         $actions_remaining = self::incGameStateValue('actionsRemaining', -$action_cost);
-        if ($actions_remaining == 0) {
-            $this->gamestate->nextState('endTurn');
-        } else {
-            $this->gamestate->nextState('nextAction');
-        }
+        $this->gamestate->nextState('nextAction');
     }
 
     function tileAdjacencyDetail($tile, $other_tile, $walls=null) {
@@ -1528,10 +1529,8 @@ SQL;
             $this->moveToken($patrol_token['id'], 'tile', $tile['id']);
         } elseif($type == 'dead-drop') {
             $prev_player_id = self::getPlayerBefore($player_id);
-            $cards = array_merge(
-                $this->cards->getCardsOfTypeInLocation(1, null, 'hand', $player_id),
-                $this->cards->getCardsOfTypeInLocation(2, null, 'hand', $player_id)
-            );
+            $cards = $this->cards->getCardsOfTypeInLocation(1, null, 'hand', $player_id) +
+                $this->cards->getCardsOfTypeInLocation(2, null, 'hand', $player_id);
             $this->cards->moveCards(array_keys($cards), 'hand', $prev_player_id);
             $this->notifyPlayerHand($player_id, array_keys($cards));
             $this->notifyPlayerHand($prev_player_id);
@@ -2001,12 +2000,20 @@ SQL;
 
     function peek( $tile_id ) {
         self::checkAction('peek');
+        $actions_remaining = self::getGameStateValue('actionsRemaining');
+        if ($actions_remaining < 1) {
+            throw new BgaUserException(self::_("You have no actions remaining"));
+        }
         $this->performPeek($tile_id);
         $this->nextAction();
     }
 
     function move( $tile_id ) {
         self::checkAction('move');
+        $actions_remaining = self::getGameStateValue('actionsRemaining');
+        if ($actions_remaining < 1) {
+            throw new BgaUserException(self::_("You have no actions remaining"));
+        }
         $tile_choice = $this->performMove($tile_id);
         if ($tile_choice) {
             self::setGameStateValue('tileChoice', $tile_choice);
@@ -2032,6 +2039,10 @@ SQL;
 
     function rollSafeDice() {
         self::checkAction('rollSafeDice');
+        $actions_remaining = self::getGameStateValue('actionsRemaining');
+        if ($actions_remaining < 1) {
+            throw new BgaUserException(self::_("You have no actions remaining"));
+        }
         $current_player_id = self::getCurrentPlayerId();
         $player_token = $this->getPlayerToken($current_player_id);
         $player_tile = $this->getPlayerTile($current_player_id, $player_token);
@@ -2042,6 +2053,10 @@ SQL;
 
     function hack() {
         self::checkAction('hack');
+        $actions_remaining = self::getGameStateValue('actionsRemaining');
+        if ($actions_remaining < 1) {
+            throw new BgaUserException(self::_("You have no actions remaining"));
+        }
         $current_player_id = self::getCurrentPlayerId();
         $player_token = $this->getPlayerToken($current_player_id);
         $player_tile = $this->getPlayerTile($current_player_id, $player_token);
@@ -2139,6 +2154,8 @@ SQL;
         $character = $this->getPlayerCharacter($current_player_id);
         $type = $this->getCardType($character);
         $used = self::getGameStateValue('characterAbilityUsed');
+
+        // TODO: Check actions remaining for character ability
         if ($used && in_array($type, array('hawk1', 'hawk2', 'juicer2', 'rook1', 'spotter1', 'spotter2'))) {
             throw new BgaUserException(self::_('Character action can be used once per turn'));
         } else if($type == 'acrobat2') {
@@ -2227,6 +2244,11 @@ SQL;
 
     function escape() {
         self::checkAction('escape');
+        $actions_remaining = self::getGameStateValue('actionsRemaining');
+        if ($actions_remaining < 1) {
+            throw new BgaUserException(self::_("You have no actions remaining"));
+        }
+
         $current_player_id = self::getCurrentPlayerId();
         $player_token = $this->getPlayerToken($current_player_id);
         $player_tile = $this->getPlayerTile($current_player_id, $player_token);

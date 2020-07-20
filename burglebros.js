@@ -313,7 +313,7 @@ function (dojo, declare) {
                                 this.addActionButton('button_add_die_down', _('Add Safe Die (Down)'), dojo.hitch(this, 'handleCardChoiceButton', floor - 1));
                                 this.addActionButton('button_roll_dice_down', _('Roll Safe Dice (Down)'), dojo.hitch(this, 'handleCardChoiceButton', floor + 9));
                             }
-                        } else if(this.isCardChoice('acrobat2') && this.gamedatas.gamestate.args.actions_remaining >= 3) {
+                        } else if(this.isCardChoice('acrobat2') && this.actionsRemaining() >= 3) {
                             var floor = this.currentFloor();
                             if (floor < 3) {
                                 this.addActionButton('button_acrobat_up', _('Move Up'), dojo.hitch(this, 'handleCardChoiceButton', floor + 1));
@@ -604,25 +604,27 @@ function (dojo, declare) {
         },
 
         canEscape: function() {
-            return this.gamedatas.gamestate.args.escape;
+            return this.gamedatas.gamestate.args.escape && this.actionsRemaining() >= 1;
         },
 
         canPeek: function() {
-            return this.gamedatas.gamestate.args.peekable.length > 0;
+            return this.gamedatas.gamestate.args.peekable.length > 0 && this.actionsRemaining() >= 1;
         },
 
         canAddSafeDie: function() {
             return this.gamedatas.gamestate.args.tile.type === 'safe' &&
-                this.gamedatas.gamestate.args.actions_remaining >= 2 &&
+                this.actionsRemaining() >= 2 &&
                 !this.tileContainsToken('open');
         },
 
         canRollSafeDice: function() {
-            return this.gamedatas.gamestate.args.tile.type === 'safe' && !this.tileContainsToken('open');
+            return this.gamedatas.gamestate.args.tile.type === 'safe' &&
+                this.actionsRemaining() >= 1 &&
+                !this.tileContainsToken('open');
         },
 
         canHack: function() {
-            return this.gamedatas.gamestate.args.tile.type.endsWith('-computer');
+            return this.gamedatas.gamestate.args.tile.type.endsWith('-computer') && this.actionsRemaining() >= 1;
         },
 
         canHackAlarm: function() {
@@ -644,6 +646,10 @@ function (dojo, declare) {
 
         currentFloor: function() {
             return parseInt(this.gamedatas.gamestate.args.floor, 10);
+        },
+
+        actionsRemaining: function() {
+            return parseInt(this.gamedatas.gamestate.args.actions_remaining, 10);
         },
 
         tileContainsToken: function(name) {
@@ -741,7 +747,6 @@ function (dojo, declare) {
                     this.addTooltipHtml(divId, tooltipHtml);
                 }
             }
-            debugger;
             for(var idx = 0; idx < discard_ids.length; idx++) {
                 var discard_id = discard_ids[idx];
                 if (handStock.getItemById(discard_id)) {
