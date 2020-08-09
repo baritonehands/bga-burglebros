@@ -147,7 +147,7 @@ class burglebros extends Table
         }
         $tokens [] = array('type' => 'hack', 'type_arg' => 0, 'nbr' => 19);
         $tokens [] = array('type' => 'safe', 'type_arg' => 0, 'nbr' => 22);
-        $tokens [] = array('type' => 'stealth', 'type_arg' => 0, 'nbr' => 18);
+        $tokens [] = array('type' => 'stealth', 'type_arg' => 0, 'nbr' => 22);
         $tokens [] = array('type' => 'alarm', 'type_arg' => 0, 'nbr' => 9);
         $tokens [] = array('type' => 'open', 'type_arg' => 0, 'nbr' => 6);
         $tokens [] = array('type' => 'keypad', 'type_arg' => 0, 'nbr' => 3);
@@ -200,6 +200,8 @@ class burglebros extends Table
                 $dynamite = array_values($this->cards->getCardsOfType(1, $type_arg))[0];
                 $this->cards->moveCard($dynamite['id'], 'hand', $player_id);
             }
+
+            $this->pickTokens('stealth', 'player', $player_id, 3);
         }
 
         // Activate first player (which is in general a good idea :) )
@@ -729,7 +731,7 @@ SQL;
         $this->moveToken($guard_token['id'], 'tile', $tile_id, TRUE);
         $this->checkCameras(array('guard_id'=>$guard_token['id']));
         $tile = $this->tiles->getCard($tile_id);
-        $this->checkPlayerStealth($tile);
+        $this->checkPlayerStealth($tile, 'guard');
         $this->clearTileTokens('alarm', $tile_id);
     }
 
@@ -771,21 +773,28 @@ SQL;
     function decrementPlayerStealth($player_id, $amount = 1) {
         self::DbQuery("UPDATE player SET player_stealth_tokens = player_stealth_tokens - $amount WHERE player_id = '$player_id'");
         $players = self::loadPlayersBasicInfos();
+        $player_stealth = $this->tokens->getCardsOfTypeInLocation('stealth', null, 'player', $player_id);
+        if ($amount > 0 && count($player_stealth) > 0) {
+            $this->moveToken(array_keys($player_stealth)[0], 'deck', TRUE);
+        } else if($amount < 0) {
+            $this->pickTokens('stealth', 'player', $player_id, -$amount);
+        }
         self::notifyAllPlayers('message', clienttranslate( '${player_name} ${action} one stealth' ), array(
             'action' => $amount < 0 ? 'gained' : 'lost',
             'player_name' => $players[$player_id]['player_name']
         ));
     }
 
-    function deductTileStealth($tile_id) {
+    function deductTileStealth($tile_id, $context) {
         $player_tokens = $this->tokens->getCardsOfTypeInLocation('player', null, 'tile', $tile_id);
         $tile_stealth = $this->tokens->getCardsOfTypeInLocation('stealth', null, 'tile', $tile_id);
+        $current_player_id = self::getCurrentPlayerId();
         foreach ($player_tokens as $token) {
             if (count($tile_stealth) > 0) {
                 // TODO: pick which players
                 $stealth_token = array_shift($tile_stealth);
                 $this->moveToken($stealth_token['id'], 'deck');
-            } else {
+            } else if($context == 'guard' || $token['type_arg'] == $current_player_id) {
                 $this->decrementPlayerStealth($token['type_arg']);
             }
         }
@@ -814,7 +823,7 @@ SQL;
         return self::getUniqueValueFromDB($sql);
     }
 
-    function checkPlayerStealth($tile) {
+    function checkPlayerStealth($tile, $context) {
         $guard_token = array_values($this->tokens->getCardsOfType('guard', $tile['location'][5]))[0];
         $guard_tile = $this->tiles->getCard($guard_token['location_arg']);
 
@@ -827,27 +836,24 @@ SQL;
         
         if ($is_guard_tile && $is_player_tile) {
             $state = $this->gamestate->state();
-            if ($this->getPlayerCharacter($current_player_id, 'acrobat1') && $state['name'] != 'moveGuard') {
-                return;
-            }
-            $this->deductTileStealth($player_tile['id']);
+            $this->deductTileStealth($player_tile['id'], $context);
             return;
         }
 
-        $tiara = $this->getPlayerLoot('tiara', $current_player_id);
+        $tiara = $this->getPlayerLoot('tiara', $current_player_id) && $context == 'player';
         $is_adjacent = $this->isTileAdjacent($player_tile, $guard_tile, null, 'guard');
         $is_foyer = $is_adjacent &&
             (($is_guard_tile && $player_tile['type'] == 'foyer') ||
                 ($is_player_tile && ($player_tile['type'] == 'foyer' || $tiara)));
         if ($is_foyer) {
-            $this->deductTileStealth($player_tile['id']);
+            $this->deductTileStealth($player_tile['id'], $context);
             return;
         }
 
         if ($player_tile['type'] == 'atrium') {
             if (($is_player_tile && $this->atriumGuards($player_tile)) ||
                     ($is_guard_tile && $guard_tile['location_arg'] == $player_tile['location_arg'])) {
-                $this->deductTileStealth($player_tile['id']);
+                $this->deductTileStealth($player_tile['id'], $context);
             }
             
             return;
@@ -1350,6 +1356,8 @@ SQL;
                 $motion_bit = 1 << self::getUniqueValueFromDB("SELECT safe_die FROM tile WHERE card_id = '$exit_id'");
                 $motion_entered = self::getGameStateValue('motionTileEntered');
                 if ($motion_entered & $motion_bit) {
+                    // TODO: If tile choice is already set, this overrides it.
+                    // We could have two choices in a row, for example when exiting motion and entering laser
                     $tile_choice = $this->hackOrTrigger($player_tile);
                     $tile_choice_id = $player_tile['id'];
                 }
@@ -1941,7 +1949,7 @@ SQL;
             }
             self::setGameStateValue('acrobatEnteredGuardTile', $acrobat_entered);
             if (!$invisible_suit) {
-                $this->checkPlayerStealth($to_move);
+                $this->checkPlayerStealth($to_move, 'player');
             }
         }
         if (!$invisible_suit) {

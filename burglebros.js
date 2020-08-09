@@ -52,20 +52,13 @@ function (dojo, declare) {
         {
             console.log( "Starting game setup" );
             
-            // Setting up player boards
-            for( var player_id in gamedatas.players )
-            {
-                var player = gamedatas.players[player_id];
-                         
-                // TODO: Setting up players boards if needed
-            }
-            
             // TODO: Set up your game interface here, according to "gamedatas"
             window.gamedatas = gamedatas;
             window.app = this;
 
             this.zones = {};
 
+            // Setting up player boards
             this.playerHands = {};
             for (var playerId in gamedatas.players) {
                 var hand, handDivId, me = false;
@@ -106,7 +99,7 @@ function (dojo, declare) {
                 var player = gamedatas.players[playerId];
                 var cards = player.hand;
                 this.loadPlayerHand(playerId, cards, []);
-                this.createPlayerStealthToken(playerId, player.stealth_tokens);
+                this.createPlayerBoard(playerId);
             }
 
             for(var floor = 1; floor <= 3; floor++) {
@@ -148,7 +141,7 @@ function (dojo, declare) {
             for (var token_id in gamedatas.player_tokens) {
                 var token = gamedatas.player_tokens[token_id];
                 this.createPlayerToken(token_id, token.type_arg);
-                if (token.location === 'tile') {
+                if (this.canMoveToken(token)) {
                     this.moveToken('player', token);
                 }
             }
@@ -156,7 +149,7 @@ function (dojo, declare) {
             for (var token_id in gamedatas.guard_tokens) {
                 var token = gamedatas.guard_tokens[token_id];
                 this.createGuardToken(token_id);
-                if (token.location === 'tile') {
+                if (this.canMoveToken(token)) {
                     this.moveToken('guard', token);
                 }
             }
@@ -174,7 +167,7 @@ function (dojo, declare) {
             for (var token_id in gamedatas.generic_tokens) {
                 var token = gamedatas.generic_tokens[token_id];
                 this.createGenericToken(token);
-                if (token.location === 'tile' || token.location === 'card') {
+                if (this.canMoveToken(token)) {
                     this.moveToken('generic', token);
                 }
             }
@@ -500,7 +493,7 @@ function (dojo, declare) {
         removeToken: function(token_type, id) {
             var deck = this.gamedatas[token_type + '_tokens'];
             var token = deck[id];
-            if (token && (token.location === 'tile' || token.location === 'card')) {
+            if (token && this.canMoveToken(token)) {
                 if (token_type === 'player') {
                     var meepleZoneId = 'tile_' + token.location_arg + '_meeples';
                     this.zones[meepleZoneId].removeFromZone('meeple_' + token.id, token.location === 'roof');
@@ -528,7 +521,7 @@ function (dojo, declare) {
                 }), 'token_container');
             }
 
-            if (token.location !== 'deck') {
+            if (this.canMoveToken(token)) {
                 this.moveToken(token.type, token);
             }
         },
@@ -565,16 +558,17 @@ function (dojo, declare) {
             dojo.destroy('generic_token_' + id);
         },
 
-        createPlayerStealthToken: function(id, count) {
+        createPlayerBoard: function(id) {
             var tokenType = this.gamedatas.token_types['stealth'];
-            dojo.place(this.format_block('jstpl_generic_token', {
-                token_id : 'p' + id,
-                token_color : tokenType.color,
-                token_type : 'stealth',
-                token_background : g_gamethemeurl + '/img/tokens.jpg',
-                token_bg_pos : (tokenType.id * -32) - 4,
-                token_letter : count
+            dojo.place(this.format_block('jstpl_player_zone', {
+                id : id,
             }), 'player_board_' + id);
+
+            var zone = new ebg.zone();
+            var zoneId = 'player_' + id + '_tokens';
+            zone.create( this, zoneId, 24, 24 );
+            zone.setPattern( 'grid' );
+            this.zones[zoneId] = zone;
         },
 
         addCharacterAction: function() {
@@ -638,6 +632,10 @@ function (dojo, declare) {
 
         canUseExtraAction: function() {
             return this.gamedatas.gamestate.args.can_use_extra_action;
+        },
+
+        canMoveToken: function(token) {
+            return ['tile', 'card', 'player'].indexOf(token.location) !== -1;
         },
 
         isCardChoice: function(name) {
@@ -981,7 +979,7 @@ function (dojo, declare) {
                 if(isGeneric) {
                     delete this.gamedatas.generic_tokens[tokenId];
                 }
-                if (token.location === 'tile' || token.location === 'card') {
+                if (this.canMoveToken(token)) {
                     if (isGeneric) {
                         this.createGenericToken(token);
                     }

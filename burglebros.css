@@ -322,3 +322,7 @@
     filter: drop-shadow(1px 1px 3px #000000);
 }
 
+.player-zone {
+    margin: 5px 0;
+    min-height: 24px;
+}

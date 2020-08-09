@@ -85,6 +85,9 @@
 var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';
 
 */
+
+var jstpl_player_zone = '<div id="player_${id}_tokens" class="player-zone"></div>';
+
 var jstpl_tile_container = '<div id="tile_${id}_container" class="tile-container" style="left: ${x}px; top: ${y}px;" aria-label="${name}">\n' +
 '    <div id="tile_${id}_tokens" class="tile-tokens"></div>\n' +
 '    <div id="tile_${id}_meeples" class="tile-meeples"></div>\n' +
