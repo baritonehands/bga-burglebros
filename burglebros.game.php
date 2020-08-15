@@ -49,6 +49,7 @@ class burglebros extends Table
             'characterAbilityUsed' => 23,
             'acrobatEnteredGuardTile' => 24,
             'tileChoice' => 25,
+            'motionTileExitChoice' => 26,
 
             // Options
             'characterAssignment' => 100
@@ -115,6 +116,7 @@ class burglebros extends Table
         self::setGameStateInitialValue( 'characterAbilityUsed', 0 );
         self::setGameStateInitialValue( 'acrobatEnteredGuardTile', 0 );
         self::setGameStateInitialValue( 'tileChoice', 0 );
+        self::setGameStateInitialValue( 'motionTileExitChoice', 0 );
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -1356,10 +1358,14 @@ SQL;
                 $motion_bit = 1 << self::getUniqueValueFromDB("SELECT safe_die FROM tile WHERE card_id = '$exit_id'");
                 $motion_entered = self::getGameStateValue('motionTileEntered');
                 if ($motion_entered & $motion_bit) {
-                    // TODO: If tile choice is already set, this overrides it.
-                    // We could have two choices in a row, for example when exiting motion and entering laser
-                    $tile_choice = $this->hackOrTrigger($player_tile);
-                    $tile_choice_id = $player_tile['id'];
+                    $exiting_choice = $this->hackOrTrigger($player_tile);
+                    if ($tile_choice && $exiting_choice) {
+                        self::setGameStateValue('motionTileExitChoice', $tile_choice_id);
+                    }
+                    if ($exiting_choice) {
+                        $tile_choice = $exiting_choice;
+                        $tile_choice_id = $player_tile['id'];
+                    }
                 }
             }
         
@@ -1887,6 +1893,7 @@ SQL;
             // Take an extra 1 (or 2 for gemstone). Another 1 is always taken
             self::incGameStateValue('actionsRemaining', -1 - $gemstone_penalty);
         }
+        return $tile;
     }
 
     function performPeek($tile_id, $variant='peek') {
@@ -1948,7 +1955,7 @@ SQL;
                 $this->nextPatrol($floor, TRUE);
             }
             self::setGameStateValue('acrobatEnteredGuardTile', $acrobat_entered);
-            if (!$invisible_suit) {
+            if (!$invisible_suit && !$acrobat_entered) {
                 $this->checkPlayerStealth($to_move, 'player');
             }
         }
@@ -2163,9 +2170,17 @@ SQL;
 
     function selectTileChoice($selected) {
         self::checkAction('selectTileChoice');
-        $this->handleSelectTileChoice($selected);
-        self::setGameStateValue('tileChoice', 0);
-        $this->nextAction();
+        $tile = $this->handleSelectTileChoice($selected);
+        $motion_exit = self::getGameStateValue('motionTileExitChoice');
+        if ($tile['type'] == 'motion' && $motion_exit > 0) {
+            self::notifyAllPlayers('message', "Motion exit to $motion_exit", array());
+            self::setGameStateValue('tileChoice', $motion_exit);
+            $this->gamestate->nextState('tileChoice');
+        } else {
+            self::setGameStateValue('tileChoice', 0);
+            $this->nextAction();
+        }
+        self::setGameStateValue('motionTileExitChoice', 0);
     }
 
     function characterAction() {

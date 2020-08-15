@@ -127,7 +127,7 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argTileChoice',
         'possibleactions' => array( 'selectTileChoice' ),
-        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10 )
+        'transitions' => array( 'nextAction' => 9, 'tileChoice' => 14, 'endTurn' => 10 )
     ),
     
 /*
