@@ -131,6 +131,14 @@
       self::ajaxResponse();
     }
 
+    public function proposeTrade() {
+      self::setAjaxMode();
+      $p1_cards_raw = self::getArg( "p1_cards", AT_numberlist, true );
+      $p2_cards_raw = self::getArg( "p2_cards", AT_numberlist, true );
+      $this->game->proposeTrade($this->game->parseIdList($p1_cards_raw), $this->game->parseIdList($p2_cards_raw));
+      self::ajaxResponse();
+    }
+
     public function confirmTrade() {
       self::setAjaxMode();
       $this->game->confirmTrade();

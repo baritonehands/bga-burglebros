@@ -2008,32 +2008,45 @@ SQL;
         return self::DbGetLastId();
     }
 
-    function createTradeCards($trade_id, $card_ids) {
-        $sql = 'INSERT INTO trade_cards (trade_id, card_id) VALUES ';
-        $values = array();
-        foreach ($card_ids as $card_Id) {
-            $values [] = "($trade_id,$card_id)";
+    function createTradeCards($trade_id, $player_id, $card_ids) {
+        if (count($card_ids) > 0) {
+            $sql = 'INSERT INTO trade_cards (trade_id, player_id, card_id) VALUES ';
+            $values = array();
+            foreach ($card_ids as $card_id) {
+                $values [] = "($trade_id,$player_id,$card_id)";
+            }
+            $sql .= implode($values, ',');
+            self::DbQuery($sql);
         }
-        $sql .= implode($values, ',');
-        self::DbQuery($sql);
     }
 
     function getTrade() {
         return self::getObjectFromDB("SELECT * FROM trade WHERE deleted = 0");
     }
 
-    function getTradeCards($trade_id) {
+    function getTradeCards($trade_id, $player_id) {
         $sql = <<<SQL
             SELECT card.card_id id, card.card_type type, card.card_type_arg type_arg, card.card_location location, card.card_location_arg location_arg
             FROM trade_cards
             INNER JOIN card ON card.card_id = trade_cards.card_id
-            WHERE trade_cards.trade_id = $trade_id
+            WHERE trade_cards.trade_id = $trade_id AND trade_cards.player_id = $player_id
 SQL;
         return self::getCollectionFromDB($sql);
     }
 
     function deleteTrade() {
         self::DbQuery("UPDATE trade SET deleted = 1 WHERE deleted = 0");
+    }
+
+    function parseIdList($id_arg) {
+        // Removing last ';' if exists
+        if( substr( $id_arg, -1 ) == ';' )
+            $id_arg = substr( $id_arg, 0, -1 );
+        if( $id_arg == '' )
+            $ids = array();
+        else
+            $ids = explode( ';', $id_arg );
+        return $ids;
     }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2332,14 +2345,36 @@ SQL;
         $this->gamestate->nextState('proposeTrade');
     }
 
-    function proposeTrade($ids) {
+    function proposeTrade($p1_ids, $p2_ids) {
         self::checkAction('proposeTrade');
+        $trade = $this->getTrade();
+        // TODO: Validate trade
+        $this->createTradeCards($trade['id'], $trade['current_player'], $p1_ids);
+        $this->createTradeCards($trade['id'], $trade['other_player'], $p2_ids);
+        $this->gamestate->nextState('nextTradePlayer');
+    }
+
+    function confirmTrade() {
+        self::checkAction('confirmTrade');
+        $trade = $this->getTrade();
+        $p1_cards = array_keys($this->getTradeCards($trade['id'], $trade['current_player']));
+        $this->cards->moveCards($p1_cards, 'hand', $trade['current_player']);
+        $p2_cards = array_keys($this->getTradeCards($trade['id'], $trade['other_player']));
+        $this->cards->moveCards($p2_cards, 'hand', $trade['other_player']);
+        $this->notifyPlayerHand($trade['current_player'], $p2_cards);
+        $this->notifyPlayerHand($trade['other_player'], $p1_cards);
+        $this->gamestate->nextState('endTradeOtherPlayer');
     }
 
     function cancelTrade() {
         self::checkAction('cancelTrade');
-        $this->deleteTrade();
-        $this->gamestate->nextState('nextAction');
+        $state = $this->gamestate->state();
+        if ($state['name'] == 'confirmTrade') {
+            $this->gamestate->nextState('endTradeOtherPlayer');
+        } else {
+            $this->deleteTrade();
+            $this->gamestate->nextState('nextAction');
+        }
     }
 
     function pass() {
@@ -2467,6 +2502,10 @@ SQL;
 
     function argConfirmTrade() {
         $args = $this->gatherCurrentData(self::getActivePlayerId());
+        $trade = $this->getTrade();
+        $args['trade'] = $trade;
+        $args['p1_cards'] = $this->getTradeCards($trade['id'], $trade['other_player']);
+        $args['p2_cards'] = $this->getTradeCards($trade['id'], $trade['current_player']);
         return $args;
     }
 
@@ -2605,6 +2644,19 @@ SQL;
         $current = $this->gatherCurrentData($player_id);
         $this->notifyAllPlayers('currentState', '', array('current' => $current));
         $this->gamestate->nextState( 'playerTurn' );
+    }
+
+    function stNextTradePlayer() {
+        $trade = $this->getTrade();
+        $this->gamestate->changeActivePlayer( $trade['other_player'] );
+        $this->gamestate->nextState( 'confirmTrade' );
+    }
+
+    function stEndTradeOtherPlayer() {
+        $trade = $this->getTrade();
+        $this->gamestate->changeActivePlayer( $trade['current_player'] );
+        $this->deleteTrade();
+        $this->gamestate->nextState( 'nextAction' );
     }
 
 //////////////////////////////////////////////////////////////////////////////

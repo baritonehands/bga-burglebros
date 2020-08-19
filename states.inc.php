@@ -147,7 +147,7 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argProposeTrade',
         'possibleactions' => array( 'proposeTrade', 'cancelTrade' ),
-        'transitions' => array( 'nextAction' => 9, 'confirmTrade' => 17 )
+        'transitions' => array( 'nextAction' => 9, 'nextTradePlayer' => 18 )
     ),
 
     17 => array(
@@ -157,6 +157,22 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argConfirmTrade',
         'possibleactions' => array( 'confirmTrade', 'cancelTrade' ),
+        'transitions' => array( 'endTradeOtherPlayer' => 19 )
+    ),
+
+    18 => array(
+        'name' => 'nextTradePlayer',
+        'description' => '',
+        'type' => 'game',
+        'action' => 'stNextTradePlayer',
+        'transitions' => array( 'confirmTrade' => 17 )
+    ),
+
+    19 => array(
+        'name' => 'endTradeOtherPlayer',
+        'description' => '',
+        'type' => 'game',
+        'action' => 'stEndTradeOtherPlayer',
         'transitions' => array( 'nextAction' => 9 )
     ),
     

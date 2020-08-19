@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS `trade` (
 
 CREATE TABLE IF NOT EXISTS `trade_cards` (
   `trade_id` int(10) unsigned NOT NULL,
+  `player_id` int(10) unsigned NOT NULL,
   `card_id` int(10) unsigned NOT NULL,
   PRIMARY KEY (`trade_id`, `card_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;
