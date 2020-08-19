@@ -118,6 +118,31 @@
       self::ajaxResponse();
     }
 
+    public function trade() {
+      self::setAjaxMode();
+      $this->game->trade();
+      self::ajaxResponse();
+    }
+
+    public function selectPlayerChoice() {
+      self::setAjaxMode();
+      $selected = self::getArg( "selected", AT_posint, true );
+      $this->game->selectPlayerChoice($selected);
+      self::ajaxResponse();
+    }
+
+    public function confirmTrade() {
+      self::setAjaxMode();
+      $this->game->confirmTrade();
+      self::ajaxResponse();
+    }
+
+    public function cancelTrade() {
+      self::setAjaxMode();
+      $this->game->cancelTrade();
+      self::ajaxResponse();
+    }
+
     public function pass() {
       self::setAjaxMode();
       $this->game->pass();

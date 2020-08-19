@@ -84,21 +84,11 @@ function (dojo, declare) {
                     hand.setSelectionMode(0);
                 }
 
-                // Create cards types:
-                for (var type = 0; type < gamedatas.card_types.length; type++) {
-                    var typeInfo = gamedatas.card_types[type];
-                    for (var index = 0; index < typeInfo.cards.length; index++) {
-                        // Build card type id
-                        var card = typeInfo.cards[index];
-                        var cardTypeId = this.getCardUniqueId(card.type, card.index);
-                        var cardIndex = card.type == 0 ? card.index - 1 : card.index;
-                        hand.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/' + typeInfo.name + '.jpg', cardIndex);
-                    }
-                }
+                this.addCardTypesToStock(hand, [0, 1, 2, 3]);
 
                 var player = gamedatas.players[playerId];
                 var cards = player.hand;
-                this.loadPlayerHand(playerId, cards, []);
+                this.loadPlayerHand(hand, cards, [], false);
                 this.createPlayerBoard(playerId);
             }
 
@@ -208,6 +198,12 @@ function (dojo, declare) {
             case 'tileChoice':
                 this.showFloor(this.currentFloor());
                 break;
+            
+            case 'proposeTrade':
+                if (this.isCurrentPlayerActive()) {
+                    this.proposeTrade(args.args);
+                }
+                break;
            
            
             case 'dummmy':
@@ -283,6 +279,9 @@ function (dojo, declare) {
                         if (this.canHack()) {
                             this.addActionButton( 'button_hack' , _('Hack'), 'handleHack' );
                         }
+                        if (this.canTrade()) {
+                            this.addActionButton( 'button_trade' , _('Trade'), 'handleTrade' );
+                        }
                         this.addCharacterAction();
                         this.addActionButton( 'button_pass', _('Pass'), 'handlePassClick' );
                         break;
@@ -327,6 +326,11 @@ function (dojo, declare) {
                         if (this.canUseExtraAction()) {
                             this.addActionButton('button_extra_action', _('Use an Extra Action'), dojo.hitch(this, 'handleTileChoiceButton', 2));
                         }
+                        break;
+                    case 'playerChoice':
+                    case 'proposeTrade':
+                    case 'confirmTrade':
+                        this.addActionButton('button_cancel', _('Cancel Trade'), 'handleCancelTrade');
                         break;
                 }
             }
@@ -638,6 +642,10 @@ function (dojo, declare) {
             return ['tile', 'card', 'player'].indexOf(token.location) !== -1;
         },
 
+        canTrade: function() {
+            return this.gamedatas.gamestate.args.other_players > 0;
+        },
+
         isCardChoice: function(name) {
             return this.gamedatas.gamestate.args.card_name === name;
         },
@@ -724,25 +732,17 @@ function (dojo, declare) {
             }
         },
 
-        loadPlayerHand: function(playerId, hand, discard_ids) {
-            var handStock = playerId == this.player_id ? this.myHand : this.playerHands[playerId];
+        loadPlayerHand: function(handStock, hand, discard_ids, skip_characters) {
             for(var cardId in hand) {
                 var card = hand[cardId];
+                if (skip_characters && card.type == 0) {
+                    continue;
+                }
+
                 var cardTypeId = this.getCardUniqueId(card.type, card.type_arg);
                 if (!handStock.getItemById(cardId)) {
                     handStock.addToStockWithId(cardTypeId, cardId);
-
-                    var typeInfo = gamedatas.card_types[card.type];
-                    var index = card.type == 0 ? card.type_arg - 1 : card.type_arg;
-                    var bg_row = Math.floor(index / 2) * -100;
-                    var bg_col = (index % 2) * -100;
-                    var divId = handStock.getItemDivId(cardId);
-                    var tooltipHtml = this.format_block('jstpl_card_tooltip', {
-                        id : cardId, 
-                        bg_image: g_gamethemeurl + 'img/' + typeInfo.name + '.jpg',
-                        bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
-                    });
-                    this.addTooltipHtml(divId, tooltipHtml);
+                    this.addCardTooltip(card, handStock.getItemDivId(cardId));
                 }
             }
             for(var idx = 0; idx < discard_ids.length; idx++) {
@@ -751,6 +751,99 @@ function (dojo, declare) {
                     handStock.removeFromStockById(discard_id);
                 }
             }
+        },
+
+        addCardTooltip: function(card, divId) {
+            var typeInfo = this.gamedatas.card_types[card.type];
+            var index = card.type == 0 ? card.type_arg - 1 : card.type_arg;
+            var bg_row = Math.floor(index / 2) * -100;
+            var bg_col = (index % 2) * -100;
+            var tooltipHtml = this.format_block('jstpl_card_tooltip', {
+                id : card.id, 
+                bg_image: g_gamethemeurl + 'img/' + typeInfo.name + '.jpg',
+                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
+            });
+            this.addTooltipHtml(divId, tooltipHtml);
+        },
+
+        addCardTypesToStock: function(stock, types) {
+            // Create cards types:
+            for (var type = 0; type < types.length; type++) {
+                var typeInfo = gamedatas.card_types[types[type]];
+                for (var index = 0; index < typeInfo.cards.length; index++) {
+                    // Build card type id
+                    var card = typeInfo.cards[index];
+                    var cardTypeId = this.getCardUniqueId(card.type, card.index);
+                    var cardIndex = card.type == 0 ? card.index - 1 : card.index;
+                    stock.addItemType(cardTypeId, cardTypeId, g_gamethemeurl + 'img/' + typeInfo.name + '.jpg', cardIndex);
+                }
+            }
+        },
+
+        proposeTrade: function(args) {
+            var dialog = new ebg.popindialog();
+            dialog.create( 'proposeTradeDialog' );
+            dialog.setTitle( _("Trade Cards") );
+            
+            // var card = notif.args.card;
+            // var bg_row = Math.floor(card.type_arg / 2) * -100;
+            // var bg_col = (card.type_arg % 2) * -100;
+            var p1 = this.gamedatas.players[args.trade.current_player];
+            var p2 = this.gamedatas.players[args.trade.other_player];
+            var html = this.format_block('jstpl_trade_dialog', {
+                p1_color: p1.color,
+                p1_name: p1.name,
+                p2_color: p2.color,
+                p2_name: p2.name,
+            });
+            
+            // Show the dialog
+            dialog.setContent( html ); // Must be set before calling show() so that the size of the content is defined before positioning the dialog
+
+            var p1_stock = new ebg.stock();
+            p1_stock.create(this, $('trade_p1'), this.cardwidth, this.cardheight);
+            p1_stock.image_items_per_row = 2;
+            p1_stock.setSelectionMode(1);
+            p1_stock.setSelectionAppearance('class');
+            this.addCardTypesToStock(p1_stock, [1, 2, 3]);
+            this.loadPlayerHand(p1_stock, p1.hand, [], true);
+
+            var p2_stock = new ebg.stock();
+            p2_stock.create(this, $('trade_p2'), this.cardwidth, this.cardheight);
+            p2_stock.image_items_per_row = 2;
+            p2_stock.setSelectionMode(1);
+            p2_stock.setSelectionAppearance('class');
+            this.addCardTypesToStock(p2_stock, [1, 2, 3]);
+            this.loadPlayerHand(p2_stock, p2.hand, [], true);
+
+            var cards = dojo.mixin({}, p1.hand, p2.hand);
+            this.connectTradeButtonHandlers(cards, p1_stock, p2_stock);
+            this.connectTradeButtonHandlers(cards, p2_stock, p1_stock);
+
+            dialog.show();
+            
+            // Now that the dialog has been displayed, you can connect your method to some dialog elements
+            // Example, if you have an "OK" button in the HTML of your dialog:
+            var closeCallback = function(evt) {
+                evt.preventDefault();
+                p1_stock.destroy();
+                p2_stock.destroy();
+                dialog.destroy();
+                this.handleCancelTrade();
+            };
+            dialog.replaceCloseCallback(dojo.hitch(this, closeCallback));
+            dojo.connect( $('trade_cancel_button'), 'onclick', this, closeCallback);
+        },
+
+        connectTradeButtonHandlers: function(cards, from_stock, to_stock) {
+            dojo.connect( from_stock, 'onChangeSelection', this, function (control_name, item_id) {
+                var item = from_stock.getItemById(item_id);
+                var anim_from = from_stock.getItemDivId(item_id);
+                this.removeTooltip(anim_from);
+                to_stock.addToStockWithId(item.type, item.id, anim_from);
+                from_stock.removeFromStockById(item_id);
+                this.addCardTooltip(cards[item_id], to_stock.getItemDivId(item_id));
+            });
         },
 
         ///////////////////////////////////////////////////
@@ -813,6 +906,9 @@ function (dojo, declare) {
                 this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: selected_type, selected_id: selected_id }, this, console.log, console.error);
             } else if(this.gamedatas.gamestate.name == 'startingTile' && this.checkAction('chooseStartingTile')) {
                 this.ajaxcall('/burglebros/burglebros/chooseStartingTile.html', { lock: true, id: id }, this, console.log, console.error);
+            } else if(this.gamedatas.gamestate.name == 'playerChoice' && dojo.hasClass(evt.target, 'meeple') && this.checkAction('selectPlayerChoice')) {
+                var player_id = evt.target.id.substring(evt.target.id.lastIndexOf('_') + 1);
+                this.ajaxcall('/burglebros/burglebros/selectPlayerChoice.html', { lock: true, selected: player_id }, this, console.log, console.error);
             } else {
                 var intent = this.intent || 'move';
                 if (this.checkAction(intent)) {
@@ -870,6 +966,13 @@ function (dojo, declare) {
             }
         },
 
+        handleTrade: function(evt) {
+            dojo.stopEvent(evt);
+            if (this.checkAction('trade')) {
+                this.ajaxcall('/burglebros/burglebros/trade.html', { lock: true }, this, console.log, console.error);
+            }
+        },
+
         handlePassClick: function(evt) {
             dojo.stopEvent(evt);
 
@@ -911,6 +1014,12 @@ function (dojo, declare) {
         handleCharacterAction: function() {
             if (this.checkAction('characterAction')) {
                 this.ajaxcall('/burglebros/burglebros/characterAction.html', { lock: true }, this, console.log, console.error);
+            }
+        },
+
+        handleCancelTrade: function() {
+            if (this.checkAction('cancelTrade')) {
+                this.ajaxcall('/burglebros/burglebros/cancelTrade.html', { lock: true }, this, console.log, console.error);
             }
         },
         
@@ -1006,8 +1115,10 @@ function (dojo, declare) {
 
         notif_playerHand: function(notif) {
             var hand = notif.args.hand;
-            this.gamedatas.players[notif.args.player_id].hand = hand;
-            this.loadPlayerHand(notif.args.player_id, hand, notif.args.discard_ids);
+            var playerId = notif.args.player_id;
+            this.gamedatas.players[playerId].hand = hand;
+            var handStock = playerId == this.player_id ? this.myHand : this.playerHands[playerId];
+            this.loadPlayerHand(handStock, hand, notif.args.discard_ids, false);
         },
 
         notif_eventCard: function(notif) {

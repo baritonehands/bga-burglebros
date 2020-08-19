@@ -79,8 +79,8 @@ $machinestates = array(
         'descriptionmyturn' => clienttranslate('${you} may do ${actions_description} or pass'),
         'type' => 'activeplayer',
         'args' => 'argPlayerTurn',
-        'possibleactions' => array( 'hack', 'move', 'peek', 'addSafeDie', 'rollSafeDice', 'playCard', 'characterAction', 'pass', 'escape' ),
-        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10, 'nextPlayer' => 12, 'cardChoice' => 13, 'tileChoice' => 14, 'gameOver' => 99 )
+        'possibleactions' => array( 'hack', 'move', 'peek', 'addSafeDie', 'rollSafeDice', 'playCard', 'characterAction', 'trade', 'pass', 'escape' ),
+        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10, 'nextPlayer' => 12, 'cardChoice' => 13, 'tileChoice' => 14, 'playerChoice' => 15, 'proposeTrade' => 16, 'gameOver' => 99 )
     ),    
 
     10 => array(
@@ -128,6 +128,36 @@ $machinestates = array(
         'args' => 'argTileChoice',
         'possibleactions' => array( 'selectTileChoice' ),
         'transitions' => array( 'nextAction' => 9, 'tileChoice' => 14, 'endTurn' => 10 )
+    ),
+
+    15 => array(
+        'name' => 'playerChoice',
+        'description' => clienttranslate('${actplayer} must choose a player'),
+        'descriptionmyturn' => clienttranslate('${you} must choose a player'),
+        'type' => 'activeplayer',
+        'args' => 'argPlayerTurn',
+        'possibleactions' => array( 'selectPlayerChoice', 'cancelTrade' ),
+        'transitions' => array( 'nextAction' => 9, 'proposeTrade' => 16 )
+    ),
+
+    16 => array(
+        'name' => 'proposeTrade',
+        'description' => clienttranslate('${actplayer} must choose cards to trade'),
+        'descriptionmyturn' => clienttranslate('${you} must choose cards to trade'),
+        'type' => 'activeplayer',
+        'args' => 'argProposeTrade',
+        'possibleactions' => array( 'proposeTrade', 'cancelTrade' ),
+        'transitions' => array( 'nextAction' => 9, 'confirmTrade' => 17 )
+    ),
+
+    17 => array(
+        'name' => 'confirmTrade',
+        'description' => clienttranslate('${actplayer} must confirm a trade'),
+        'descriptionmyturn' => clienttranslate('${you} must confirm a trade'),
+        'type' => 'activeplayer',
+        'args' => 'argConfirmTrade',
+        'possibleactions' => array( 'confirmTrade', 'cancelTrade' ),
+        'transitions' => array( 'nextAction' => 9 )
     ),
     
 /*

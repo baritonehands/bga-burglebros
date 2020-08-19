@@ -60,3 +60,16 @@ CREATE TABLE IF NOT EXISTS `wall` (
 -- Example 2: add a custom field to the standard "player" table
 ALTER TABLE `player` ADD `player_stealth_tokens` INT(11) NOT NULL DEFAULT '3';
 
+CREATE TABLE IF NOT EXISTS `trade` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `current_player` int(10) unsigned NOT NULL,
+  `other_player` int(10) unsigned NOT NULL,
+  `deleted` boolean NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;
+
+CREATE TABLE IF NOT EXISTS `trade_cards` (
+  `trade_id` int(10) unsigned NOT NULL,
+  `card_id` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`trade_id`, `card_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;

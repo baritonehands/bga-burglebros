@@ -408,6 +408,7 @@ class burglebros extends Table
             'escape' => $this->canEscape($player_tile),
             'peekable' => $this->getPeekableTiles($player_tile),
             'player_token' => $player_token,
+            'other_players' => count($this->tokens->getCardsOfTypeInLocation('player', null, 'tile', $player_tile['id'])) - 1,
             'character' => $character,
             'tile' => $player_tile,
             'tile_tokens' => $this->tokens->getCardsInLocation('tile', $player_tile['id']),
@@ -1485,6 +1486,18 @@ SQL;
         return $type_arg;
     }
 
+    function drawToolDebug($name = null) {
+        $current_player_id = self::getCurrentPlayerId();
+        if ($name != null) {
+            $type_arg = $this->getCardTypeForName(1, $name);
+            $card = array_values($this->cards->getCardsOfType(1, $type_arg))[0];
+            $this->cards->moveCard($card['id'], 'hand', $current_player_id);
+        } else {
+            $this->cards->pickCard('tools_deck', $current_player_id);
+        }
+        $this->notifyPlayerHand($current_player_id);
+    }
+
     function drawLootDebug($name) {
         $current_player_id = self::getCurrentPlayerId();
         $type_arg = $this->getCardTypeForName(2, $name);
@@ -1990,6 +2003,39 @@ SQL;
         ));
     }
 
+    function createTrade($player1, $player2) {
+        self::DbQuery("INSERT INTO trade(current_player, other_player, deleted) VALUES ($player1, $player2, 0)");
+        return self::DbGetLastId();
+    }
+
+    function createTradeCards($trade_id, $card_ids) {
+        $sql = 'INSERT INTO trade_cards (trade_id, card_id) VALUES ';
+        $values = array();
+        foreach ($card_ids as $card_Id) {
+            $values [] = "($trade_id,$card_id)";
+        }
+        $sql .= implode($values, ',');
+        self::DbQuery($sql);
+    }
+
+    function getTrade() {
+        return self::getObjectFromDB("SELECT * FROM trade WHERE deleted = 0");
+    }
+
+    function getTradeCards($trade_id) {
+        $sql = <<<SQL
+            SELECT card.card_id id, card.card_type type, card.card_type_arg type_arg, card.card_location location, card.card_location_arg location_arg
+            FROM trade_cards
+            INNER JOIN card ON card.card_id = trade_cards.card_id
+            WHERE trade_cards.trade_id = $trade_id
+SQL;
+        return self::getCollectionFromDB($sql);
+    }
+
+    function deleteTrade() {
+        self::DbQuery("UPDATE trade SET deleted = 1 WHERE deleted = 0");
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -2249,6 +2295,53 @@ SQL;
         }
     }
 
+    function trade() {
+        self::checkAction('trade');
+        $current_player_id = self::getCurrentPlayerId();
+        $current_player_token = $this->getPlayerToken($current_player_id);
+        $player_tokens = $this->tokens->getCardsOfTypeInLocation('player', null, 'tile', $current_player_token['location_arg']);
+        if (count($player_tokens) < 2) {
+            throw new BgaUserException(self::_('There are no other players in your tile'));
+        }
+
+        if (count($player_tokens) == 2) {
+            foreach ($player_tokens as $token) {
+                if ($token['type_arg'] != $current_player_id) {
+                    $this->createTrade($current_player_id, $token['type_arg']);
+                    break;
+                }
+            }
+            $this->gamestate->nextState('proposeTrade');
+        } else {
+            $this->gamestate->nextState('playerChoice');
+        }
+    }
+
+    function selectPlayerChoice($selected) {
+        self::checkAction('selectPlayerChoice');
+        $current_player_id = self::getCurrentPlayerId();
+        $current_player_token = $this->getPlayerToken($current_player_id);
+        $player_tokens = $this->tokens->getCardsOfTypeInLocation('player', null, 'tile', $current_player_token['location_arg']);
+        if (!isset($player_tokens[$selected])) {
+            throw new BgaUserException(self::_('Selected player is not in your tile'));
+        }
+        if ($player_tokens[$selected]['type_arg'] == $current_player_id) {
+            throw new BgaUserException(self::_('You cannot trade with yourself'));
+        }
+        $this->createTrade($current_player_id, $player_tokens[$selected]['type_arg']);
+        $this->gamestate->nextState('proposeTrade');
+    }
+
+    function proposeTrade($ids) {
+        self::checkAction('proposeTrade');
+    }
+
+    function cancelTrade() {
+        self::checkAction('cancelTrade');
+        $this->deleteTrade();
+        $this->gamestate->nextState('nextAction');
+    }
+
     function pass() {
         self::checkAction('pass');
         $current_player_id = self::getCurrentPlayerId();
@@ -2363,6 +2456,17 @@ SQL;
         $args['can_hack'] = $this->canHack($tile);
         $args['can_use_extra_action'] = $this->canUseExtraAction($player_id, $tile);
 
+        return $args;
+    }
+
+    function argProposeTrade() {
+        $args = $this->gatherCurrentData(self::getActivePlayerId());
+        $args['trade'] = $this->getTrade();
+        return $args;
+    }
+
+    function argConfirmTrade() {
+        $args = $this->gatherCurrentData(self::getActivePlayerId());
         return $args;
     }
 

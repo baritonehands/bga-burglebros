@@ -77,7 +77,7 @@
     border-color: red;
 }
 
-#myhand .stockitem, .player_hand .stockitem {
+#myhand .stockitem, .player_hand .stockitem, #trade_dialog .stockitem {
     background-size: 240px;
 }
 
@@ -325,4 +325,60 @@
 .player-zone {
     margin: 5px 0;
     min-height: 24px;
+}
+
+#trade_dialog {
+    display: flex;
+    flex-direction: column;
+}
+
+.trade-dialog-content {
+    display: flex;
+    flex-direction: row;
+}
+
+.trade-container {
+    display: flex;
+    flex-grow: 1;
+    flex-direction: column;
+    min-width: 125px;
+    margin: 5px 10px;
+}
+
+#trade_p1, #trade_p2 {
+    max-height: 312.5px;
+    overflow-x: visible;
+    overflow-y: scroll;
+}
+
+.trade-player {
+    display: flex;
+}
+
+#trade_p1, #trade_p2 {
+    display: flex;
+}
+
+#trade_p1 .stockitem_selected, #trade_p2 .stockitem_selected {
+    border-color: royalblue !important;
+}
+
+.trade-divider {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    width: 60px;
+}
+
+#trade_left_button, #trade_right_button {
+    text-align: center;
+    font-size: 24px;
+    line-height: 20px;
+    font-weight: bold;
+}
+
+.trade-dialog-footer {
+    display: flex;
+    margin: 10px auto 0 auto;
 }
