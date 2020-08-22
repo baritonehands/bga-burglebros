@@ -202,3 +202,7 @@ $this->token_types = array(
   array('name' => 'keypad', 'color' => '#DDA860'),
   array('name' => 'crowbar', 'color' => '#74B189')
 );
+
+$this->player_choices = array('none', 'trade', 'rook1', 'rook2');
+
+$this->special_choices = array('none', 'rook1', 'rook2');

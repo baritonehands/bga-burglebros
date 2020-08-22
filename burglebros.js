@@ -333,9 +333,14 @@ function (dojo, declare) {
                         }
                         break;
                     case 'playerChoice':
+                        this.addActionButton('button_cancel', _('Cancel'), 'handleCancelPlayerChoice');
+                        break;
                     case 'proposeTrade':
                     case 'confirmTrade':
                         this.addActionButton('button_cancel', _('Cancel Trade'), 'handleCancelTrade');
+                        break;
+                    case 'specialChoice':
+                        this.addActionButton('button_cancel', _('Cancel'), 'handleCancelSpecialChoice');
                         break;
                 }
             }
@@ -653,6 +658,10 @@ function (dojo, declare) {
 
         isCardChoice: function(name) {
             return this.gamedatas.gamestate.args.card_name === name;
+        },
+
+        playerChoiceContext: function() {
+            return this.gamedatas.gamestate.args.context;
         },
 
         currentFloor: function() {
@@ -978,6 +987,8 @@ function (dojo, declare) {
             } else if(this.gamedatas.gamestate.name == 'playerChoice' && dojo.hasClass(evt.target, 'meeple') && this.checkAction('selectPlayerChoice')) {
                 var player_id = evt.target.id.substring(evt.target.id.lastIndexOf('_') + 1);
                 this.ajaxcall('/burglebros/burglebros/selectPlayerChoice.html', { lock: true, selected: player_id }, this, console.log, console.error);
+            } else if(this.gamedatas.gamestate.name == 'specialChoice' && dojo.hasClass(evt.target, 'tile') && this.checkAction('selectSpecialChoice')) {
+                this.ajaxcall('/burglebros/burglebros/selectSpecialChoice.html', { lock: true, selected: id }, this, console.log, console.error);
             } else {
                 var intent = this.intent || 'move';
                 if (this.checkAction(intent)) {
@@ -1086,9 +1097,21 @@ function (dojo, declare) {
             }
         },
 
+        handleCancelPlayerChoice: function() {
+            if (this.checkAction('cancelPlayerChoice')) {
+                this.ajaxcall('/burglebros/burglebros/cancelPlayerChoice.html', { lock: true }, this, console.log, console.error);
+            }
+        },
+
         handleCancelTrade: function() {
             if (this.checkAction('cancelTrade')) {
                 this.ajaxcall('/burglebros/burglebros/cancelTrade.html', { lock: true }, this, console.log, console.error);
+            }
+        },
+
+        handleCancelSpecialChoice: function() {
+            if (this.checkAction('cancelSpecialChoice')) {
+                this.ajaxcall('/burglebros/burglebros/cancelSpecialChoice.html', { lock: true }, this, console.log, console.error);
             }
         },
         

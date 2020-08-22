@@ -50,6 +50,9 @@ class burglebros extends Table
             'acrobatEnteredGuardTile' => 24,
             'tileChoice' => 25,
             'motionTileExitChoice' => 26,
+            'playerChoice' => 27,
+            'specialChoice' => 28,
+            'specialChoiceArg' => 29,
 
             // Options
             'characterAssignment' => 100
@@ -117,6 +120,7 @@ class burglebros extends Table
         self::setGameStateInitialValue( 'acrobatEnteredGuardTile', 0 );
         self::setGameStateInitialValue( 'tileChoice', 0 );
         self::setGameStateInitialValue( 'motionTileExitChoice', 0 );
+        self::setGameStateInitialValue( 'playerChoice', 0 );
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -170,7 +174,6 @@ class burglebros extends Table
         $this->moveCardsOutOfPlay('loot', 'persian-kitty');
         $this->moveCardsOutOfPlay('tools', 'crystal-ball');
         $this->moveCardsOutOfPlay('tools', 'stethoscope');
-        $this->moveCardsOutOfPlay('characters', 'rook1');
         $this->moveCardsOutOfPlay('characters', 'spotter1');
         if ($options[100] == 1) {
             $this->moveCardsOutOfPlay('characters', 'acrobat2');
@@ -1934,8 +1937,8 @@ SQL;
         $this->flipTile( $floor, $to_peek['location_arg'] );
     }
 
-    function performMove($tile_id, $context='action') {
-        $current_player_id = self::getCurrentPlayerId();
+    function performMove($tile_id, $context='action', $player_id = null) {
+        $current_player_id = $player_id != null ? $player_id : self::getCurrentPlayerId();
         $player_token = $this->getPlayerToken($current_player_id);
         $player_tile = $this->getPlayerTile($current_player_id, $player_token);
         $to_move = $this->tiles->getCard($tile_id);
@@ -2047,6 +2050,47 @@ SQL;
         else
             $ids = explode( ';', $id_arg );
         return $ids;
+    }
+
+    function handleSelectPlayerChoice($current_player_id, $type, $selected) {
+        if ($type == 'trade') {
+            $current_player_token = $this->getPlayerToken($current_player_id);
+            $player_tokens = $this->tokens->getCardsOfTypeInLocation('player', null, 'tile', $current_player_token['location_arg']);
+            if (!isset($player_tokens[$selected])) {
+                throw new BgaUserException(self::_('Selected player is not in your tile'));
+            }
+            if ($player_tokens[$selected]['type_arg'] == $current_player_id) {
+                throw new BgaUserException(self::_('You cannot trade with yourself'));
+            }
+            $this->createTrade($current_player_id, $player_tokens[$selected]['type_arg']);
+            $this->gamestate->nextState('proposeTrade');
+        } else if ($type == 'rook1') {
+            $meeple = $this->tokens->getCard($selected);
+            if ($meeple['type'] != 'player') {
+                throw new BgaUserException(self::_('Must choose a player token'));
+            }
+            if ($meeple['type_arg'] == $current_player_id) {
+                throw new BgaUserException(self::_('You cannot choose yourself'));
+            }
+            self::setGameStateValue('specialChoice', 1); // Rook 1
+            self::setGameStateValue('specialChoiceArg', $meeple['type_arg']); // Rook 1
+            $this->gamestate->nextState('specialChoice');
+        }
+    }
+
+    function handleSelectSpecialChoice($type, $choice_arg, $selected) {
+        if ($type == 'rook1') {
+            $player_token = $this->getPlayerToken($choice_arg);
+            $tile_choice = $this->performMove($selected, 'rook1', $choice_arg);
+            // TODO: laser still triggers, and deadbolt, edge cases
+            if ($tile_choice) {
+                self::setGameStateValue('tileChoice', $tile_choice);
+                $this->gamestate->nextState('tileChoice');
+            } else {
+                $this->nextAction();
+            }
+            self::setGameStateValue('characterAbilityUsed', 1);
+        }
     }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2300,6 +2344,9 @@ SQL;
             $this->decrementPlayerStealth($current_player_id);
             $this->cards->pickCard('tools_deck', $current_player_id);
             $this->notifyPlayerHand($current_player_id);
+        } else if($type == 'rook1') {
+            self::setGameStateValue('playerChoice', 2); // Rook 1
+            $this->gamestate->nextState('playerChoice');
         } else if (in_array($type, array('acrobat1', 'hawk1', 'hawk2', 'juicer1', 'peterman2', 'raven1', 'rook1', 'spotter1', 'spotter2'))) {
             self::setGameStateValue('cardChoice', $character['id']);
             $this->gamestate->nextState('cardChoice');
@@ -2326,6 +2373,7 @@ SQL;
             }
             $this->gamestate->nextState('proposeTrade');
         } else {
+            self::setGameStateValue('playerChoice', 1); // Trade
             $this->gamestate->nextState('playerChoice');
         }
     }
@@ -2333,16 +2381,9 @@ SQL;
     function selectPlayerChoice($selected) {
         self::checkAction('selectPlayerChoice');
         $current_player_id = self::getCurrentPlayerId();
-        $current_player_token = $this->getPlayerToken($current_player_id);
-        $player_tokens = $this->tokens->getCardsOfTypeInLocation('player', null, 'tile', $current_player_token['location_arg']);
-        if (!isset($player_tokens[$selected])) {
-            throw new BgaUserException(self::_('Selected player is not in your tile'));
-        }
-        if ($player_tokens[$selected]['type_arg'] == $current_player_id) {
-            throw new BgaUserException(self::_('You cannot trade with yourself'));
-        }
-        $this->createTrade($current_player_id, $player_tokens[$selected]['type_arg']);
-        $this->gamestate->nextState('proposeTrade');
+        $player_choice = self::getGameStateValue('playerChoice');
+        $player_choice_type = $this->player_choices[$player_choice];
+        $this->handleSelectPlayerChoice($current_player_id, $player_choice_type, $selected);
     }
 
     function proposeTrade($p1_ids, $p2_ids) {
@@ -2366,6 +2407,12 @@ SQL;
         $this->gamestate->nextState('endTradeOtherPlayer');
     }
 
+    function cancelPlayerChoice() {
+        self::checkAction('cancelPlayerChoice');
+        self::setGameStateValue('playerChoice', 0);
+        $this->gamestate->nextState('nextAction');
+    }
+
     function cancelTrade() {
         self::checkAction('cancelTrade');
         $state = $this->gamestate->state();
@@ -2375,6 +2422,23 @@ SQL;
             $this->deleteTrade();
             $this->gamestate->nextState('nextAction');
         }
+        self::setGameStateValue('playerChoice', 0);
+    }
+
+    function selectSpecialChoice($selected) {
+        self::checkAction('selectSpecialChoice');
+        $current_player_id = self::getCurrentPlayerId();
+        $special_choice = self::getGameStateValue('specialChoice');
+        $special_choice_type = $this->special_choices[$special_choice];
+        $special_choice_arg = self::getGameStateValue('specialChoiceArg');
+        $this->handleSelectSpecialChoice($special_choice_type, $special_choice_arg, $selected);
+    }
+
+    function cancelSpecialChoice() {
+        self::checkAction('cancelSpecialChoice');
+        self::setGameStateValue('specialChoice', 0);
+        self::setGameStateValue('specialChoiceArg', 0);
+        $this->gamestate->nextState('nextAction');
     }
 
     function pass() {
@@ -2494,6 +2558,13 @@ SQL;
         return $args;
     }
 
+    function argPlayerChoice() {
+        $args = $this->gatherCurrentData(self::getActivePlayerId());
+        $player_choice = self::getGameStateValue('playerChoice');
+        $args['context'] = $this->player_choices[$player_choice];
+        return $args;
+    }
+
     function argProposeTrade() {
         $args = $this->gatherCurrentData(self::getActivePlayerId());
         $args['trade'] = $this->getTrade();
@@ -2506,6 +2577,20 @@ SQL;
         $args['trade'] = $trade;
         $args['p1_cards'] = $this->getTradeCards($trade['id'], $trade['other_player']);
         $args['p2_cards'] = $this->getTradeCards($trade['id'], $trade['current_player']);
+        return $args;
+    }
+
+    function argSpecialChoice() {
+        $args = $this->gatherCurrentData(self::getActivePlayerId());
+        $special_choice = self::getGameStateValue('specialChoice');
+        $choice_arg = self::getGameStateValue('specialChoiceArg');
+        $card = $this->cards->getCard(self::getGameStateValue('cardChoice'));
+        $args['choice'] = $this->special_choices[$special_choice];
+        $args['choice_arg'] = $choice_arg;
+        if ($this->special_choices[$special_choice] == 'rook1') {
+            $args['choice_name'] = 'Orders';  
+            $args['choice_description'] = 'an adjacent tile to move the player';    
+        }
         return $args;
     }
 

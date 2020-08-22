@@ -135,9 +135,9 @@ $machinestates = array(
         'description' => clienttranslate('${actplayer} must choose a player'),
         'descriptionmyturn' => clienttranslate('${you} must choose a player'),
         'type' => 'activeplayer',
-        'args' => 'argPlayerTurn',
-        'possibleactions' => array( 'selectPlayerChoice', 'cancelTrade' ),
-        'transitions' => array( 'nextAction' => 9, 'proposeTrade' => 16 )
+        'args' => 'argPlayerChoice',
+        'possibleactions' => array( 'selectPlayerChoice', 'cancelPlayerChoice' ),
+        'transitions' => array( 'nextAction' => 9, 'proposeTrade' => 16, 'specialChoice' => 20 )
     ),
 
     16 => array(
@@ -174,6 +174,16 @@ $machinestates = array(
         'type' => 'game',
         'action' => 'stEndTradeOtherPlayer',
         'transitions' => array( 'nextAction' => 9 )
+    ),
+
+    20 => array(
+        'name' => 'specialChoice',
+        'description' => clienttranslate('${choice_name}: ${actplayer} must choose ${choice_description}'),
+        'descriptionmyturn' => clienttranslate('${choice_name}: ${you} must choose ${choice_description}'),
+        'type' => 'activeplayer',
+        'args' => 'argSpecialChoice',
+        'possibleactions' => array( 'selectSpecialChoice', 'cancelSpecialChoice' ),
+        'transitions' => array( 'nextAction' => 9, 'tileChoice' => 14 )
     ),
     
 /*

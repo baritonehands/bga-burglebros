@@ -124,6 +124,12 @@
       self::ajaxResponse();
     }
 
+    public function cancelPlayerChoice() {
+      self::setAjaxMode();
+      $this->game->cancelPlayerChoice();
+      self::ajaxResponse();
+    }
+
     public function selectPlayerChoice() {
       self::setAjaxMode();
       $selected = self::getArg( "selected", AT_posint, true );
@@ -148,6 +154,19 @@
     public function cancelTrade() {
       self::setAjaxMode();
       $this->game->cancelTrade();
+      self::ajaxResponse();
+    }
+
+    public function selectSpecialChoice() {
+      self::setAjaxMode();
+      $selected = self::getArg( "selected", AT_posint, true );
+      $this->game->selectSpecialChoice($selected);
+      self::ajaxResponse();
+    }
+
+    public function cancelSpecialChoice() {
+      self::setAjaxMode();
+      $this->game->cancelSpecialChoice();
       self::ajaxResponse();
     }
 
