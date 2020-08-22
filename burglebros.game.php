@@ -53,6 +53,7 @@ class burglebros extends Table
             'playerChoice' => 27,
             'specialChoice' => 28,
             'specialChoiceArg' => 29,
+            'firstAction' => 30,
 
             // Options
             'characterAssignment' => 100
@@ -121,6 +122,7 @@ class burglebros extends Table
         self::setGameStateInitialValue( 'tileChoice', 0 );
         self::setGameStateInitialValue( 'motionTileExitChoice', 0 );
         self::setGameStateInitialValue( 'playerChoice', 0 );
+        self::setGameStateInitialValue( 'firstAction', 1 );
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -188,7 +190,6 @@ class burglebros extends Table
         } else {
             $this->moveCardsOutOfPlay('characters', 'hawk2');
             $this->moveCardsOutOfPlay('characters', 'peterman2');
-            $this->moveCardsOutOfPlay('characters', 'rook2');
             $this->moveCardsOutOfPlay('characters', 'spotter2');
         }
 
@@ -595,6 +596,7 @@ SQL;
 
     function nextAction($action_cost = 1) {
         $actions_remaining = self::incGameStateValue('actionsRemaining', -$action_cost);
+        self::setGameStateValue('firstAction', 0);
         $this->gamestate->nextState('nextAction');
     }
 
@@ -2076,6 +2078,19 @@ SQL;
             self::setGameStateValue('specialChoice', 1); // Rook 1
             self::setGameStateValue('specialChoiceArg', $meeple['type_arg']); // Rook 1
             $this->gamestate->nextState('specialChoice');
+        } else if ($type == 'rook2') {
+            $meeple = $this->tokens->getCard($selected);
+            if ($meeple['type'] != 'player') {
+                throw new BgaUserException(self::_('Must choose a player token'));
+            }
+            if ($meeple['type_arg'] == $current_player_id) {
+                throw new BgaUserException(self::_('You cannot choose yourself'));
+            }
+            $player_token = $this->getPlayerToken($current_player_id);
+            $tmp_location = $meeple['location_arg'];
+            $this->moveToken($meeple['id'], 'tile', $player_token['location_arg']);
+            $this->moveToken($player_token['id'], 'tile', $tmp_location);
+            $this->nextAction();
         }
     }
 
@@ -2226,7 +2241,7 @@ SQL;
         } else {
             $this->cards->moveCard($card['id'], 'tools_discard');
             $this->notifyPlayerHand($current_player_id, array($card['id']));
-
+            self::setGameStateValue('firstAction', 0);
             $this->gamestate->nextState('nextAction');
         }
     }
@@ -2244,7 +2259,7 @@ SQL;
             } elseif($card['type'] == 0) {
                 $type = $this->getCardType($card);
                 self::setGameStateValue('characterAbilityUsed', 1);
-                if (in_array($type, array('hacker2', 'rook1', 'rook2', 'spotter1', 'spotter2'))) {
+                if (in_array($type, array('hacker2', 'spotter1', 'spotter2'))) {
                     $this->nextAction(); // Spent action
                 } else if($type == 'peterman2') {
                     $this->nextAction($id < 10 ? 2 : 1); // Spent 1 or 2 actions
@@ -2252,10 +2267,12 @@ SQL;
                     self::setGameStateValue('actionsRemaining', 0);
                     $this->gamestate->nextState('endTurn');
                 } else {
+                    self::setGameStateValue('firstAction', 0);
                     $this->gamestate->nextState('nextAction'); // Free action
                 }
             } else {
                 // Don't run normal action decrease logic
+                self::setGameStateValue('firstAction', 0);
                 $this->gamestate->nextState('nextAction');
             }
         }
@@ -2347,7 +2364,13 @@ SQL;
         } else if($type == 'rook1') {
             self::setGameStateValue('playerChoice', 2); // Rook 1
             $this->gamestate->nextState('playerChoice');
-        } else if (in_array($type, array('acrobat1', 'hawk1', 'hawk2', 'juicer1', 'peterman2', 'raven1', 'rook1', 'spotter1', 'spotter2'))) {
+        } else if($type == 'rook2') {
+            if (self::getGameStateValue('firstAction') != 1) {
+                throw new BgaUserException(self::_('You may only use this ability as your first action'));
+            }
+            self::setGameStateValue('playerChoice', 3); // Rook 2
+            $this->gamestate->nextState('playerChoice');
+        } else if (in_array($type, array('acrobat1', 'hawk1', 'hawk2', 'juicer1', 'peterman2', 'raven1', 'spotter1', 'spotter2'))) {
             self::setGameStateValue('cardChoice', $character['id']);
             $this->gamestate->nextState('cardChoice');
         } else {
@@ -2626,6 +2649,7 @@ SQL;
         }
         self::setGameStateValue('invisibleSuitActive', 0);
         self::setGameStateValue('characterAbilityUsed', 0);
+        self::setGameStateValue('firstAction', 1);
         if (self::getGameStateValue('acrobatEnteredGuardTile')) {
             $this->decrementPlayerStealth($current_player_id);
         }

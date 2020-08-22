@@ -205,4 +205,4 @@ $this->token_types = array(
 
 $this->player_choices = array('none', 'trade', 'rook1', 'rook2');
 
-$this->special_choices = array('none', 'rook1', 'rook2');
+$this->special_choices = array('none', 'rook1');
