@@ -1281,6 +1281,7 @@ SQL;
         $tile_choice_id = $id;
         $player_id = $player_token['type_arg'];
         $crowbar = $this->tokensInTile('crowbar', $id);
+        $rook1_action = $context == 'rook1';
 
         $action_penalty = $this->getGemstonePenalty($player_id, $tile);
         if ($action_penalty > 0 && $actions_remaining < 2) {
@@ -1293,7 +1294,7 @@ SQL;
         }
         
         if ($type == 'deadbolt') {
-            if (!$crowbar) {
+            if (!$crowbar && !$rook1_action) {
                 $people = $this->getPlacedTokens(array('player', 'guard'));
                 if (!isset($people[$id]) || count($people[$id]) == 0) {
                     if ($actions_remaining < (3 + $action_penalty)) {
@@ -1316,7 +1317,7 @@ SQL;
                 $tile_choice = $this->hackOrTrigger($tile);
             }
         } elseif ($type == 'laser') {
-            if (!$crowbar && !$this->getPlayerLoot('mirror', $player_id) && !$this->hackerDoesNotTrigger($tile)) {
+            if (!$crowbar && !$rook1_action && !$this->getPlayerLoot('mirror', $player_id) && !$this->hackerDoesNotTrigger($tile)) {
                 $tile_choice = $actions_remaining >= (2 + $action_penalty) || $this->hackOrTrigger($tile);
             }
         } elseif($type == 'motion') {
@@ -1357,7 +1358,7 @@ SQL;
         if (!$cancel_move) {
             // Handle exit
             $exit_type = $player_tile['type'];
-            if ($exit_type == 'motion') {
+            if ($exit_type == 'motion' && !$rook1_action) {
                 $exit_id = $player_tile['id'];
                 $motion_bit = 1 << self::getUniqueValueFromDB("SELECT safe_die FROM tile WHERE card_id = '$exit_id'");
                 $motion_entered = self::getGameStateValue('motionTileEntered');
@@ -2082,7 +2083,6 @@ SQL;
         if ($type == 'rook1') {
             $player_token = $this->getPlayerToken($choice_arg);
             $tile_choice = $this->performMove($selected, 'rook1', $choice_arg);
-            // TODO: laser still triggers, and deadbolt, edge cases
             if ($tile_choice) {
                 self::setGameStateValue('tileChoice', $tile_choice);
                 $this->gamestate->nextState('tileChoice');
