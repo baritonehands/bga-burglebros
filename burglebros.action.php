@@ -170,6 +170,12 @@
       self::ajaxResponse();
     }
 
+    public function pickUpCat() {
+      self::setAjaxMode();
+      $this->game->pickUpCat();
+      self::ajaxResponse();
+    }
+
     public function pass() {
       self::setAjaxMode();
       $this->game->pass();

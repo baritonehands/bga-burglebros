@@ -163,6 +163,7 @@ class burglebros extends Table
         $tokens [] = array('type' => 'thermal', 'type_arg' => 0, 'nbr' => 2);
         $tokens [] = array('type' => 'crowbar', 'type_arg' => 0, 'nbr' => 1);
         $tokens [] = array('type' => 'crow', 'type_arg' => 0, 'nbr' => 1);
+        $tokens [] = array('type' => 'cat', 'type_arg' => 0, 'nbr' => 1);
         $this->tokens->createCards( $tokens );
 
         // Remove cards that don't make sense for the number of players
@@ -173,7 +174,6 @@ class burglebros extends Table
         // }
         // TODO: Add back cards once implemented
         $this->moveCardsOutOfPlay('loot', 'gold-bar');
-        $this->moveCardsOutOfPlay('loot', 'persian-kitty');
         $this->moveCardsOutOfPlay('tools', 'crystal-ball');
         $this->moveCardsOutOfPlay('tools', 'stethoscope');
         $this->moveCardsOutOfPlay('characters', 'spotter1');
@@ -2108,6 +2108,25 @@ SQL;
         }
     }
 
+    function moveCatToken($player_id) {
+        $player_tile = $this->getPlayerTile($player_id);
+        $floor = $player_tile['location'][5];
+        $tiles = $this->getTiles($floor);
+        $shortest_path = null;
+        foreach ($tiles as $tile_id => $tile) {
+            if (in_array($tile['type'], array('camera', 'detector', 'fingerprint', 'laser', 'motion', 'thermo'))) {
+                $path = $this->findShortestPath($floor, $player_tile['location_arg'], $tile['location_arg']);
+                if (count($path) > 1 && ($shortest_path == null || count($shortest_path) > count($path))) {
+                    $shortest_path = $path;
+                }
+            }
+        }
+        if ($shortest_path != null) {
+            $dest_id = array_values($shortest_path)[1];
+            $this->pickTokensForTile('cat', $dest_id);
+        }
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -2464,6 +2483,19 @@ SQL;
         $this->gamestate->nextState('nextAction');
     }
 
+    function pickUpCat() {
+        self::checkAction('pickUpCat');
+        $current_player_id = self::getCurrentPlayerId();
+        $player_tile = $this->getPlayerTile($current_player_id);
+        $cat_tokens = $this->tokens->getCardsOfTypeInLocation('cat', null, 'tile', $player_tile['id']);
+        if (count($cat_tokens) == 0) {
+            throw new BgaUserException(self::_('Tile does not contain the cat token'));
+        }
+        $this->moveTokens(array_keys($cat_tokens), 'deck');
+        self::setGameStateValue('firstAction', 0);
+        $this->gamestate->nextState('nextAction');
+    }
+
     function pass() {
         self::checkAction('pass');
         $current_player_id = self::getCurrentPlayerId();
@@ -2747,6 +2779,17 @@ SQL;
             if (isset($rolls[6])) {
                 $tile = $this->getPlayerTile($player_id);
                 $this->triggerAlarm($tile);
+            }
+        }
+
+        $persian_kitty = $this->getPlayerLoot('persian-kitty', $player_id);
+        if ($persian_kitty) {
+            if (count($this->getPlacedTokens(array('cat'))) == 0) {
+                $rolls = $this->rollDice(1);
+                $this->notifyRoll($rolls, 'persian-kitty');
+                if (isset($rolls[1]) || isset($rolls[2])) {
+                    $this->moveCatToken($player_id);
+                }
             }
         }
 

@@ -287,6 +287,9 @@ function (dojo, declare) {
                         if (this.canTrade()) {
                             this.addActionButton( 'button_trade' , _('Trade'), 'handleTrade' );
                         }
+                        if (this.canPickupKitty()) {
+                            this.addActionButton( 'button_pickup' , _('Pick Up Cat'), 'handlePickUpCat' );
+                        }
                         this.addCharacterAction();
                         this.addActionButton( 'button_pass', _('Pass'), 'handlePassClick' );
                         break;
@@ -656,6 +659,11 @@ function (dojo, declare) {
             return this.gamedatas.gamestate.args.other_players > 0;
         },
 
+        canPickupKitty: function() {
+            var type_id = this.getCardTypeForName(2, 'persian-kitty');
+            return this.tileContainsToken('cat') && this.handContainsCard(type_id);
+        },
+
         isCardChoice: function(name) {
             return this.gamedatas.gamestate.args.card_name === name;
         },
@@ -676,6 +684,27 @@ function (dojo, declare) {
             var tokens = this.gamedatas.gamestate.args.tile_tokens;
             for(var tokenId in this.gamedatas.gamestate.args.tile_tokens) {
                 if (tokens[tokenId].type == name) {
+                    return true;
+                }
+            }
+            return false;
+        },
+
+        getCardTypeForName: function(type_id, name) {
+            var deck_types = this.gamedatas.card_types[type_id].cards;
+            for(var idx = 0; idx < deck_types.length; idx++) {
+                if (deck_types[idx].name === name) {
+                    return deck_types[idx].index;
+                }
+            }
+            return;
+        },
+
+        handContainsCard: function(type_id) {
+            var hand = this.gamedatas.players[this.player_id].hand;
+            for(var id in hand) {
+                var card = hand[id];
+                if (card.type_arg == type_id) {
                     return true;
                 }
             }
@@ -1050,6 +1079,13 @@ function (dojo, declare) {
             dojo.stopEvent(evt);
             if (this.checkAction('trade')) {
                 this.ajaxcall('/burglebros/burglebros/trade.html', { lock: true }, this, console.log, console.error);
+            }
+        },
+
+        handlePickUpCat: function(evt) {
+            dojo.stopEvent(evt);
+            if (this.checkAction('pickUpCat')) {
+                this.ajaxcall('/burglebros/burglebros/pickUpCat.html', { lock: true }, this, console.log, console.error);
             }
         },
 
