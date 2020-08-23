@@ -327,12 +327,12 @@
     min-height: 24px;
 }
 
-#trade_dialog {
+#trade_dialog, #spotter_dialog, .dialog {
     display: flex;
     flex-direction: column;
 }
 
-.trade-dialog-content {
+.dialog-content {
     display: flex;
     flex-direction: row;
 }
@@ -359,10 +359,6 @@
     display: flex;
 }
 
-#trade_p1 .stockitem_selected, #trade_p2 .stockitem_selected {
-    border-color: royalblue !important;
-}
-
 .trade-divider {
     display: flex;
     flex-direction: column;
@@ -378,7 +374,7 @@
     font-weight: bold;
 }
 
-.trade-dialog-footer {
+.dialog-footer {
     display: flex;
     margin: 10px auto 0 auto;
 }

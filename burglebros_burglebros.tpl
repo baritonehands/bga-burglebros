@@ -119,8 +119,8 @@ var jstpl_safe_die = '<div id="crack_token_${token_id}" class="token die safe">$
 
 var jstpl_event_card = '<div id="event_card_dialog" class="card" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>'
 
-var jstpl_trade_dialog = '<div id="trade_dialog" class="">\n' +
-'    <div class="trade-dialog-content">\n' +
+var jstpl_trade_dialog = '<div id="trade_dialog" class="dialog">\n' +
+'    <div class="dialog-content">\n' +
 '        <div class="trade-container">\n' +
 '            <h3 class="trade-player" style="color: #${p1_color};">You</h3>\n' +
 '            <div id="trade_p1"></div>\n' +
@@ -134,14 +134,14 @@ var jstpl_trade_dialog = '<div id="trade_dialog" class="">\n' +
 '            <div id="trade_p2"></div>\n' +
 '        </div>\n' +
 '    </div>\n' +
-'    <div class="trade-dialog-footer">\n' +
+'    <div class="dialog-footer">\n' +
 '        <a href="#" id="trade_cancel_button" class="bgabutton bgabutton_gray">Cancel Trade</a>&nbsp;&nbsp;\n' +
 '        <a href="#" id="trade_confirm_button" class="bgabutton bgabutton_blue">Propose Trade</a>\n' +
 '    </div>\n' +
 '</div>';
 
-var jstpl_trade_confirmation_dialog = '<div id="trade_dialog" class="">\n' +
-'    <div class="trade-dialog-content">\n' +
+var jstpl_trade_confirmation_dialog = '<div id="trade_dialog" class="dialog">\n' +
+'    <div class="dialog-content">\n' +
 '        <div class="trade-container">\n' +
 '            <h3 class="trade-player" style="color: #${p1_color};">You</h3>\n' +
 '            <div id="trade_p1"></div>\n' +
@@ -155,9 +155,19 @@ var jstpl_trade_confirmation_dialog = '<div id="trade_dialog" class="">\n' +
 '            <div id="trade_p2"></div>\n' +
 '        </div>\n' +
 '    </div>\n' +
-'    <div class="trade-dialog-footer">\n' +
+'    <div class="dialog-footer">\n' +
 '        <a href="#" id="trade_cancel_button" class="bgabutton bgabutton_gray">Cancel Trade</a>&nbsp;&nbsp;\n' +
 '        <a href="#" id="trade_confirm_button" class="bgabutton bgabutton_blue">Confirm Trade</a>\n' +
+'    </div>\n' +
+'</div>';
+
+var jstpl_spotter_dialog = '<div id="spotter_dialog" class="dialog">\n' +
+'    <div class="dialog-content">\n' +
+'        <div id="spotter_card"></div>\n' +
+'    </div>\n' +
+'    <div class="dialog-footer">\n' +
+'        <a href="#" id="spotter_top_button" class="bgabutton bgabutton_gray">Keep on Top</a>&nbsp;&nbsp;\n' +
+'        <a href="#" id="spotter_bottom_button" class="bgabutton bgabutton_blue">Put on Bottom</a>\n' +
 '    </div>\n' +
 '</div>';
 

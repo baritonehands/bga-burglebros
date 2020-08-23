@@ -199,6 +199,12 @@ function (dojo, declare) {
                 this.showFloor(this.currentFloor());
                 break;
             
+            case 'cardChoice':
+                if (this.isCurrentPlayerActive() && args.args.spotter_card && (this.isCardChoice('spotter1') || this.isCardChoice('spotter2'))) {
+                    this.spotterChoice(args.args.spotter_card);
+                }
+                break;
+            
             case 'proposeTrade':
                 if (this.isCurrentPlayerActive()) {
                     this.proposeTrade(args.args);
@@ -744,30 +750,8 @@ function (dojo, declare) {
                 var id = ((cardType - 4) * 16) + cardIndex;
                 this[patrolKey].addToStockWithId(id, card.id);
 
-                var bg_row = Math.floor(id / 4) * -100;
-                var bg_col = (id % 4) * -100;
+                var tooltipHtml = this.patrolCardHtml(card, id, this.gamedatas[patrolKey + '_discard']);
                 var divId = this[patrolKey].getItemDivId(card.id);
-                var discardHtml = '<div class="patrol-discard-container">';
-                for(var discardId in this.gamedatas[patrolKey + '_discard']) {
-                    if (discardId != card.id) {   
-                        var discard = this.gamedatas[patrolKey + '_discard'][discardId];
-                        var discardIndex = parseInt(discard.type_arg, 10) - 1;
-                        var discard_top = Math.floor(discardIndex / 4) * 62;
-                        var discard_left = (discardIndex % 4) * 62;
-                        discardHtml += this.format_block('jstpl_patrol_tooltip_discard', {
-                            discard_left: discard_left,
-                            discard_top: discard_top,
-                            bg_image: g_gamethemeurl + 'img/patrol.jpg',
-                        });
-                    }
-                }
-                discardHtml += '</div>';
-                var tooltipHtml = this.format_block('jstpl_patrol_tooltip', {
-                    patrol_floor: floor,
-                    patrol_discards: discardHtml,
-                    bg_image: g_gamethemeurl + 'img/patrol.jpg',
-                    bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
-                });
                 this.addTooltipHtml(divId, tooltipHtml);
                 // dojo.place(tooltipHtml, 'tooltip_debug');
             } else {
@@ -953,6 +937,86 @@ function (dojo, declare) {
             });
         },
 
+        eventCardHtml: function(card) {
+            var bg_row = Math.floor(card.type_arg / 2) * -100;
+            var bg_col = (card.type_arg % 2) * -100;
+            return this.format_block('jstpl_event_card', {
+                bg_image: g_gamethemeurl + 'img/events.jpg',
+                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
+            });
+        },
+
+        patrolCardHtml: function(card, bg_id, discards) {
+            var bg_row = Math.floor(bg_id / 4) * -100;
+            var bg_col = (bg_id % 4) * -100;
+            
+            var discardHtml = '';
+            if (discards) {
+                discardHtml = '<div class="patrol-discard-container">';
+                for(var discardId in discards) {
+                    if (discardId != card.id) {   
+                        var discard = discards[discardId];
+                        var discardIndex = parseInt(discard.type_arg, 10) - 1;
+                        var discard_top = Math.floor(discardIndex / 4) * 62;
+                        var discard_left = (discardIndex % 4) * 62;
+                        discardHtml += this.format_block('jstpl_patrol_tooltip_discard', {
+                            discard_left: discard_left,
+                            discard_top: discard_top,
+                            bg_image: g_gamethemeurl + 'img/patrol.jpg',
+                        });
+                    }
+                }
+                discardHtml += '</div>';
+            }
+            
+            return this.format_block('jstpl_patrol_tooltip', {
+                patrol_floor: card['location'][5],
+                patrol_discards: discardHtml,
+                bg_image: g_gamethemeurl + 'img/patrol.jpg',
+                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
+            });
+        },
+
+        spotterChoice: function(card) {
+            var dialog = new ebg.popindialog();
+            dialog.create( 'spotterChoiceDialog' );
+            dialog.setTitle( _("Top or Bottom?") );
+            
+            var html = this.format_block('jstpl_spotter_dialog', {});
+            
+            dialog.setContent( html ); // Must be set before calling show() so that the size of the content is defined before positioning the dialog
+
+            if (card.type == 3) {
+                dojo.place( this.eventCardHtml(card), 'spotter_card' );
+            } else {
+                var cardType = parseInt(card.type, 10);
+                var cardIndex = parseInt(card.type_arg, 10) - 1;
+                var id = ((cardType - 4) * 16) + cardIndex;
+
+                dojo.place( this.patrolCardHtml(card, id, true), 'spotter_card' );
+            }
+            
+            dialog.show();
+            
+            // Now that the dialog has been displayed, you can connect your method to some dialog elements
+            // Example, if you have an "OK" button in the HTML of your dialog:
+            var closeCallback = function(evt) {
+                evt.preventDefault();
+                dialog.destroy();
+                this.handleCardChoiceButton(1, function() {
+                    dialog.destroy();
+                });
+            };
+            dialog.replaceCloseCallback(dojo.hitch(this, closeCallback));
+            dojo.connect( $('spotter_top_button'), 'onclick', this, closeCallback);
+            dojo.connect( $('spotter_bottom_button'), 'onclick', this, function(evt) {
+                evt.preventDefault();
+                this.handleCardChoiceButton(2, function() {
+                    dialog.destroy();
+                });
+            });
+        },
+
         ///////////////////////////////////////////////////
         //// Player's action
         
@@ -1115,9 +1179,9 @@ function (dojo, declare) {
             }
         },
 
-        handleCardChoiceButton: function(id) {
+        handleCardChoiceButton: function(id, callback) {
             if (this.checkAction('selectCardChoice')) {
-                this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: 'button', selected_id: id }, this, console.log, console.error);
+                this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: 'button', selected_id: id }, this, callback || console.log, console.error);
             }
         },
 
@@ -1254,16 +1318,8 @@ function (dojo, declare) {
             dialog.create( 'eventCardDialog' );
             dialog.setTitle( _("Event Card") );
             
-            var card = notif.args.card;
-            var bg_row = Math.floor(card.type_arg / 2) * -100;
-            var bg_col = (card.type_arg % 2) * -100;
-            var html = this.format_block('jstpl_event_card', {
-                bg_image: g_gamethemeurl + 'img/events.jpg',
-                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
-            });
-            
             // Show the dialog
-            dialog.setContent( html ); // Must be set before calling show() so that the size of the content is defined before positioning the dialog
+            dialog.setContent( this.eventCardHtml(notif.args.card) ); // Must be set before calling show() so that the size of the content is defined before positioning the dialog
             dialog.show();
             
             // Now that the dialog has been displayed, you can connect your method to some dialog elements

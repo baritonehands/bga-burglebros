@@ -1857,6 +1857,21 @@ SQL;
             } else {
                 throw new BgaUserException(self::_('Crow can be placed up to two tiles away'));
             }
+        } elseif($type == 'spotter1') {
+            $this->validateSelection('button', $selected_type);
+            if ($selected_id == 2) {
+                $player_tile = $this->getPlayerTile(self::getCurrentPlayerId());
+                $floor = $player_tile['location'][5];
+                $deck = "patrol$floor".'_deck';
+                $top_patrol = $this->cards->getCardOnTop($deck);
+                $this->cards->insertCardOnExtremePosition($top_patrol['id'], $deck, FALSE);
+            }
+        } elseif($type == 'spotter2') {
+            $this->validateSelection('button', $selected_type);
+            if ($selected_id == 2) {
+                $top_event = $this->cards->getCardOnTop('events_deck');
+                $this->cards->insertCardOnExtremePosition($top_event['id'], 'events_deck', FALSE);
+            }
         } elseif($type == 'thermal-bomb') {
             $this->validateSelection('button', $selected_type);
             $tile = $this->getPlayerTile(self::getCurrentPlayerId());
@@ -2389,6 +2404,22 @@ SQL;
             }
             self::setGameStateValue('playerChoice', 3); // Rook 2
             $this->gamestate->nextState('playerChoice');
+        } else if($type == 'spotter1') {
+            $player_tile = $this->getPlayerTile($current_player_id);
+            $floor = $player_tile['location'][5];
+            $top_card = $this->cards->getCardOnTop("patrol$floor".'_deck');
+            if (!$top_card) {
+                throw new BgaUserException(self::_('Patrol deck is empty'));
+            }
+            self::setGameStateValue('cardChoice', $character['id']);
+            $this->gamestate->nextState('cardChoice');
+        } else if($type == 'spotter2') {
+            $top_card = $this->cards->getCardOnTop("events_deck");
+            if (!$top_card) {
+                throw new BgaUserException(self::_('Event deck is empty'));
+            }
+            self::setGameStateValue('cardChoice', $character['id']);
+            $this->gamestate->nextState('cardChoice');
         } else if (in_array($type, array('acrobat1', 'hawk1', 'hawk2', 'juicer1', 'peterman2', 'raven1', 'spotter1', 'spotter2'))) {
             self::setGameStateValue('cardChoice', $character['id']);
             $this->gamestate->nextState('cardChoice');
@@ -2586,11 +2617,20 @@ SQL;
     }
 
     function argCardChoice() {
-        $args = $this->gatherCurrentData(self::getActivePlayerId());
+        $current_player_id = self::getActivePlayerId();
+        $args = $this->gatherCurrentData($current_player_id);
         $card = $this->cards->getCard(self::getGameStateValue('cardChoice'));
+        $card_name = $this->getCardType($card);
         $args['card'] = $card;
-        $args['card_name'] = $this->getCardType($card);
+        $args['card_name'] = $card_name;
         $args['choice_description'] = $this->getCardChoiceDescription($card);
+        if ($card_name == 'spotter1') {
+            $player_tile = $this->getPlayerTile($current_player_id);
+            $floor = $player_tile['location'][5];
+            $args['spotter_card'] = $this->cards->getCardOnTop("patrol$floor".'_deck');
+        } else if($card_name == 'spotter2') {
+            $args['spotter_card'] = $this->cards->getCardOnTop("events_deck");
+        }
         return $args;
     }
 
