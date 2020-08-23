@@ -176,7 +176,6 @@ class burglebros extends Table
         $this->moveCardsOutOfPlay('loot', 'gold-bar');
         $this->moveCardsOutOfPlay('tools', 'crystal-ball');
         $this->moveCardsOutOfPlay('tools', 'stethoscope');
-        $this->moveCardsOutOfPlay('characters', 'spotter1');
         if ($options[100] == 1) {
             $this->moveCardsOutOfPlay('characters', 'acrobat2');
             $this->moveCardsOutOfPlay('characters', 'hacker2');
@@ -190,7 +189,6 @@ class burglebros extends Table
         } else {
             $this->moveCardsOutOfPlay('characters', 'hawk2');
             $this->moveCardsOutOfPlay('characters', 'peterman2');
-            $this->moveCardsOutOfPlay('characters', 'spotter2');
         }
 
         foreach ($players as $player_id => $player) {
