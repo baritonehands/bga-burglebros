@@ -171,6 +171,15 @@ var jstpl_spotter_dialog = '<div id="spotter_dialog" class="dialog">\n' +
 '    </div>\n' +
 '</div>';
 
+var jstpl_draw_tools_dialog = '<div id="draw_tools_dialog" class="dialog">\n' +
+'    <div class="dialog-content">\n' +
+'        <div id="draw_tools_stock"></div>\n' +
+'    </div>\n' +
+'    <div class="dialog-footer">\n' +
+'        <a href="#" id="draw_tools_discard_button" class="bgabutton bgabutton_blue">Discard Selected</a>\n' +
+'    </div>\n' +
+'</div>';
+
 </script>  
 
 {OVERALL_GAME_FOOTER}

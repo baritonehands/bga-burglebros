@@ -216,6 +216,12 @@ function (dojo, declare) {
                     this.confirmTrade(args.args);
                 }
                 break;
+            
+            case 'drawToolsAndDiscard':
+                if (this.isCurrentPlayerActive()) {
+                    this.drawToolsAndDiscard(args.args.tools);
+                }
+                break;
            
             case 'dummmy':
                 break;
@@ -1002,7 +1008,6 @@ function (dojo, declare) {
             // Example, if you have an "OK" button in the HTML of your dialog:
             var closeCallback = function(evt) {
                 evt.preventDefault();
-                dialog.destroy();
                 this.handleCardChoiceButton(1, function() {
                     dialog.destroy();
                 });
@@ -1014,6 +1019,42 @@ function (dojo, declare) {
                 this.handleCardChoiceButton(2, function() {
                     dialog.destroy();
                 });
+            });
+        },
+
+        drawToolsAndDiscard: function(cards) {
+            var dialog = new ebg.popindialog();
+            dialog.create( 'drawToolsAndDiscardDialog' );
+            dialog.setTitle( _("Choose a Card to Discard") );
+            dialog.hideCloseIcon();
+            
+            var html = this.format_block('jstpl_draw_tools_dialog', {});
+            
+            dialog.setContent( html ); // Must be set before calling show() so that the size of the content is defined before positioning the dialog
+
+            var tools_stock = new ebg.stock();
+            tools_stock.create(this, $('draw_tools_stock'), this.cardwidth * 2, this.cardheight * 2);
+            tools_stock.image_items_per_row = 2;
+            tools_stock.setSelectionMode(1);
+            tools_stock.setSelectionAppearance('class');
+            this.addCardTypesToStock(tools_stock, [1]);
+            this.loadPlayerHand(tools_stock, cards, [], true);
+            
+            dialog.show();
+            
+            // Now that the dialog has been displayed, you can connect your method to some dialog elements
+            // Example, if you have an "OK" button in the HTML of your dialog:
+            dojo.connect( $('draw_tools_discard_button'), 'onclick', this, function(evt) {
+                evt.preventDefault();
+                var selected = tools_stock.getSelectedItems();
+                if (selected.length == 0) {
+                    this.showMessage(_("You must select a tool to discard"), 'error');
+                } else {
+                    this.handleDiscardToolButton(selected[0].id, function() {
+                        tools_stock.destroy();
+                        dialog.destroy();
+                    });
+                }
             });
         },
 
@@ -1212,6 +1253,12 @@ function (dojo, declare) {
         handleCancelSpecialChoice: function() {
             if (this.checkAction('cancelSpecialChoice')) {
                 this.ajaxcall('/burglebros/burglebros/cancelSpecialChoice.html', { lock: true }, this, console.log, console.error);
+            }
+        },
+
+        handleDiscardToolButton: function(id, callback) {
+            if (this.checkAction('discardTool')) {
+                this.ajaxcall('/burglebros/burglebros/discardTool.html', { lock: true, selected: id }, this, callback || console.log, console.error);
             }
         },
         

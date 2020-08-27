@@ -80,7 +80,7 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argPlayerTurn',
         'possibleactions' => array( 'hack', 'move', 'peek', 'addSafeDie', 'rollSafeDice', 'playCard', 'characterAction', 'trade', 'pickUpCat', 'pass', 'escape' ),
-        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10, 'nextPlayer' => 12, 'cardChoice' => 13, 'tileChoice' => 14, 'playerChoice' => 15, 'proposeTrade' => 16, 'gameOver' => 99 )
+        'transitions' => array( 'endAction' => 21, 'endTurn' => 10, 'nextPlayer' => 12, 'cardChoice' => 13, 'tileChoice' => 14, 'playerChoice' => 15, 'proposeTrade' => 16, 'specialChoice' => 20, 'gameOver' => 99 )
     ),    
 
     10 => array(
@@ -117,7 +117,7 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argCardChoice',
         'possibleactions' => array( 'selectCardChoice', 'cancelCardChoice' ),
-        'transitions' => array( 'nextAction' => 9, 'endTurn' => 10, 'tileChoice' => 14 )
+        'transitions' => array( 'endAction' => 21, 'nextAction' => 9, 'endTurn' => 10, 'tileChoice' => 14 )
     ),
 
     14 => array(
@@ -127,7 +127,7 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argTileChoice',
         'possibleactions' => array( 'selectTileChoice' ),
-        'transitions' => array( 'nextAction' => 9, 'tileChoice' => 14, 'endTurn' => 10 )
+        'transitions' => array( 'endAction' => 21, 'tileChoice' => 14, 'endTurn' => 10 )
     ),
 
     15 => array(
@@ -137,7 +137,7 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argPlayerChoice',
         'possibleactions' => array( 'selectPlayerChoice', 'cancelPlayerChoice' ),
-        'transitions' => array( 'nextAction' => 9, 'proposeTrade' => 16, 'specialChoice' => 20 )
+        'transitions' => array( 'endAction' => 21, 'nextAction' => 9, 'proposeTrade' => 16, 'specialChoice' => 20 )
     ),
 
     16 => array(
@@ -147,7 +147,7 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argProposeTrade',
         'possibleactions' => array( 'proposeTrade', 'cancelTrade' ),
-        'transitions' => array( 'nextAction' => 9, 'nextTradePlayer' => 18 )
+        'transitions' => array( 'endAction' => 21, 'nextAction' => 9, 'nextTradePlayer' => 18 )
     ),
 
     17 => array(
@@ -183,7 +183,33 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argSpecialChoice',
         'possibleactions' => array( 'selectSpecialChoice', 'cancelSpecialChoice' ),
-        'transitions' => array( 'nextAction' => 9, 'tileChoice' => 14 )
+        'transitions' => array( 'endAction' => 21, 'nextAction' => 9, 'tileChoice' => 14 )
+    ),
+
+    21 => array(
+        'name' => 'endAction',
+        'description' => '',
+        'type' => 'game',
+        'action' => 'stEndAction',
+        'transitions' => array( 'nextAction' => 9, 'drawTools' => 22 )
+    ),
+
+    22 => array(
+        'name' => 'drawToolsAndDiscard',
+        'description' => clienttranslate('${actplayer} must choose a tool to discard'),
+        'descriptionmyturn' => clienttranslate('${you} must choose a tool to discard'),
+        'type' => 'activeplayer',
+        'args' => 'argDrawToolsAndDiscard',
+        'possibleactions' => array( 'discardTool' ),
+        'transitions' => array( 'drawToolsOtherPlayer' => 23, 'nextAction' => '9' )
+    ),
+
+    23 => array(
+        'name' => 'drawToolsOtherPlayer',
+        'description' => '',
+        'type' => 'game',
+        'action' => 'stDrawToolsOtherPlayer',
+        'transitions' => array( 'nextAction' => 9 )
     ),
     
 /*

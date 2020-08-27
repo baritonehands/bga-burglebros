@@ -378,3 +378,15 @@
     display: flex;
     margin: 10px auto 0 auto;
 }
+
+#draw_tools_stock {
+    width: 490px;
+}
+
+#draw_tools_stock .stockitem {
+    background-size: 480px;
+}
+
+#draw_tools_stock .stockitem_selected {
+    border-color: red !important;
+}

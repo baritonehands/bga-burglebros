@@ -170,6 +170,13 @@
       self::ajaxResponse();
     }
 
+    public function discardTool() {
+      self::setAjaxMode();
+      $selected = self::getArg( "selected", AT_posint, true );
+      $this->game->discardTool($selected);
+      self::ajaxResponse();
+    }
+
     public function pickUpCat() {
       self::setAjaxMode();
       $this->game->pickUpCat();
