@@ -2392,16 +2392,13 @@ SQL;
             $player_tile = $this->getPlayerTile($current_player_id);
             $this->moveToken($crow['id'], 'tile', $player_tile['id']);
         } else if($type == 'rigger2') {
-            // TODO: Draw two pick one for rigger1/2
             $stealth = $this->getPlayerStealth($current_player_id);
             if ($stealth <= 0) {
-                throw new BgaUserException(self::_('You cannot discard a stealth'));
+                throw new BgaUserException(self::_('You cannot lose any more stealth'));
             }
             $this->decrementPlayerStealth($current_player_id);
-            $tool = $this->cards->pickCard('tools_deck', $current_player_id);
-            self::setGameStateValue('specialChoice', 2);
-            self::setGameStateValue('specialChoiceArg', $tool['id']);
-            $this->gamestate->nextState('specialChoice');
+            self::setGameStateValue('drawToolsPlayer', $current_player_id);
+            $this->endAction(0);
         } else if($type == 'rook1') {
             self::setGameStateValue('playerChoice', 2); // Rook 1
             $this->gamestate->nextState('playerChoice');
