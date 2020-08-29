@@ -222,6 +222,12 @@ function (dojo, declare) {
                     this.drawToolsAndDiscard(args.args.tools);
                 }
                 break;
+            
+            case 'takeCards':
+                if (this.isCurrentPlayerActive()) {
+                    this.takeCards(args.args);
+                }
+                break;
            
             case 'dummmy':
                 break;
@@ -299,7 +305,10 @@ function (dojo, declare) {
                         if (this.canTrade()) {
                             this.addActionButton( 'button_trade' , _('Trade'), 'handleTrade' );
                         }
-                        if (this.canPickupKitty()) {
+                        if (this.canTakeCards()) {
+                            this.addActionButton( 'button_take_cards' , _('Take Cards'), 'handleTakeCards' );
+                        }
+                        if (this.canPickUpKitty()) {
                             this.addActionButton( 'button_pickup' , _('Pick Up Cat'), 'handlePickUpCat' );
                         }
                         this.addCharacterAction();
@@ -671,7 +680,11 @@ function (dojo, declare) {
             return this.gamedatas.gamestate.args.other_players > 0;
         },
 
-        canPickupKitty: function() {
+        canTakeCards: function() {
+            return Object.keys(this.gamedatas.gamestate.args.tile_cards).length > 0;
+        },
+
+        canPickUpKitty: function() {
             var type_id = this.getCardTypeForName(2, 'persian-kitty');
             return this.tileContainsToken('cat') && this.handContainsCard(type_id);
         },
@@ -813,40 +826,53 @@ function (dojo, declare) {
             }
         },
 
-        proposeTrade: function(args) {
+        showTradeDialog: function(opts) {
+            var combinedOpts = dojo.mixin({
+                l_color: 'black',
+                r_color: 'black',
+                l_name: 'You',
+                r_name: 'Other',
+                l_cards: [],
+                r_cards: [],
+                title: _('Trade Cards'),
+                cancel_title: _('Cancel Trade'),
+                confirm_title: _('Confirm Trade'),
+                // Required: close_callback, confirm_callback
+            }, opts);
             var dialog = new ebg.popindialog();
             dialog.create( 'proposeTradeDialog' );
-            dialog.setTitle( _("Trade Cards") );
+            dialog.setTitle( combinedOpts.title );
             
-            var p1 = this.gamedatas.players[args.trade.current_player];
-            var p2 = this.gamedatas.players[args.trade.other_player];
             var html = this.format_block('jstpl_trade_dialog', {
-                p1_color: p1.color,
-                p2_color: p2.color,
-                p2_name: p2.name,
+                p1_color: combinedOpts.l_color,
+                p2_color: combinedOpts.r_color,
+                p1_name: combinedOpts.l_name,
+                p2_name: combinedOpts.r_name,
+                cancel_title: combinedOpts.cancel_title,
+                confirm_title: combinedOpts.confirm_title,
             });
             
             dialog.setContent( html ); // Must be set before calling show() so that the size of the content is defined before positioning the dialog
 
-            var p1_stock = new ebg.stock();
-            p1_stock.create(this, $('trade_p1'), this.cardwidth, this.cardheight);
-            p1_stock.image_items_per_row = 2;
-            p1_stock.setSelectionMode(1);
-            p1_stock.setSelectionAppearance('class');
-            this.addCardTypesToStock(p1_stock, [1, 2, 3]);
-            this.loadPlayerHand(p1_stock, p1.hand, [], true);
+            var l_stock = new ebg.stock();
+            l_stock.create(this, $('trade_p1'), this.cardwidth, this.cardheight);
+            l_stock.image_items_per_row = 2;
+            l_stock.setSelectionMode(1);
+            l_stock.setSelectionAppearance('class');
+            this.addCardTypesToStock(l_stock, [1, 2, 3]);
+            this.loadPlayerHand(l_stock, combinedOpts.l_cards, [], true);
 
-            var p2_stock = new ebg.stock();
-            p2_stock.create(this, $('trade_p2'), this.cardwidth, this.cardheight);
-            p2_stock.image_items_per_row = 2;
-            p2_stock.setSelectionMode(1);
-            p2_stock.setSelectionAppearance('class');
-            this.addCardTypesToStock(p2_stock, [1, 2, 3]);
-            this.loadPlayerHand(p2_stock, p2.hand, [], true);
+            var r_stock = new ebg.stock();
+            r_stock.create(this, $('trade_p2'), this.cardwidth, this.cardheight);
+            r_stock.image_items_per_row = 2;
+            r_stock.setSelectionMode(1);
+            r_stock.setSelectionAppearance('class');
+            this.addCardTypesToStock(r_stock, [1, 2, 3]);
+            this.loadPlayerHand(r_stock, combinedOpts.r_cards, [], true);
 
-            var cards = dojo.mixin({}, p1.hand, p2.hand);
-            this.connectTradeButtonHandlers(cards, p1_stock, p2_stock);
-            this.connectTradeButtonHandlers(cards, p2_stock, p1_stock);
+            var cards = dojo.mixin({}, combinedOpts.l_cards, combinedOpts.r_cards);
+            this.connectTradeButtonHandlers(cards, l_stock, r_stock);
+            this.connectTradeButtonHandlers(cards, r_stock, l_stock);
 
             dialog.show();
             
@@ -854,26 +880,50 @@ function (dojo, declare) {
             // Example, if you have an "OK" button in the HTML of your dialog:
             var closeCallback = function(evt) {
                 evt.preventDefault();
-                p1_stock.destroy();
-                p2_stock.destroy();
+                l_stock.destroy();
+                r_stock.destroy();
                 dialog.destroy();
-                this.handleCancelTrade();
+                combinedOpts.close_callback();
             };
             dialog.replaceCloseCallback(dojo.hitch(this, closeCallback));
             dojo.connect( $('trade_cancel_button'), 'onclick', this, closeCallback);
             dojo.connect( $('trade_confirm_button'), 'onclick', this, function(evt) {
                 evt.preventDefault();
-                if (this.checkAction('proposeTrade')) {
-                    var idGetter = function (item) { return item.id; };
-                    var p1_cards = dojo.map(p1_stock.getAllItems(), idGetter).join(';');
-                    var p2_cards = dojo.map(p2_stock.getAllItems(), idGetter).join(';');
-                    var params = { lock: true, p1_cards: p1_cards, p2_cards: p2_cards };
-                    this.ajaxcall('/burglebros/burglebros/proposeTrade.html', params, this, function() {
-                        p1_stock.destroy();
-                        p2_stock.destroy();
+                var idGetter = function (item) { return item.id; };
+                var l_cards = dojo.map(l_stock.getAllItems(), idGetter).join(';');
+                var r_cards = dojo.map(r_stock.getAllItems(), idGetter).join(';');
+                var params = {
+                    l_cards: l_cards,
+                    r_cards: r_cards,
+                    cleanup: function() {
+                        l_stock.destroy();
+                        r_stock.destroy();
                         dialog.destroy();
-                    }, console.error);
-                }
+                    }
+                };
+                combinedOpts.confirm_callback(params);
+            });
+        },
+
+        proposeTrade: function(args) {
+            var p1 = this.gamedatas.players[args.trade.current_player];
+            var p2 = this.gamedatas.players[args.trade.other_player];
+            this.showTradeDialog({
+                l_cards: p1.hand,
+                r_cards: p2.hand,
+                l_name: _('You'),
+                r_name: p2.name,
+                l_color: p1.color,
+                r_color: p2.color,
+                close_callback: dojo.hitch(this, function() {
+                    this.handleCancelTrade();
+                }),
+                confirm_callback: dojo.hitch(this, function(confirmArgs) {
+                    if (this.checkAction('proposeTrade')) {
+                        var params = { lock: true, p1_cards: confirmArgs.l_cards, p2_cards: confirmArgs.r_cards };
+                        this.ajaxcall('/burglebros/burglebros/proposeTrade.html', params, this, confirmArgs.cleanup, console.error);
+                    }
+                })
             });
         },
 
@@ -940,6 +990,28 @@ function (dojo, declare) {
                         dialog.destroy();
                     }, console.error);
                 }
+            });
+        },
+
+        takeCards: function(args) {
+            var player = this.gamedatas.players[this.player_id];
+            this.showTradeDialog({
+                l_cards: args.tile_cards,
+                l_name: _('In Tile'),
+                r_name: _('You'),
+                r_color: player.color,
+                title: _('Take Cards'),
+                cancel_title: _('Cancel'),
+                confirm_title: _('Take Cards'),
+                close_callback: dojo.hitch(this, function() {
+                    this.handleCancelTakeCards();
+                }),
+                confirm_callback: dojo.hitch(this, function(confirmArgs) {
+                    if (this.checkAction('confirmTakeCards')) {
+                        var params = { lock: true, l_cards: confirmArgs.l_cards, r_cards: confirmArgs.r_cards };
+                        this.ajaxcall('/burglebros/burglebros/confirmTakeCards.html', params, this, confirmArgs.cleanup, console.error);
+                    }
+                })
             });
         },
 
@@ -1187,6 +1259,13 @@ function (dojo, declare) {
             }
         },
 
+        handleTakeCards: function(evt) {
+            dojo.stopEvent(evt);
+            if (this.checkAction('takeCards')) {
+                this.ajaxcall('/burglebros/burglebros/takeCards.html', { lock: true }, this, console.log, console.error);
+            }
+        },
+
         handlePickUpCat: function(evt) {
             dojo.stopEvent(evt);
             if (this.checkAction('pickUpCat')) {
@@ -1247,6 +1326,12 @@ function (dojo, declare) {
         handleCancelTrade: function() {
             if (this.checkAction('cancelTrade')) {
                 this.ajaxcall('/burglebros/burglebros/cancelTrade.html', { lock: true }, this, console.log, console.error);
+            }
+        },
+
+        handleCancelTakeCards: function() {
+            if (this.checkAction('cancelTakeCards')) {
+                this.ajaxcall('/burglebros/burglebros/cancelTakeCards.html', { lock: true }, this, console.log, console.error);
             }
         },
 

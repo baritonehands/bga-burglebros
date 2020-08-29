@@ -192,7 +192,6 @@ class burglebros extends Table
             $this->moveCardsOutOfPlay('characters', 'spotter2'); 
         } else {
             $this->moveCardsOutOfPlay('characters', 'hawk2');
-            $this->moveCardsOutOfPlay('characters', 'peterman2');
         }
 
         foreach ($players as $player_id => $player) {
@@ -418,6 +417,7 @@ class burglebros extends Table
             'character' => $character,
             'tile' => $player_tile,
             'tile_tokens' => $this->tokens->getCardsInLocation('tile', $player_tile['id']),
+            'tile_cards' => $this->cards->getCardsInLocation('tile', $player_tile['id']),
             'floor' => $player_tile['location'][5],
             'actions_remaining' => $actions_remaining,
             'actions_description' => $actions_description,
@@ -2536,6 +2536,33 @@ SQL;
         } else {
             $this->gamestate->nextState('nextAction');
         }
+    }
+
+    function takeCards() {
+        self::checkAction('takeCards');
+        $current_player_id = self::getCurrentPlayerId();
+        $player_tile = $this->getPlayerTile($current_player_id);
+        $tile_cards = $this->cards->getCardsInLocation('tile', $player_tile['id']);
+        if (count($tile_cards) == 0) {
+            throw new BgaUserException(self::_('There are no cards in your tile'));
+        }
+
+        $this->gamestate->nextState('takeCards');
+    }
+
+    function confirmTakeCards($l_ids, $r_ids) {
+        self::checkAction('confirmTakeCards');
+        $current_player_id = self::getCurrentPlayerId();
+        $player_tile = $this->getPlayerTile($current_player_id);
+        $this->cards->moveCards($l_ids, 'tile', $player_tile['id']);
+        $this->cards->moveCards($r_ids, 'hand', $current_player_id);
+        $this->notifyPlayerHand($current_player_id);
+        $this->endAction(0);
+    }
+
+    function cancelTakeCards() {
+        self::checkAction('cancelTakeCards');
+        $this->gamestate->nextState('nextAction');
     }
 
     function pickUpCat() {

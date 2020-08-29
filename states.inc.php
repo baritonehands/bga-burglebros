@@ -79,8 +79,8 @@ $machinestates = array(
         'descriptionmyturn' => clienttranslate('${you} may do ${actions_description} or pass'),
         'type' => 'activeplayer',
         'args' => 'argPlayerTurn',
-        'possibleactions' => array( 'hack', 'move', 'peek', 'addSafeDie', 'rollSafeDice', 'playCard', 'characterAction', 'trade', 'pickUpCat', 'pass', 'escape' ),
-        'transitions' => array( 'endAction' => 21, 'endTurn' => 10, 'nextPlayer' => 12, 'cardChoice' => 13, 'tileChoice' => 14, 'playerChoice' => 15, 'proposeTrade' => 16, 'specialChoice' => 20, 'gameOver' => 99 )
+        'possibleactions' => array( 'hack', 'move', 'peek', 'addSafeDie', 'rollSafeDice', 'playCard', 'characterAction', 'trade', 'pickUpCat', 'takeCards', 'pass', 'escape' ),
+        'transitions' => array( 'endAction' => 21, 'endTurn' => 10, 'nextPlayer' => 12, 'cardChoice' => 13, 'tileChoice' => 14, 'playerChoice' => 15, 'proposeTrade' => 16, 'takeCards' => 24, 'specialChoice' => 20, 'gameOver' => 99 )
     ),    
 
     10 => array(
@@ -210,6 +210,16 @@ $machinestates = array(
         'type' => 'game',
         'action' => 'stDrawToolsOtherPlayer',
         'transitions' => array( 'nextAction' => 9 )
+    ),
+
+    24 => array(
+        'name' => 'takeCards',
+        'description' => clienttranslate('${actplayer} must choose cards to take'),
+        'descriptionmyturn' => clienttranslate('${you} must choose cards to take'),
+        'type' => 'activeplayer',
+        'args' => 'argPlayerTurn',
+        'possibleactions' => array( 'confirmTakeCards', 'cancelTakeCards' ),
+        'transitions' => array( 'endAction' => 21, 'nextAction' => 9 )
     ),
     
 /*

@@ -122,7 +122,7 @@ var jstpl_event_card = '<div id="event_card_dialog" class="card" style="backgrou
 var jstpl_trade_dialog = '<div id="trade_dialog" class="dialog">\n' +
 '    <div class="dialog-content">\n' +
 '        <div class="trade-container">\n' +
-'            <h3 class="trade-player" style="color: #${p1_color};">You</h3>\n' +
+'            <h3 class="trade-player" style="color: #${p1_color};">${p1_name}</h3>\n' +
 '            <div id="trade_p1"></div>\n' +
 '        </div>\n' +
 '        \n' +
@@ -135,8 +135,8 @@ var jstpl_trade_dialog = '<div id="trade_dialog" class="dialog">\n' +
 '        </div>\n' +
 '    </div>\n' +
 '    <div class="dialog-footer">\n' +
-'        <a href="#" id="trade_cancel_button" class="bgabutton bgabutton_gray">Cancel Trade</a>&nbsp;&nbsp;\n' +
-'        <a href="#" id="trade_confirm_button" class="bgabutton bgabutton_blue">Propose Trade</a>\n' +
+'        <a href="#" id="trade_cancel_button" class="bgabutton bgabutton_gray">${cancel_title}</a>&nbsp;&nbsp;\n' +
+'        <a href="#" id="trade_confirm_button" class="bgabutton bgabutton_blue">${confirm_title}</a>\n' +
 '    </div>\n' +
 '</div>';
 

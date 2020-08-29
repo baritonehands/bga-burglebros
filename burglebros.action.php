@@ -177,6 +177,26 @@
       self::ajaxResponse();
     }
 
+    public function takeCards() {
+      self::setAjaxMode();
+      $this->game->takeCards();
+      self::ajaxResponse();
+    }
+
+    public function confirmTakeCards() {
+      self::setAjaxMode();
+      $l_cards_raw = self::getArg( "l_cards", AT_numberlist, true );
+      $r_cards_raw = self::getArg( "r_cards", AT_numberlist, true );
+      $this->game->confirmTakeCards($this->game->parseIdList($l_cards_raw), $this->game->parseIdList($r_cards_raw));
+      self::ajaxResponse();
+    }
+
+    public function cancelTakeCards() {
+      self::setAjaxMode();
+      $this->game->cancelTakeCards();
+      self::ajaxResponse();
+    }
+
     public function pickUpCat() {
       self::setAjaxMode();
       $this->game->pickUpCat();
