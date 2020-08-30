@@ -171,13 +171,12 @@ class burglebros extends Table
         $this->tokens->createCards( $tokens );
 
         // Remove cards that don't make sense for the number of players
-        // if (count($players) == 1) {
-        //     $this->moveCardsOutOfPlay('loot', 'gold-bar');
-        //     $this->moveCardsOutOfPlay('characters', 'rook1');
-        //     $this->moveCardsOutOfPlay('characters', 'rook2');
-        // }
+        if (count($players) == 1) {
+            $this->moveCardsOutOfPlay('loot', 'gold-bar');
+            $this->moveCardsOutOfPlay('characters', 'rook1');
+            $this->moveCardsOutOfPlay('characters', 'rook2');
+        }
         // TODO: Add back cards once implemented
-        $this->moveCardsOutOfPlay('loot', 'gold-bar');
         $this->moveCardsOutOfPlay('tools', 'crystal-ball');
         $this->moveCardsOutOfPlay('tools', 'stethoscope');
         if ($options[100] == 1) {
@@ -190,8 +189,6 @@ class burglebros extends Table
             $this->moveCardsOutOfPlay('characters', 'rigger2');
             $this->moveCardsOutOfPlay('characters', 'rook2');
             $this->moveCardsOutOfPlay('characters', 'spotter2'); 
-        } else {
-            $this->moveCardsOutOfPlay('characters', 'hawk2');
         }
 
         foreach ($players as $player_id => $player) {
@@ -656,7 +653,7 @@ SQL;
         } elseif($variant == 'peekhole') {
             return ($same_floor && $adjacent) || $this->peekholeIsAdjacent($tile, $other_tile);
         } elseif($variant == 'hawk1') {
-            return $this->hawkIsAdjacent($detail);
+            return $this->hawk1IsAdjacent($detail);
         } elseif($variant == 'acrobat2') {
             return $this->acrobat2IsAdjacent($tile, $other_tile) ||
                 $this->acrobat2IsAdjacent($other_tile, $tile);
@@ -722,7 +719,7 @@ SQL;
             ($to['location'][5] + 1 == $from['location'][5] || $to['location'][5] - 1 == $from['location'][5]);
     }
 
-    function hawkIsAdjacent($detail) {
+    function hawk1IsAdjacent($detail) {
         return $detail['same_floor'] && $detail['adjacent'] && $detail['blocked'] &&
             $this->getPlayerCharacter(self::getActivePlayerId(), 'hawk1') && 
             !self::getGameStateValue('characterAbilityUsed');
@@ -731,6 +728,31 @@ SQL;
     function acrobat2IsAdjacent($to, $from) {
         return $to['location'][5] + 1 == $from['location'][5] &&
             $to['location_arg'] == $from['location_arg'];
+    }
+
+    function hawk2PeekAllowed($player_tile, $target_tile) {
+        $walls = $this->getWalls();
+        $adjacent_flipped = array();
+        $face_down = false;
+        for ($floor=1; $floor <= 3; $floor++) { 
+            $tiles = $this->getTiles($floor);
+            foreach ($tiles as $tile) {
+                if ($tile['id'] == $player_tile['id'] || ($tile['type'] != 'back' && $this->isTileAdjacent($tile, $player_tile, $walls))) {
+                    $adjacent_flipped [] = $tile;
+                } else if ($tile['id'] == $target_tile['id'] && $tile['type'] == 'back') {
+                    $face_down = true;
+                }
+            }
+        }
+        if (!$face_down) {
+            throw new BgaUserException(self::_('Tile is already visible'));
+        }
+        foreach ($adjacent_flipped as $tile) {
+            if ($this->isTileAdjacent($target_tile, $tile, $walls)) {
+                return true;
+            }
+        }
+        throw new BgaUserException(self::_('Tile is not valid for the Enhance ability'));
     }
 
     function moveGuardDebug($floor) {
@@ -1819,6 +1841,12 @@ SQL;
         } elseif($type == 'hawk1') {
             $this->validateSelection('tile', $selected_type);
             $this->performPeek($selected_id, 'hawk1');
+        } elseif($type == 'hawk2') {
+            $this->validateSelection('tile', $selected_type);
+            $player_tile = $this->getPlayerTile(self::getCurrentPlayerId());
+            if ($this->hawk2PeekAllowed($player_tile, $this->tiles->getCard($selected_id))) {
+                $this->performPeek($selected_id, 'effect');
+            }
         } elseif($type == 'juicer1') {
             $this->validateSelection('tile', $selected_type);
             $tile = $this->tiles->getCard($selected_id);
