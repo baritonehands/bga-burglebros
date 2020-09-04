@@ -79,7 +79,14 @@ function (dojo, declare) {
                 if (me) {
                     hand.setSelectionMode(1);
                     hand.setSelectionAppearance('class');
-                    dojo.connect( hand, 'onChangeSelection', this, 'handleCardSelected' );
+                    dojo.connect( hand, 'onChangeSelection', this, function(control_name, card_id) {
+                        
+                        if (hand.isSelected(card_id) && this.checkAction('playCard')) {
+                            this.ajaxcall('/burglebros/burglebros/playCard.html', { lock: true, id: card_id }, this, console.log, console.error);
+                        } else if(!hand.isSelected(card_id)) {
+                            this.handleCancelCardChoice();
+                        }
+                    });
                 } else {
                     hand.setSelectionMode(0);
                 }
@@ -778,10 +785,10 @@ function (dojo, declare) {
             }
         },
 
-        loadPlayerHand: function(handStock, hand, discard_ids, skip_characters) {
+        loadPlayerHand: function(handStock, hand, discard_ids, tradable) {
             for(var cardId in hand) {
                 var card = hand[cardId];
-                if (skip_characters && card.type == 0) {
+                if (tradable && (card.type == 0 || card.type == 3)) {
                     continue;
                 }
 
@@ -1278,15 +1285,6 @@ function (dojo, declare) {
 
             if (this.checkAction('pass')) {
                 this.ajaxcall('/burglebros/burglebros/pass.html', { lock: true }, this, function() {
-                    console.log(arguments);
-                    // location.reload();
-                }, console.error);
-            }
-        },
-
-        handleCardSelected: function(control_name, card_id) {
-            if (this.checkAction('playCard')) {
-                this.ajaxcall('/burglebros/burglebros/playCard.html', { lock: true, id: card_id }, this, function() {
                     console.log(arguments);
                     // location.reload();
                 }, console.error);

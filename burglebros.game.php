@@ -867,7 +867,6 @@ SQL;
         $is_player_tile = $tile['id'] == $player_token['location_arg'];
         
         if ($is_guard_tile && $is_player_tile) {
-            $state = $this->gamestate->state();
             $this->deductTileStealth($player_tile['id'], $context);
             return;
         }
@@ -1625,7 +1624,8 @@ SQL;
             } 
         } elseif($type == 'heads-up') {
             $next_player = $this->getPlayerAfter($player_id);
-            $this->cards->moveCard($card['id'], 'active', $next_player);
+            $this->cards->moveCard($card['id'], 'hand', $next_player);
+            $this->notifyPlayerHand($next_player);
         } elseif ($type == 'jury-rig') {
             self::setGameStateValue('drawToolsPlayer', $player_id);
         } elseif ($type == 'keycode-change') {
@@ -1703,7 +1703,8 @@ SQL;
             $this->nextPatrol($floor);
         } else {
             // It will be handled in the appropriate place
-            $this->cards->moveCard($card['id'], 'active', $player_id);
+            $this->cards->moveCard($card['id'], 'hand', $player_id);
+            $this->notifyPlayerHand($player_id);
         }
         return array(
             'card_choice' => $card_choice,
@@ -1713,7 +1714,7 @@ SQL;
 
     function getActiveEvent($name) {
         $type_arg = $this->getCardTypeForName(3, $name);
-        $cards = $this->cards->getCardsOfTypeInLocation(3, $type_arg, 'active');
+        $cards = $this->cards->getCardsOfTypeInLocation(3, $type_arg, 'hand');
         if (count($cards) > 0) {
             return array_values($cards)[0];
         }
@@ -2913,9 +2914,10 @@ SQL;
             self::setGameStateValue('empPlayer', 0);
         }
         // Cleanup round events for a player
-        $round_events = array_keys($this->cards->getCardsOfTypeInLocation(3, null, 'active', $player_id));
+        $round_events = array_keys($this->cards->getCardsOfTypeInLocation(3, null, 'hand', $player_id));
         if (count($round_events) > 0) {
             $this->cards->moveCards($round_events, 'events_discard');
+            $this->notifyPlayerHand($player_id, $round_events);
         }
         $this->clearTileTokens('keypad');
 
