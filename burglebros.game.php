@@ -385,16 +385,21 @@ class burglebros extends Table
         return $peekable;
     }
 
-    function canEscape($player_tile) {
+    function openSafes() {
         $safes = $this->tiles->getCardsOfType('safe');
-        $escape = true;
+        $open = 0;
         foreach ($safes as $tile_id => $tile) {
             if ($this->tokensInTile('open', $tile_id) == 0) {
-                $escape = false;
                 break;
+            } else {
+                $open++;
             }
         }
-        return $player_tile['type'] == 'stairs' && $player_tile['location'][5] == '3' && $escape;
+        return $open;
+    }
+
+    function canEscape($player_tile) {
+        return $player_tile['type'] == 'stairs' && $player_tile['location'][5] == '3' && $this->openSafes() == 3;
     }
 
     function gatherCurrentData($current_player_id) {
@@ -2378,8 +2383,10 @@ SQL;
         $type = $this->getCardType($character);
         $used = self::getGameStateValue('characterAbilityUsed');
 
-        // TODO: Check actions remaining for character ability
-        if ($used && in_array($type, array('hawk1', 'hawk2', 'juicer2', 'rook1', 'spotter1', 'spotter2'))) {
+        $actions_remaining = self::getGameStateValue('actionsRemaining');
+        if ($actions_remaining < 1 && in_array($type, array('hacker2', 'rook1', 'spotter1', 'spotter2'))) {
+            throw new BgaUserException(self::_("You have no actions remaining"));
+        } else if ($used && in_array($type, array('hawk1', 'hawk2', 'juicer2', 'rook1', 'spotter1', 'spotter2'))) {
             throw new BgaUserException(self::_('Character action can be used once per turn'));
         } else if($type == 'acrobat2') {
             $player_tile = $this->getPlayerTile($current_player_id);
@@ -2392,6 +2399,7 @@ SQL;
             self::setGameStateValue('cardChoice', $character['id']);
             $this->gamestate->nextState('cardChoice');
         } else if($type == 'hacker2') {
+            
             if (count($this->tokens->getCardsOfTypeInLocation('hack', null, 'card', $character['id'])) > 0) {
                 throw new BgaUserException(self::_('You already have a hack token'));
             }
@@ -2495,7 +2503,17 @@ SQL;
     function proposeTrade($p1_ids, $p2_ids) {
         self::checkAction('proposeTrade');
         $trade = $this->getTrade();
-        // TODO: Validate trade
+        
+        $card_ids = array();
+        array_merge($card_ids, $p1_ids, $p2_ids);
+        foreach ($this->cards->getCards($card_ids) as $id => $card) {
+            if (in_array($card['type'], array(0, 3))) {
+                throw new BgaUserException(self::_('Card must be a tool or loot'));
+            } else if($card['location'] != 'hand' || !in_array($card['location'], array($trade['current_player'], $trade['other_player']))) {
+                throw new BgaUserException(self::_('Card does not belong to trading player'));
+            }
+        }
+
         $this->createTradeCards($trade['id'], $trade['current_player'], $p1_ids);
         $this->createTradeCards($trade['id'], $trade['other_player'], $p2_ids);
         $this->gamestate->nextState('nextTradePlayer');
