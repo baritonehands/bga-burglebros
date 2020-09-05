@@ -50,7 +50,7 @@ $this->card_info = array(
     array('name'=>'juicer1', 'choice_description' => self::_('an adjacent tile to trigger an alarm')),
     array('name'=>'juicer2'),
     array('name'=>'peterman1'),
-    array('name'=>'peterman2'),
+    array('name'=>'peterman2', 'choice_description' => self::_('up or down to crack safe')),
     array('name'=>'raven1', 'choice_description' => self::_('a tile up to two spaces away to place the crow')),
     array('name'=>'raven2'),
     array('name'=>'rigger1'),

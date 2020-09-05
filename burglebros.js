@@ -1183,8 +1183,8 @@ function (dojo, declare) {
 
             if (this.gamedatas.gamestate.name == 'cardChoice' && this.checkAction('selectCardChoice')) {
                 var selected_type = 'tile', selected_id = id;
-                if (dojo.hasClass(evt.target, 'token')) {
-                    selected_type = 'token';
+                if (dojo.hasClass(evt.target, 'meeple')) {
+                    selected_type = 'meeple';
                     selected_id = evt.target.id.substring(evt.target.id.lastIndexOf('_') + 1);
                 }
                 this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: selected_type, selected_id: selected_id }, this, console.log, console.error);

@@ -1796,7 +1796,7 @@ SQL;
             }
             $this->performPeek($tile['id'], 'effect');
         } elseif($type == 'buddy-system') {
-            $this->validateSelection('token', $selected_type);
+            $this->validateSelection('meeple', $selected_type);
             $other_token = $this->tokens->getCard($selected_id);
             if ($other_token['type'] != 'player') {
                 throw new BgaUserException(self::_("Must choose a player token"));
