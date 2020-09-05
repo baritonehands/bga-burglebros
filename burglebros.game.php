@@ -2374,7 +2374,7 @@ SQL;
                     $this->endAction($id < 10 ? 2 : 1); // Spent 1 or 2 actions
                 } else if($type == 'acrobat2') {
                     self::setGameStateValue('actionsRemaining', 0);
-                    $this->gamestate->nextState('endTurn');
+                    $this->endAction(0);
                 } else {
                     $this->endAction(0); // Free action
                 }
