@@ -56,6 +56,7 @@ class burglebros extends Table
             'firstAction' => 30,
             'drawToolsPlayer' => 31,
             'drawToolsNextPlayer' => 32,
+            'stealthDepleted' => 33,
 
             // Options
             'characterAssignment' => 100
@@ -127,6 +128,7 @@ class burglebros extends Table
         self::setGameStateInitialValue( 'firstAction', 1 );
         self::setGameStateInitialValue( 'drawToolsPlayer', 0 );
         self::setGameStateInitialValue( 'drawToolsNextPlayer', 0 );
+        self::setGameStateInitialValue( 'stealthDepleted', 0 );
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -175,10 +177,12 @@ class burglebros extends Table
             $this->moveCardsOutOfPlay('loot', 'gold-bar');
             $this->moveCardsOutOfPlay('characters', 'rook1');
             $this->moveCardsOutOfPlay('characters', 'rook2');
+            $this->moveCardsOutOfPlay('events', 'freight-elevator');
         }
         // TODO: Add back cards once implemented
         $this->moveCardsOutOfPlay('tools', 'crystal-ball');
         $this->moveCardsOutOfPlay('tools', 'stethoscope');
+        $this->moveCardsOutOfPlay('events', 'squeak');
         if ($options[100] == 1) {
             $this->moveCardsOutOfPlay('characters', 'acrobat2');
             $this->moveCardsOutOfPlay('characters', 'hacker2');
@@ -297,9 +301,11 @@ class burglebros extends Table
     */
     function getGameProgression()
     {
-        // TODO: compute and return the game progression
-
-        return 0;
+        if (self::getGameStateValue('stealthDepleted') || $this->allPlayersEscaped()) {
+            return 100;
+        } else {
+            return $this->openSafes() * 25;
+        }
     }
 
 
@@ -794,6 +800,9 @@ SQL;
                     $movement--;
                 }
                 $this->performGuardMovementEffects($guard_token, $tile_id);
+                if (self::getGameStateValue('stealthDepleted')) {
+                    break;
+                }
                 if ($tile_id == $patrol_token['location_arg']) {
                     $this->nextPatrol($floor);
                     if ($movement > 0) {
@@ -811,8 +820,12 @@ SQL;
         self::DbQuery("UPDATE player SET player_stealth_tokens = player_stealth_tokens - $amount WHERE player_id = '$player_id'");
         $players = self::loadPlayersBasicInfos();
         $player_stealth = $this->tokens->getCardsOfTypeInLocation('stealth', null, 'player', $player_id);
-        if ($amount > 0 && count($player_stealth) > 0) {
-            $this->moveToken(array_keys($player_stealth)[0], 'deck', TRUE);
+        if ($amount > 0) {
+            if (count($player_stealth) > 0) {
+                $this->moveToken(array_keys($player_stealth)[0], 'deck', TRUE);
+            } else {
+                self::setGameStateValue('stealthDepleted', 1);
+            }
         } else if($amount < 0) {
             $this->pickTokens('stealth', 'player', $player_id, -$amount);
         }
@@ -825,7 +838,7 @@ SQL;
     function deductTileStealth($tile_id, $context) {
         $player_tokens = $this->tokens->getCardsOfTypeInLocation('player', null, 'tile', $tile_id);
         $tile_stealth = $this->tokens->getCardsOfTypeInLocation('stealth', null, 'tile', $tile_id);
-        $current_player_id = self::getCurrentPlayerId();
+        $current_player_id = self::getActivePlayerId();
         foreach ($player_tokens as $token) {
             if (count($tile_stealth) > 0) {
                 // TODO: pick which players
@@ -2035,9 +2048,14 @@ SQL;
         return $move_result['tile_choice'];
     }
 
-    function gameOver() {
-        // TODO: Also check all the loot escaped
+    function allPlayersEscaped() {
         return count($this->tokens->getCardsOfTypeInLocation('player', null, 'roof')) == self::getPlayersNumber();
+    }
+
+    function checkWin() {
+        $all_safes_opened = $this->openSafes() == 3;
+        $all_loot_escaped = count($this->cards->getCardsOfTypeInLocation(2, null, 'tile')) == 0;
+        return $all_safes_opened && $all_loot_escaped;
     }
 
     function performAddSafeDie($tile) {
@@ -2149,7 +2167,9 @@ SQL;
         if ($type == 'rook1') {
             $player_token = $this->getPlayerToken($choice_arg);
             $tile_choice = $this->performMove($selected, 'rook1', $choice_arg);
-            if ($tile_choice) {
+            if (self::getGameStateValue('stealthDepleted')) {
+                $this->gamestate->nextState('gameOver');
+            } else if ($tile_choice) {
                 self::setGameStateValue('tileChoice', $tile_choice);
                 $this->gamestate->nextState('tileChoice');
             } else {
@@ -2182,6 +2202,15 @@ SQL;
 
     function showRiggerToolSelection() {
         return $this->getPlayerCharacter(null, 'rigger1') || $this->getPlayerCharacter(null, 'rigger2');
+    }
+
+    function skipEscapedPlayers($player_id) {
+        $player_token = $this->getPlayerToken($player_id);
+        while ($player_token['location'] == 'roof') {
+            $player_id = self::activeNextPlayer();
+            $player_token = $this->getPlayerToken($player_id);
+        }
+        return $player_id;
     }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2236,7 +2265,9 @@ SQL;
             throw new BgaUserException(self::_("You have no actions remaining"));
         }
         $tile_choice = $this->performMove($tile_id);
-        if ($tile_choice) {
+        if (self::getGameStateValue('stealthDepleted')) {
+            $this->gamestate->nextState('gameOver');
+        } else if ($tile_choice) {
             self::setGameStateValue('tileChoice', $tile_choice);
             $this->gamestate->nextState('tileChoice');
         } else {
@@ -2326,7 +2357,9 @@ SQL;
         self::checkAction('selectCardChoice');
         $card = $this->cards->getCard(self::getGameStateValue('cardChoice'));
         $tile_choice = $this->handleSelectCardChoice($card, $type, $id);
-        if ($tile_choice) {
+        if (self::getGameStateValue('stealthDepleted')) {
+            $this->gamestate->nextState('gameOver');
+        } else if ($tile_choice) {
             self::setGameStateValue('tileChoice', $tile_choice);
             $this->gamestate->nextState('tileChoice');
         } else {
@@ -2631,14 +2664,20 @@ SQL;
         $trigger_action_count = $this->getPlayerLoot( 'stamp', $current_player_id) ? 1 : 2;
         if ($actions_remaining >= $trigger_action_count) {
             $count = $this->cards->countCardInLocation('events_discard');
-            $this->cards->pickCardForLocation('events_deck', 'events_discard', $count + 1);
-            $event_card = $this->cards->getCardOnTop('events_discard');
-            $type = $this->getCardType($event_card);
-            self::notifyAllPlayers('eventCard', self::_("Event Card: $type"), array(
-                'card' => $event_card
-            ));
-            $event_result = $this->handleEventEffect($current_player_id, $event_card);
-            if ($event_result['card_choice']) {
+            $event_card = $this->cards->pickCardForLocation('events_deck', 'events_discard', $count + 1);
+            if ($event_card) {
+                $type = $this->getCardType($event_card);
+                self::notifyAllPlayers('eventCard', self::_("Event Card: $type"), array(
+                    'card' => $event_card
+                ));
+                $event_result = $this->handleEventEffect($current_player_id, $event_card);
+            } else {
+                $event_result = array('card_choice'=>FALSE,'tile_choice'=>FALSE);
+            }
+            
+            if (self::getGameStateValue('stealthDepleted')) {
+                $this->gamestate->nextState('gameOver');
+            } else if ($event_result['card_choice']) {
                 self::setGameStateValue('cardChoice', $event_card['id']);
                 $this->gamestate->nextState('cardChoice');
             } elseif ($event_result['tile_choice']) {
@@ -2667,8 +2706,10 @@ SQL;
         }
         $this->moveToken($player_token['id'], 'roof');
 
-        if ($this->gameOver()) {
-            $this->DbQuery("UPDATE player SET player_score='1'");
+        if ($this->allPlayersEscaped()) {
+            if ($this->checkWin()) {
+                $this->DbQuery("UPDATE player SET player_score='1'");
+            }
             $this->gamestate->nextState('gameOver');
         } else {
             $this->gamestate->nextState('nextPlayer');
@@ -2895,7 +2936,11 @@ SQL;
                 $this->moveGuard($floor, $movement);
             }
         }
-        $this->gamestate->nextState( 'nextPlayer' );
+        if (self::getGameStateValue('stealthDepleted')) {
+            $this->gamestate->nextState('gameOver');
+        } else {
+            $this->gamestate->nextState( 'nextPlayer' );
+        }
     }
 
     function stNextPlayer() {
@@ -2905,13 +2950,12 @@ SQL;
             self::notifyAllPlayers('message', clienttranslate( 'Skipped ${player_name}\'s turn' ), array(
                 'player_name' => self::getActivePlayerName()
             ));
+            $this->skipEscapedPlayers($player_id);
             $player_id = self::activeNextPlayer();
-            // Will auto cleanup in active events for player logic
-        }
-        $player_token = $this->getPlayerToken($player_id);
-        while ($player_token['location'] == 'roof') {
-            $player_id = self::activeNextPlayer();
-            $player_token = $this->getPlayerToken($player_id);
+            $this->cards->moveCard($jump_the_gun['id'], 'events_discard');
+            $this->notifyPlayerHand($player_id, array($jump_the_gun['id']));
+        } else {
+            $player_id = $this->skipEscapedPlayers($player_id);
         }
         self::giveExtraTime( $player_id );
         $heads_up = $this->getActiveEvent('heads-up');

@@ -79,6 +79,7 @@ $machinestates = array(
         'descriptionmyturn' => clienttranslate('${you} may do ${actions_description} or pass'),
         'type' => 'activeplayer',
         'args' => 'argPlayerTurn',
+        'updateGameProgression' => true,
         'possibleactions' => array( 'hack', 'move', 'peek', 'addSafeDie', 'rollSafeDice', 'playCard', 'characterAction', 'trade', 'pickUpCat', 'takeCards', 'pass', 'escape' ),
         'transitions' => array( 'endAction' => 21, 'endTurn' => 10, 'nextPlayer' => 12, 'cardChoice' => 13, 'tileChoice' => 14, 'playerChoice' => 15, 'proposeTrade' => 16, 'takeCards' => 24, 'specialChoice' => 20, 'gameOver' => 99 )
     ),    
@@ -99,7 +100,7 @@ $machinestates = array(
         'type' => 'game',
         'action' => 'stMoveGuard',
         'updateGameProgression' => true,
-        'transitions' => array( 'nextPlayer' => 12, 'caught' => 99 )
+        'transitions' => array( 'nextPlayer' => 12, 'gameOver' => 99 )
     ),
 
     12 => array(
@@ -116,8 +117,9 @@ $machinestates = array(
         'descriptionmyturn' => clienttranslate('${card_name}: ${you} must choose ${choice_description}'),
         'type' => 'activeplayer',
         'args' => 'argCardChoice',
+        'updateGameProgression' => true,
         'possibleactions' => array( 'selectCardChoice', 'cancelCardChoice' ),
-        'transitions' => array( 'endAction' => 21, 'nextAction' => 9, 'endTurn' => 10, 'tileChoice' => 14 )
+        'transitions' => array( 'endAction' => 21, 'nextAction' => 9, 'endTurn' => 10, 'tileChoice' => 14, 'gameOver' => 99 )
     ),
 
     14 => array(
@@ -182,8 +184,9 @@ $machinestates = array(
         'descriptionmyturn' => clienttranslate('${choice_name}: ${you} must choose ${choice_description}'),
         'type' => 'activeplayer',
         'args' => 'argSpecialChoice',
+        'updateGameProgression' => true,
         'possibleactions' => array( 'selectSpecialChoice', 'cancelSpecialChoice' ),
-        'transitions' => array( 'endAction' => 21, 'nextAction' => 9, 'tileChoice' => 14 )
+        'transitions' => array( 'endAction' => 21, 'nextAction' => 9, 'tileChoice' => 14, 'gameOver' => 99 )
     ),
 
     21 => array(

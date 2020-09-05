@@ -79,14 +79,7 @@ function (dojo, declare) {
                 if (me) {
                     hand.setSelectionMode(1);
                     hand.setSelectionAppearance('class');
-                    dojo.connect( hand, 'onChangeSelection', this, function(control_name, card_id) {
-                        
-                        if (hand.isSelected(card_id) && this.checkAction('playCard')) {
-                            this.ajaxcall('/burglebros/burglebros/playCard.html', { lock: true, id: card_id }, this, console.log, console.error);
-                        } else if(!hand.isSelected(card_id)) {
-                            this.handleCancelCardChoice();
-                        }
-                    });
+                    dojo.connect( hand, 'onChangeSelection', this, 'handleCardSelected');
                 } else {
                     hand.setSelectionMode(0);
                 }
@@ -1288,6 +1281,14 @@ function (dojo, declare) {
                     console.log(arguments);
                     // location.reload();
                 }, console.error);
+            }
+        },
+
+        handleCardSelected: function(control_name, card_id) {	
+            if (this.myHand.isSelected(card_id) && this.checkAction('playCard')) {
+                this.ajaxcall('/burglebros/burglebros/playCard.html', { lock: true, id: card_id }, this, console.log, console.error);
+            } else if(!this.myHand.isSelected(card_id)) {
+                this.handleCancelCardChoice();
             }
         },
 
