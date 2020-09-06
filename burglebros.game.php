@@ -1777,6 +1777,7 @@ SQL;
     function handleSelectCardChoice($card, $selected_type, $selected_id) {
         $type = $this->getCardType($card);
         $tile_choice = FALSE;
+        $discard = TRUE;
         if($type == 'acrobat1') {
             $this->validateSelection('tile', $selected_type);
             // Don't do tile_choice here, since we'll never trigger an alarm
@@ -1819,6 +1820,7 @@ SQL;
                 throw new BgaUserException(self::_('Tile does not contain a guard'));
             }
             $this->cards->moveCard($card['id'], 'tile', $tile['id']);
+            $discard = FALSE;
         } elseif($type == 'dynamite') {
             $this->validateSelection('wall', $selected_type);
             $player_tile = $this->getPlayerTile(self::getCurrentPlayerId());
@@ -1938,7 +1940,7 @@ SQL;
             $nbr = $existing <= 3 ? 3 : 6 - $existing;
             $this->pickTokensForTile('hack', $tile['id'], $nbr);
         }
-        if ($card['type'] != 0) {
+        if ($discard && $card['type'] != 0) {
             $this->cards->moveCard($card['id'], $card['type'] == 1 ? 'tools_discard' : 'events_discard');
             if ($card['type'] == 1) {
                 $this->notifyPlayerHand(self::getCurrentPlayerId(), array($card['id']));
@@ -2054,7 +2056,8 @@ SQL;
 
     function checkWin() {
         $all_safes_opened = $this->openSafes() == 3;
-        $all_loot_escaped = count($this->cards->getCardsOfTypeInLocation(2, null, 'tile')) == 0;
+        $all_loot_escaped = count($this->cards->getCardsOfTypeInLocation(2, null, 'tile')) == 0 &&
+            count($this->tokens->getCardsOfTypeInLocation('cat', null, 'tile')) == 0;
         return $all_safes_opened && $all_loot_escaped;
     }
 
