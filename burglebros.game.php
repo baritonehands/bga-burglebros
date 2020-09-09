@@ -1940,8 +1940,10 @@ SQL;
             $nbr = $existing <= 3 ? 3 : 6 - $existing;
             $this->pickTokensForTile('hack', $tile['id'], $nbr);
         }
-        if ($discard && $card['type'] != 0) {
-            $this->cards->moveCard($card['id'], $card['type'] == 1 ? 'tools_discard' : 'events_discard');
+        if ($card['type'] != 0) {
+            if ($discard) {
+                $this->cards->moveCard($card['id'], $card['type'] == 1 ? 'tools_discard' : 'events_discard');
+            }
             if ($card['type'] == 1) {
                 $this->notifyPlayerHand(self::getCurrentPlayerId(), array($card['id']));
             }
@@ -2214,6 +2216,14 @@ SQL;
             $player_token = $this->getPlayerToken($player_id);
         }
         return $player_id;
+    }
+
+    function reshuffleDeckIfEmpty($deck) {
+        $count = $this->cards->countCardInLocation($deck.'_deck');
+        if ($count == 0) {
+            $this->cards->moveAllCardsInLocation($deck.'_discard', $deck.'_deck');
+            $this->cards->shuffle($deck.'_deck');
+        }
     }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2866,6 +2876,7 @@ SQL;
             $this->gamestate->nextState('nextAction');
         } else if($draw_tools_player_id != 0 && !$draw_two) {
             self::setGameStateValue('drawToolsPlayer', 0);
+            $this->reshuffleDeckIfEmpty('tools');
             $this->cards->pickCard('tools_deck', $current_player_id);
             $this->notifyPlayerHand($current_player_id);
             $this->gamestate->nextState('nextAction');
@@ -2875,7 +2886,10 @@ SQL;
                 self::setGameStateValue('drawToolsNextPlayer', $current_player_id);
                 $this->gamestate->changeActivePlayer($draw_tools_player_id);
             }
-            $tools = $this->cards->pickCardsForLocation(2, 'tools_deck', 'choice');
+            $this->reshuffleDeckIfEmpty('tools');
+            $this->cards->pickCardForLocation('tools_deck', 'choice');
+            $this->reshuffleDeckIfEmpty('tools');
+            $this->cards->pickCardForLocation('tools_deck', 'choice');
             $this->gamestate->nextState('drawTools');
         }
         self::setGameStateValue('firstAction', 0);
@@ -2916,6 +2930,7 @@ SQL;
                 }
             }
             $this->cards->moveCard($shift_change['id'], 'events_discard');
+            $this->notifyPlayerHand($current_player_id, array($shift_change['id']));
         } else {
             $guard_token = array_values($this->tokens->getCardsOfType('guard', $floor))[0];
             $guard_tile = $this->tiles->getCard($guard_token['location_arg']);
@@ -2930,11 +2945,13 @@ SQL;
                 if ($daydreaming) {
                     $movement--;
                     $this->cards->moveCard($daydreaming['id'], 'events_discard');
+                    $this->notifyPlayerHand($current_player_id, array($daydreaming['id']));
                 }
                 $espresso = $this->getActiveEvent('espresso');
                 if ($espresso) {
                     $movement++;
                     $this->cards->moveCard($espresso['id'], 'events_discard');
+                    $this->notifyPlayerHand($current_player_id, array($espresso['id']));
                 }
                 $this->moveGuard($floor, $movement);
             }
