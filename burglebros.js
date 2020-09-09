@@ -96,7 +96,6 @@ function (dojo, declare) {
                 var key = 'floor' + floor;
                 for ( var tileId in this.gamedatas[key]) {
                     var tile = this.gamedatas[key][tileId];
-                    // this[key].addToStockWithId(tile.type_arg, tile.id);
                     this.createTileContainer(floor, tile);
                     this.playTileOnTable(floor, tile);
                 }
@@ -772,7 +771,6 @@ function (dojo, declare) {
                 var tooltipHtml = this.patrolCardHtml(card, id, this.gamedatas[patrolKey + '_discard']);
                 var divId = this[patrolKey].getItemDivId(card.id);
                 this.addTooltipHtml(divId, tooltipHtml);
-                // dojo.place(tooltipHtml, 'tooltip_debug');
             } else {
                 this[patrolKey].addToStockWithId(51, 51);
             }
@@ -1415,6 +1413,9 @@ function (dojo, declare) {
                     if (isGeneric) {
                         this.createGenericToken(token);
                     }
+                    if (token.floor) {
+                        this.showFloor(token.floor);
+                    }
                     this.moveToken(type, token);
                     this.gamedatas[type + '_tokens'][tokenId] = token;
                 }
@@ -1423,9 +1424,10 @@ function (dojo, declare) {
 
         notif_tileFlipped: function(notif) {
             var tile = notif.args.tile,
-            floor = tile.location[5];
-            deck = 'floor' + floor;
+                floor = tile.location[5];
+                deck = 'floor' + floor;
             this.gamedatas[deck][tile.location_arg] = tile;
+            this.showFloor(floor);
             this.playTileOnTable(floor, tile);
         },
 
@@ -1433,6 +1435,7 @@ function (dojo, declare) {
             var deck = 'patrol' + notif.args.floor + '_discard';
             this.gamedatas[deck] = notif.args.cards;
             this.gamedatas[deck + '_top'] = notif.args.top;
+            this.showFloor(notif.args.floor);
             this.loadPatrolDiscard(notif.args.floor, notif.args.top);
         },
 

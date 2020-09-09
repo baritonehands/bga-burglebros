@@ -533,7 +533,8 @@ SQL;
                         self::setGameStateValue("patrolDieCount$floor", $die_count + 1);
                         self::notifyAllPlayers('patrolDieIncreased', '', array(
                             'die_num' => $die_count + 1,
-                            'token' => array_values($this->tokens->getCardsOfType('patrol', $floor))[0]
+                            'token' => array_values($this->tokens->getCardsOfType('patrol', $floor))[0],
+                            'floor' => $floor
                         ));
                     }
                 }
@@ -1105,7 +1106,8 @@ SQL;
                     self::setGameStateValue("patrolDieCount$lower_floor", $die_count + 1);
                     self::notifyAllPlayers('patrolDieIncreased', '', array(
                         'die_num' => $die_count + 1,
-                        'token' => array_values($this->tokens->getCardsOfType('patrol', $lower_floor))[0]
+                        'token' => array_values($this->tokens->getCardsOfType('patrol', $lower_floor))[0],
+                        'floor' => $lower_floor
                     ));
                 }
             }
@@ -1117,7 +1119,9 @@ SQL;
         foreach ($tokens as $token_id => &$token) {
             if (isset($this->token_types[$token['type']])) {
                 $token['letter'] = strtoupper($token['type'][0]);
-                // $token['color'] = $this->token_colors[$token['type']];
+                if ($token['location'] == 'tile') {
+                    $token['floor'] = $this->tiles->getCard($token['location_arg'])['location'][5];
+                }
             }
         }
         return $tokens;
@@ -2079,7 +2083,8 @@ SQL;
         $die_num = self::incGameStateValue("safeDieCount$floor", 1);
         self::notifyAllPlayers('safeDieIncreased', '', array(
             'die_num' => $die_num,
-            'token' => $safe_token
+            'token' => $safe_token,
+            'floor' => $floor
         ));
     }
 
@@ -3024,8 +3029,6 @@ SQL;
             }
         }
 
-        $current = $this->gatherCurrentData($player_id);
-        $this->notifyAllPlayers('currentState', '', array('current' => $current));
         $this->gamestate->nextState( 'playerTurn' );
     }
 
