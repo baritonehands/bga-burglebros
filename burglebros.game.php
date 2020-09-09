@@ -775,7 +775,7 @@ SQL;
         $this->moveToken($guard_token['id'], 'tile', $tile_id, TRUE);
         $this->checkCameras(array('guard_id'=>$guard_token['id']));
         $tile = $this->tiles->getCard($tile_id);
-        $this->checkPlayerStealth($tile, 'guard');
+        $this->handleGuardSeesPlayerTile($tile);
         $this->clearTileTokens('alarm', $tile_id);
     }
 
@@ -874,7 +874,7 @@ SQL;
         return self::getUniqueValueFromDB($sql);
     }
 
-    function checkPlayerStealth($tile, $context) {
+    function handlePlayerEnteredGuardSight($tile) {
         $guard_token = array_values($this->tokens->getCardsOfType('guard', $tile['location'][5]))[0];
         $guard_tile = $this->tiles->getCard($guard_token['location_arg']);
 
@@ -886,27 +886,42 @@ SQL;
         $is_player_tile = $tile['id'] == $player_token['location_arg'];
         
         if ($is_guard_tile && $is_player_tile) {
-            $this->deductTileStealth($player_tile['id'], $context);
+            $this->deductTileStealth($player_tile['id'], 'player');
             return;
         }
 
-        $tiara = $this->getPlayerLoot('tiara', $current_player_id) && $context == 'player';
+        $tiara = $this->getPlayerLoot('tiara', $current_player_id);
         $is_adjacent = $this->isTileAdjacent($player_tile, $guard_tile, null, 'guard');
         $is_foyer = $is_adjacent &&
             (($is_guard_tile && $player_tile['type'] == 'foyer') ||
                 ($is_player_tile && ($player_tile['type'] == 'foyer' || $tiara)));
         if ($is_foyer) {
-            $this->deductTileStealth($player_tile['id'], $context);
+            $this->deductTileStealth($player_tile['id'], 'player');
             return;
         }
 
-        if ($player_tile['type'] == 'atrium') {
-            if (($is_player_tile && $this->atriumGuards($player_tile)) ||
-                    ($is_guard_tile && $guard_tile['location_arg'] == $player_tile['location_arg'])) {
-                $this->deductTileStealth($player_tile['id'], $context);
-            }
-            
+        if ($player_tile['type'] == 'atrium' && $is_player_tile && $this->atriumGuards($player_tile)) {
+            $this->deductTileStealth($player_tile['id'], 'player');
             return;
+        }
+    }
+
+    function handleGuardSeesPlayerTile($tile) {
+        $this->deductTileStealth($tile['id'], 'guard');
+
+        $player_tokens = $this->tokens->getCardsOfTypeInLocation('player', null, 'tile');
+        foreach ($player_tokens as $token_id => $player_token) {
+            $player_tile = $this->getPlayerTile($player_token['type_arg'], $player_token);
+
+            $is_adjacent = $this->isTileAdjacent($tile, $player_tile, null, 'guard');
+            $is_foyer = $is_adjacent && $player_tile['type'] == 'foyer';
+            if ($is_foyer) {
+                $this->deductTileStealth($player_tile['id'], 'guard');
+            }
+
+            if ($tile['location_arg'] == $player_tile['location_arg'] && $player_tile['type'] == 'atrium') {
+                $this->deductTileStealth($player_tile['id'], 'guard');
+            }
         }
     }
 
@@ -2047,7 +2062,7 @@ SQL;
             }
             self::setGameStateValue('acrobatEnteredGuardTile', $acrobat_entered);
             if (!$invisible_suit && !$acrobat_entered) {
-                $this->checkPlayerStealth($to_move, 'player');
+                $this->handlePlayerEnteredGuardSight($to_move);
             }
         }
         if (!$invisible_suit) {
