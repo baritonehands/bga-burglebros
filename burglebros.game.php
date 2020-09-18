@@ -2160,14 +2160,14 @@ SQL;
         if ($flipped_this_turn) {
             $this->handleTilePeek($to_move);
         }
+        if ($guard_token['location'] == 'deck') {
+            $this->setupPatrol($guard_token, $floor);
+            $this->nextPatrol($floor, TRUE);
+        }
         $move_result = $this->handleTileMovement($to_move, $player_tile, $player_token, $flipped_this_turn, $context);
         $this->flipTile( $floor, $to_move['location_arg'] );
         $invisible_suit = self::getGameStateValue('invisibleSuitActive') == 1;
         if ($move_result['perform_move']) {
-            if ($guard_token['location'] == 'deck') {
-                $this->setupPatrol($guard_token, $floor);
-                $this->nextPatrol($floor, TRUE);
-            }
             self::setGameStateValue('acrobatEnteredGuardTile', $acrobat_entered);
             if (!$invisible_suit && !$acrobat_entered) {
                 $this->handlePlayerEnteredGuardSight($to_move);
