@@ -554,7 +554,7 @@ SQL;
             $min_count = 100; // longest is 6, but I'm paranoid
             $tile_id = null;
             foreach ($alarm_tiles as $tile) {
-                $path = $this->findShortestPath($floor, $guard_tile['location_arg'], $tile['location_arg']);
+                $path = $this->findShortestPathClockwise($floor, $guard_tile['location_arg'], $tile['location_arg']);
                 if (count($path) < $min_count) {
                     // TODO: Allow players to choose guard's path
                     $min_count = count($path); 
@@ -792,7 +792,7 @@ SQL;
             return;
         }
 
-        $path = $this->findShortestPath($floor, $guard_tile['location_arg'], $patrol_tile['location_arg']);
+        $path = $this->findShortestPathClockwise($floor, $guard_tile['location_arg'], $patrol_tile['location_arg']);
         // var_dump($path);
         foreach ($path as $tile_id) {
             if ($tile_id != $guard_token['location_arg']) {
@@ -883,6 +883,7 @@ SQL;
         $player_tile = $this->getPlayerTile($current_player_id, $player_token);
         
         $is_guard_tile = $tile['id'] == $guard_token['location_arg'];
+        // TODO: I'm not sure if this variable is needed
         $is_player_tile = $tile['id'] == $player_token['location_arg'];
         
         if ($is_guard_tile && $is_player_tile) {
@@ -919,6 +920,7 @@ SQL;
                 $this->deductTileStealth($player_tile['id'], 'guard');
             }
 
+            // TODO: Double check Atrium won't deduct twice if guard is also there
             if ($tile['location_arg'] == $player_tile['location_arg'] && $player_tile['type'] == 'atrium') {
                 $this->deductTileStealth($player_tile['id'], 'guard');
             }
@@ -934,7 +936,7 @@ SQL;
     }
 
     function findShortestPathDebug($floor, $start, $end) {
-        return $this->findShortestPath(intval($floor),intval($start),intval($end));
+        var_dump($this->findShortestPathClockwise(intval($floor),intval($start),intval($end)));
     }
 
     function lowestIn($values, $container) {
@@ -999,6 +1001,112 @@ SQL;
             // }
             // var_dump(array('os'=>$open_set,'fs'=>$f_score,'gs'=>$g_score,'cf'=>$came_from));
         }
+    }
+
+    function directions($left, $right) {
+        $ly = floor($left / 4);
+        $lx = $left % 4;
+        $ry = floor($right / 4);
+        $rx = $right % 4;
+        $dx = $lx - $rx;
+        $dy = $ry - $ly;
+
+        // Keep alphabetical
+        $dirs = "";
+        if ($dy > 0) {
+            $dirs .= 'D';
+        }
+        if ($dx > 0) {
+            $dirs .= 'L';
+        }
+        if ($dx < 0) {
+            $dirs .= 'R';
+        }
+        if ($dy < 0) {
+            $dirs .= 'U';
+        }
+        return $dirs;
+    }
+
+    function clockwiseDebug($current, $end, $left, $right) {
+        var_dump($this->clockwise($current, $end, $left, $right));
+    }
+
+    function clockwise($current, $end, $left, $right) {
+        $orientation = $this->directions($current, $end);
+        $ldir = $this->directions($current, $left);
+        $rdir = $this->directions($current, $right);
+        $dirs = $ldir < $rdir ? $ldir.$rdir : $rdir.$ldir;
+        $mappings = $this->clockwise_mappings[$orientation];
+        $result = $mappings[$dirs];
+        if ($result[0] == $ldir) {
+            return $left;
+        } else {
+            return $right;
+        }
+    }
+
+    function neighbors($tiles, $walls, $current_tile, $except=array()) {
+        return array_filter($tiles, function($tile) use ($current_tile, $walls, $except) {
+            return !in_array($tile['location_arg'], $except) && $this->isTileAdjacent($tile, $current_tile, $walls, 'guard');
+        });
+    }
+
+    function breakTie($end, $paths) {
+        if (count($paths) == 1) {
+            return $paths[0];
+        }
+
+        sort($paths);
+
+        if (count($paths[0]) != count($paths[1])) {
+            return $paths[0];
+        } else {
+            $path1 = $paths[0];
+            $path2 = $paths[1];
+            $idx = 0;
+            while($path1[$idx] == $path2[$idx]) $idx++;
+            $most_cw = $this->clockwise($path1[$idx-1], $end, $path1[$idx], $path2[$idx]);
+            return $most_cw == $path1[$idx] ? $path1 : $path2;
+        }
+    }
+
+    function findShortestPathClockwise($floor, $start, $end) {
+        $tiles = array_values($this->tiles->getCardsInLocation("floor$floor", null, 'location_arg'));
+        $walls = $this->getWalls();
+
+        $path = array($start);
+        $avail = array($start=>$this->neighbors($tiles, $walls, $tiles[$start]));
+        $paths = array();
+        while (count($path) > 0) {
+            $current = $path[count($path) - 1];
+            $current_tile = $tiles[$current];
+            $opts = $avail[$current];
+            if ($current == $end) {
+                $paths [] = $path;
+                array_pop($path);
+                if (count($path) > 0) {
+                    $last_avail = &$avail[$path[count($path) - 1]];
+                    unset($last_avail[$current]);
+                }
+            } else if(count($opts) == 0) {
+                array_pop($path);
+                if (count($path) > 0) {
+                    $last_avail = &$avail[$path[count($path) - 1]];
+                    unset($last_avail[$current]);
+                }
+            } else {
+                $next = array_keys($opts)[0];
+                if (!isset($avail[$next]) || count($avail[$next]) == 0) {
+                    $avail[$next] = $this->neighbors($tiles, $walls, $tiles[$next], $path);
+                }
+                $path [] = $next;
+            }
+        }
+
+        return array_map(function($idx) use ($tiles) {
+            return $tiles[$idx]['id'];
+        }, $this->breakTie($end, $paths));
     }
 
     function getGenericTokens() {
@@ -1920,7 +2028,7 @@ SQL;
             if ($player_tile['location']['5'] != $tile['location'][5]) {
                 throw new BgaUserException(self::_('Crow must be placed on your floor'));
             }
-            $path = $this->findShortestPath($player_tile['location']['5'], $player_tile['location_arg'], $tile['location_arg']);
+            $path = $this->findShortestPathClockwise($player_tile['location']['5'], $player_tile['location_arg'], $tile['location_arg']);
             if (count($path) <= 3) { // Includes starting tile
                 $crow = array_values($this->tokens->getCardsOfType('crow'))[0];
                 $this->moveToken($crow['id'], 'tile', $selected_id);
@@ -2213,7 +2321,7 @@ SQL;
         $shortest_path = null;
         foreach ($tiles as $tile_id => $tile) {
             if (in_array($tile['type'], array('camera', 'detector', 'fingerprint', 'laser', 'motion', 'thermo'))) {
-                $path = $this->findShortestPath($floor, $player_tile['location_arg'], $tile['location_arg']);
+                $path = $this->findShortestPathClockwise($floor, $player_tile['location_arg'], $tile['location_arg']);
                 if (count($path) > 1 && ($shortest_path == null || count($shortest_path) > count($path))) {
                     $shortest_path = $path;
                 }

@@ -206,3 +206,66 @@ $this->token_types = array(
 $this->player_choices = array('none', 'trade', 'rook1', 'rook2');
 
 $this->special_choices = array('none', 'rook1');
+
+$this->clockwise_mappings = [
+  'LU' => [
+    'DL' => 'D',
+    'LU' => 'L',
+    'RU' => 'R',
+    'DR' => 'D',
+    'DU' => 'D',
+    'LR' => 'L',
+  ],
+  'DL' => [
+    'DL' => 'D',
+    'LU' => 'L',
+    'RU' => 'R',
+    'DR' => 'D',
+    'DU' => 'D',
+    'LR' => 'R',
+  ],
+  'RU' => [
+    'DL' => 'L',
+    'LU' => 'U',
+    'RU' => 'U',
+    'DR' => 'R',
+    'DU' => 'U',
+    'LR' => 'L',
+  ],
+  'DR' => [
+    'DL' => 'L',
+    'LU' => 'U',
+    'RU' => 'U',
+    'DR' => 'R',
+    'DU' => 'U',
+    'LR' => 'R',
+  ],
+  'U' => [
+    'DL' => 'L',
+    'LU' => 'L',
+    'RU' => 'U',
+    'DR' => 'D',
+    'LR' => 'L',
+  ],
+  'D' => [
+    'DL' => 'D',
+    'LU' => 'U',
+    'RU' => 'R',
+    'DR' => 'R',
+    'LR' => 'R',
+  ],
+  'L' => [
+    'DL' => 'D',
+    'LU' => 'L',
+    'RU' => 'R',
+    'DR' => 'D',
+    'DU' => 'D',
+  ],
+  'R' => [
+    'DL' => 'L',
+    'LU' => 'U',
+    'RU' => 'U',
+    'DR' => 'R',
+    'DU' => 'U'
+  ],
+];

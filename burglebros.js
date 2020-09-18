@@ -611,7 +611,7 @@ function (dojo, declare) {
         addCharacterAction: function() {
             var character = this.gamedatas.gamestate.args.character.name;
 
-            typeToTitle = {
+            var typeToTitle = {
                 acrobat1: 'Acrobat: Flexibility',
                 acrobat2: 'Acrobat: Climb Window',
                 hacker2: 'Hacker: Laptop',
@@ -627,11 +627,14 @@ function (dojo, declare) {
                 rook2: 'Rook: Disguise',
                 spotter1: 'Spotter: Clairvoyance',
                 spotter2: 'Spotter: Precognition'
-            }
+            };
 
             if (typeToTitle[character]) {
                 this.addActionButton('button_character', _(typeToTitle[character]), 'handleCharacterAction');
             }
+        },
+
+        canUseCharacterAction: function() {
         },
 
         canEscape: function() {
