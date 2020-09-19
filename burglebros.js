@@ -325,11 +325,12 @@ function (dojo, declare) {
                         } else if(this.isCardChoice('peterman2')) {
                             var floor = this.currentFloor();
                             // XY, X = 0 is add, X = 1 is roll, Y is floor
-                            if (floor < 3) {
+                            var detail = this.gamedatas.gamestate.args.peterman2_detail;
+                            if (floor < 3 && detail[floor + 1]) {
                                 this.addActionButton('button_add_die_up', _('Add Safe Die (Up)'), dojo.hitch(this, 'handleCardChoiceButton', floor + 1));
                                 this.addActionButton('button_roll_dice_up', _('Roll Safe Dice (Up)'), dojo.hitch(this, 'handleCardChoiceButton', floor + 11));
                             }
-                            if (floor > 1) {
+                            if (floor > 1 && detail[floor - 1]) {
                                 this.addActionButton('button_add_die_down', _('Add Safe Die (Down)'), dojo.hitch(this, 'handleCardChoiceButton', floor - 1));
                                 this.addActionButton('button_roll_dice_down', _('Roll Safe Dice (Down)'), dojo.hitch(this, 'handleCardChoiceButton', floor + 9));
                             }
@@ -523,7 +524,9 @@ function (dojo, declare) {
                 this.zones[meepleZoneId].placeInZone('meeple_' + token.id);
             } else {
                 var zoneId = token.location + '_' + token.location_arg + '_tokens';
-                this.zones[zoneId].placeInZone(token_type + '_token_' + token.id);
+                if (this.zones[zoneId]) {
+                    this.zones[zoneId].placeInZone(token_type + '_token_' + token.id);
+                }
             }
         },
 
@@ -610,6 +613,10 @@ function (dojo, declare) {
 
         addCharacterAction: function() {
             var character = this.gamedatas.gamestate.args.character.name;
+
+            if (!this.gamedatas.gamestate.args.character_action_enabled) {
+                return;
+            }
 
             var typeToTitle = {
                 acrobat1: 'Acrobat: Flexibility',

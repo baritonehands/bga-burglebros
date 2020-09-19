@@ -423,6 +423,7 @@ class burglebros extends Table
             'player_token' => $player_token,
             'other_players' => count($this->tokens->getCardsOfTypeInLocation('player', null, 'tile', $player_tile['id'])) - 1,
             'character' => $character,
+            'character_action_enabled' => $this->characterActionEnabled($current_player_id, $character),
             'tile' => $player_tile,
             'tile_tokens' => $this->tokens->getCardsInLocation('tile', $player_tile['id']),
             'tile_cards' => $this->cards->getCardsInLocation('tile', $player_tile['id']),
@@ -2354,6 +2355,91 @@ SQL;
         }
     }
 
+    function characterActionEnabled($current_player_id, $character) {
+        $type = $character['name'];
+        $used = self::getGameStateValue('characterAbilityUsed');
+        $actions_remaining = self::getGameStateValue('actionsRemaining');
+        if ($actions_remaining < 1 && in_array($type, array('hacker2', 'peterman1', 'peterman2', 'rook1', 'rook2', 'spotter1', 'spotter2'))) {
+            return FALSE;
+        } else if ($used && in_array($type, array('hawk1', 'hawk2', 'juicer2', 'rook1', 'spotter1', 'spotter2'))) {
+            return FALSE;
+        } else if($type == 'acrobat1') {
+            $player_tile = $this->getPlayerTile($current_player_id);
+            $floor = $player_tile['location'][5];
+            $guard_token = array_values($this->tokens->getCardsOfType('guard', $floor))[0];
+            $guard_tile = $this->tiles->getCard($guard_token['location_arg']);
+
+            if (!$this->isTileAdjacent($guard_tile, $player_tile, null, 'guard')) {
+                return FALSE;
+            }
+        } else if($type == 'acrobat2') {
+            $player_tile = $this->getPlayerTile($current_player_id);
+            if (in_array($player_tile['location_arg'], array(5, 6, 9, 10))) {
+                return FALSE;
+            }
+            if(self::getGameStateValue('actionsRemaining') < 3) {
+                return FALSE;
+            }
+        } else if($type == 'hacker2') {
+            if (count($this->tokens->getCardsOfTypeInLocation('hack', null, 'card', $character['id'])) > 0) {
+                return FALSE;
+            }
+        } else if($type == 'hawk1') {
+            $player_tile = $this->getPlayerTile($current_player_id);
+            if (count($this->getPeekableTiles($player_tile, 'hawk1')) == 0) {
+                return FALSE;
+            }
+        } else if($type == 'juicer2') {
+            $player_tile = $this->getPlayerTile($current_player_id);
+            $tile_alarms = $this->tokens->getCardsOfTypeInLocation('alarm', null, 'tile', $player_tile['id']);
+            $character_alarms = $this->tokens->getCardsOfTypeInLocation('alarm', null, 'card', $character['id']);
+            
+            if (count($character_alarms) > 0) {
+                if (count($tile_alarms) > 0) {
+                    return FALSE;
+                }
+            } else if (count($tile_alarms) == 0) {
+                return FALSE;
+            }
+        } else if($type == 'peterman2') {
+            $player_tile = $this->getPlayerTile($current_player_id);
+            $found = FALSE;
+            for ($floor=1; $floor <= 3; $floor++) {
+                if ($floor != $player_tile['location'][5]) {   
+                    $tiles = $this->getTiles($floor);
+                    foreach ($tiles as $tile) {
+                        if ($tile['type'] == 'safe' && $tile['location_arg'] == $player_tile['location_arg'] && !$this->tokensInTile('open', $tile['id'])) {
+                            $found = TRUE;
+                            break;
+                        }
+                    }
+                }
+                if ($found) {
+                    break;
+                }
+            }
+            return $found;
+        } else if($type == 'raven2') {
+            $crow = array_values($this->tokens->getCardsOfType('crow'))[0];
+            $player_tile = $this->getPlayerTile($current_player_id);
+            if ($crow['location'] == 'tile' && $crow['location_arg'] == $player_tile['id']) {
+                return FALSE;
+            }
+        } else if($type == 'rigger2') {
+            $stealth = $this->getPlayerStealth($current_player_id);
+            if ($stealth <= 0) {
+                return FALSE;
+            }
+        } else if($type == 'rook2') {
+            if (self::getGameStateValue('firstAction') != 1) {
+                return FALSE;
+            }
+        }
+        // I purposely am not checking spotter1/spotter2. I want those to show the error message.
+
+        return TRUE;
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -2903,7 +2989,22 @@ SQL;
         $args['card'] = $card;
         $args['card_name'] = $card_name;
         $args['choice_description'] = $this->getCardChoiceDescription($card);
-        if ($card_name == 'spotter1') {
+        if($card_name == 'peterman2') {
+            $player_tile = $this->getPlayerTile($current_player_id);
+            $peterman2_detail = [];
+            for ($floor=1; $floor <= 3; $floor++) {
+                if ($floor != $player_tile['location'][5]) {   
+                    $peterman2_detail[$floor] = FALSE;
+                    $tiles = $this->getTiles($floor);
+                    foreach ($tiles as $tile) {
+                        if ($tile['type'] == 'safe' && $tile['location_arg'] == $player_tile['location_arg'] && !$this->tokensInTile('open', $tile['id'])) {
+                            $peterman2_detail[$floor] = TRUE;
+                        }
+                    }
+                }                
+            }
+            $args['peterman2_detail'] = $peterman2_detail;
+        } else if ($card_name == 'spotter1') {
             $player_tile = $this->getPlayerTile($current_player_id);
             $floor = $player_tile['location'][5];
             $args['spotter_card'] = $this->cards->getCardOnTop("patrol$floor".'_deck');
