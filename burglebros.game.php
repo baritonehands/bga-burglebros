@@ -271,6 +271,7 @@ class burglebros extends Table
         $result['guard_tokens'] = $this->tokens->getCardsOfType('guard');
         $result['player_tokens'] = $this->tokens->getCardsOfType('player');
         $result['generic_tokens'] = $this->getGenericTokens();
+        $result['card_tokens'] = $this->getCardTokens();
         
         $safe_tokens = $this->tokens->getCardsOfType('crack');
         foreach ($safe_tokens as $id => &$value) {
@@ -790,6 +791,7 @@ SQL;
         $donuts = $this->cards->getCardsOfTypeInLocation(1, $donut_type_id, 'tile', $guard_tile['id']);
         if (count($donuts) > 0) {
             $this->cards->moveCard(array_keys($donuts)[0], 'tools_discard');
+            $this->notifyTileCards($guard_tile['id']);
             return;
         }
 
@@ -1143,6 +1145,13 @@ SQL;
         ));
     }
 
+    function notifyTileCards($tile_id) {
+        self::notifyAllPlayers('tileCards', '', array(
+            'tile_id' => $tile_id,
+            'tokens' => $this->getCardTokens($tile_id)
+        ));
+    }
+
     function performSafeDiceRollDebug($floor,$dice_count) {
         $safe_tile = array_values($this->tiles->getCardsOfTypeInLocation('safe', null, "floor$floor"))[0];
         $this->performSafeDiceRoll($safe_tile,intval($dice_count));
@@ -1202,6 +1211,7 @@ SQL;
             if ($drop_loot) {
                 $this->cards->pickCardForLocation('tools_deck', 'tile', $safe_tile['id']);
                 $loot = $this->cards->pickCardForLocation('loot_deck', 'tile', $safe_tile['id']);
+                $this->notifyTileCards($safe_tile['id']);
             } else {
                 self::setGameStateValue('drawToolsPlayer', $current_player_id);
                 $loot = $this->cards->pickCard('loot_deck', $current_player_id);
@@ -1213,10 +1223,10 @@ SQL;
                     $this->decrementPlayerStealth($current_player_id);
                 }
             } else if($type == 'gold-bar') {
-                // TODO: Show cards in a tile
                 $gold_type = $this->getCardTypeForName(2, 'gold-bar');
                 $other_gold = array_values($this->cards->getCardsOfTypeInLocation(2, $gold_type, 'loot_deck'))[0];
                 $this->cards->moveCard($other_gold['id'], 'tile', $safe_tile['id']);
+                $this->notifyTileCards($safe_tile['id']);
             }
             $this->notifyPlayerHand($current_player_id);
 
@@ -1948,6 +1958,7 @@ SQL;
                 throw new BgaUserException(self::_('Tile does not contain a guard'));
             }
             $this->cards->moveCard($card['id'], 'tile', $tile['id']);
+            $this->notifyTileCards($tile['id']);
             $discard = FALSE;
         } elseif($type == 'dynamite') {
             $this->validateSelection('wall', $selected_type);
@@ -2440,6 +2451,23 @@ SQL;
         return TRUE;
     }
 
+    function getCardTokens($tile_id=null) {
+        $cards = $this->cards->getCardsInLocation('tile', $tile_id, 'card_location_arg');
+        $tokens = [];
+        foreach ($cards as $card_id => $card) {
+            if (!isset($tokens[$card['location_arg']])) {
+                $tokens[$card['location_arg']] = ['type'=>$card['type'],'count'=>0];
+            }
+            $token = &$tokens[$card['location_arg']];
+            if ($token['type'] == 1) {
+                // Overwrite if previous was a tool
+                $token['type'] = $card['type'];
+            }
+            $token['count']++;
+        }
+        return $tokens;
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -2849,6 +2877,9 @@ SQL;
         self::checkAction('takeCards');
         $current_player_id = self::getCurrentPlayerId();
         $player_tile = $this->getPlayerTile($current_player_id);
+        if ($player_tile['type'] != 'safe') {
+            throw new BgaUserException(self::_('Cards can only be taken from a safe'));
+        }
         $tile_cards = $this->cards->getCardsInLocation('tile', $player_tile['id']);
         if (count($tile_cards) == 0) {
             throw new BgaUserException(self::_('There are no cards in your tile'));
@@ -2864,6 +2895,7 @@ SQL;
         $this->cards->moveCards($l_ids, 'tile', $player_tile['id']);
         $this->cards->moveCards($r_ids, 'hand', $current_player_id);
         $this->notifyPlayerHand($current_player_id);
+        $this->notifyTileCards($player_tile['id']);
         $this->endAction(0);
     }
 

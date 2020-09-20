@@ -161,6 +161,11 @@ function (dojo, declare) {
                 }
             }
 
+            for (var card_id in gamedatas.card_tokens) {
+                var token = gamedatas.card_tokens[card_id];
+                this.createCardToken(card_id, token.type, token.count);
+            }
+
             this.showFloor(this.currentFloor());
  
             // Setup game notifications to handle (see "setupNotifications" method below)
@@ -598,6 +603,20 @@ function (dojo, declare) {
             dojo.destroy('generic_token_' + id);
         },
 
+        createCardToken: function(id, type, count) {
+            var card_type = this.gamedatas.card_types[type];
+            dojo.place(this.format_block('jstpl_card_token', {
+                tile_id : id,
+                card_type : card_type.name,
+                card_count : count || 1,
+                token_background : g_gamethemeurl + '/img/tokens.jpg'
+            }), 'tile_' + id + '_cards');
+        },
+
+        destroyCardToken: function(id) {
+            dojo.destroy('card_token_' + id);
+        },
+
         createPlayerBoard: function(id) {
             var tokenType = this.gamedatas.token_types['stealth'];
             dojo.place(this.format_block('jstpl_player_zone', {
@@ -690,7 +709,8 @@ function (dojo, declare) {
         },
 
         canTakeCards: function() {
-            return Object.keys(this.gamedatas.gamestate.args.tile_cards).length > 0;
+            return this.gamedatas.gamestate.args.tile.type === 'safe' &&
+                Object.keys(this.gamedatas.gamestate.args.tile_cards).length > 0;
         },
 
         canPickUpKitty: function() {
@@ -1390,6 +1410,7 @@ function (dojo, declare) {
             dojo.subscribe('eventCard', this, 'notif_eventCard');
             dojo.subscribe('safeDieIncreased', this, 'notif_safeDieIncreased');
             dojo.subscribe('patrolDieIncreased', this, 'notif_patrolDieIncreased');
+            dojo.subscribe('tileCards', this, 'notif_tileCards');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -1480,6 +1501,15 @@ function (dojo, declare) {
 
         notif_patrolDieIncreased: function(notif) {
             this.createPatrolToken(notif.args.token, notif.args.die_num);
+        },
+
+        notif_tileCards: function(notif) {
+            var tile_id = notif.args.tile_id;
+            var token = notif.args.tokens[tile_id];
+            this.destroyCardToken(tile_id);
+            if (token) {
+                this.createCardToken(tile_id, token.type, token.count);
+            }
         }
    });             
 });

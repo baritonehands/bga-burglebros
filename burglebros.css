@@ -264,6 +264,15 @@
     z-index: 1;
 }
 
+.tile-cards {
+    cursor: pointer;
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 24px;
+    z-index: 2;
+}
+
 .card-zone {
     position: absolute;
     left: 10px;
@@ -297,6 +306,31 @@
     text-align: center;
     color: white;
     filter: drop-shadow(1px 1px 3px #000000);
+}
+
+.token.loot, .token.tools {
+    position: relative;
+    border-radius: 2px;
+    background-size: 24px;
+}
+
+.token.loot {
+    background-position: 0px -216px;
+}
+
+.token.tools {
+    background-position: 0px -240px;
+}
+
+.token-badge {
+    position: absolute;
+    background-color: red;
+    border-radius: 50%;
+    line-height: 14px;
+    font-size: 12px;
+    width: 14px;
+    bottom: -4px;
+    right: -4px;
 }
 
 .crow, .hack, .open, .keypad {

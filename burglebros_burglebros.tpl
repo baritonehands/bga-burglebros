@@ -91,6 +91,7 @@ var jstpl_player_zone = '<div id="player_${id}_tokens" class="player-zone"></div
 var jstpl_tile_container = '<div id="tile_${id}_container" class="tile-container" style="left: ${x}px; top: ${y}px;" aria-label="${name}">\n' +
 '    <div id="tile_${id}_tokens" class="tile-tokens"></div>\n' +
 '    <div id="tile_${id}_meeples" class="tile-meeples"></div>\n' +
+'    <div id="tile_${id}_cards" class="tile-cards"></div>\n' +
 '</div>';
 
 var jstpl_tile = '<div id="tile_${id}" class="tile" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>';
@@ -112,6 +113,8 @@ var jstpl_meeple = '<div id="meeple_${meeple_id}" class="meeple" style="backgrou
 var jstpl_guard_token = '<div id="guard_token_${token_id}" class="token" style="background-color: black;">G</div>';
 
 var jstpl_generic_token = '<div id="generic_token_${token_id}" class="token ${token_type}" style="background-image: url(${token_background}); background-position: -4px ${token_bg_pos}px;"></div>';
+
+var jstpl_card_token = '<div id="card_token_${tile_id}" class="token ${card_type}" style="background-image: url(${token_background});"><div class="token-badge">${card_count}</div></div>';
 
 var jstpl_patrol_die = '<div id="patrol_token_${token_id}" class="token die patrol">${num_spaces}</div>';
 
