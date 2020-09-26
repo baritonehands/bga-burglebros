@@ -864,7 +864,7 @@ function (dojo, declare) {
                 r_cards: [],
                 title: _('Trade Cards'),
                 cancel_title: _('Cancel Trade'),
-                confirm_title: _('Confirm Trade'),
+                confirm_title: _('Propose Trade'),
                 // Required: close_callback, confirm_callback
             }, opts);
             var dialog = new ebg.popindialog();

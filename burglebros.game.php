@@ -1453,6 +1453,31 @@ SQL;
         return ($tile_entered & $tile_bit) != 0x0;
     }
 
+    function notifyMovement($player_id, $tile, $context='move') {
+        $floor = $tile['location'][5];
+        $action = 'moved to';
+        $reason = null;
+        if ($context == 'deadbolt') {
+            $action = 'stayed in';
+            $reason = 'didn\'t have enough actions to enter the Deadbolt';
+        } else if ($context == 'keypad') {
+            $action = 'stayed in';
+            $reason = 'didn\'t roll a 6 to enter the Keypad';
+        } else if ($context == 'walkway') {
+            $action = 'fell to';
+            $reason = 'revealed a Walkway';
+        }
+        $tile_name = $this->patrol_names[$tile['location_arg']]['name'];
+        $msg = '${player_name} '.$action." tile $tile_name on floor $floor";
+        if (!is_null($reason)) {
+            $msg .= ' because they '.$reason;
+        }
+        $players = self::loadPlayersBasicInfos();
+        self::notifyAllPlayers('message', clienttranslate($msg), [
+            'player_name' => $players[$player_id]['player_name']
+        ]);
+    }
+
     function handleTileMovement($tile, $player_tile, $player_token, $flipped_this_turn, $context) {
         $id = $tile['id'];
         $type = $tile['type'];
@@ -1481,6 +1506,7 @@ SQL;
                     if ($actions_remaining < (3 + $action_penalty)) {
                         if ($flipped_this_turn) {
                             $cancel_move = true;
+                            $this->notifyMovement($player_id, $player_tile, 'deadbolt');
                         } else {
                             throw new BgaUserException(self::_('You do not have enough actions to enter the Deadbolt'));
                         }
@@ -1492,6 +1518,9 @@ SQL;
         } elseif ($type == 'keypad') {
             if (!$crowbar) {
                 $cancel_move = !$this->attemptKeypadRoll($tile);
+                if ($cancel_move) {
+                    $this->notifyMovement($player_id, $player_tile, 'keypad');
+                }
             }
         } elseif ($type == 'fingerprint') {
             if (!$crowbar) {
@@ -1528,6 +1557,7 @@ SQL;
                 $cancel_move = true;
                 $this->performPeek($lower_tile['id'], 'effect');
                 $this->moveToken($player_token['id'], 'tile', $lower_tile['id']);
+                $this->notifyMovement($player_id, $lower_tile, 'walkway');
             }
         } elseif ($type == 'thermo' && $this->getPlayerLoot('isotope', $player_id)) {
             if (!$crowbar) {
@@ -1558,6 +1588,9 @@ SQL;
         }
         if (!$tile_choice && $action_penalty) {
             self::incGameStateValue('actionsRemaining', -$action_penalty);
+        }
+        if (!$cancel_move) {
+            $this->notifyMovement($player_id, $tile);
         }
         return array(
             'perform_move' => !$cancel_move,
@@ -1670,13 +1703,21 @@ SQL;
         return $type_arg;
     }
 
-    function drawToolDebug($name = null) {
+    function drawToolDebug($name = null, $location='hand', $location_arg=null) {
         $current_player_id = self::getCurrentPlayerId();
+        if (is_null($location_arg)) {
+            $location_arg = $current_player_id;
+        }
+        
         if ($name != null) {
             $type_arg = $this->getCardTypeForName(1, $name);
             $card = array_values($this->cards->getCardsOfType(1, $type_arg))[0];
-            $this->cards->moveCard($card['id'], 'hand', $current_player_id);
-            $this->notifyPlayerHand($current_player_id);
+            $this->cards->moveCard($card['id'], $location, $location_arg);
+            if ($location == 'hand') {
+                $this->notifyPlayerHand($current_player_id);
+            } else if ($location == 'tile') {
+                $this->notifyTileCards($location_arg);
+            }
         } else {
             self::setGameStateValue('drawToolsPlayer', $current_player_id);
             $this->gamestate->nextState('endAction');
@@ -2830,6 +2871,11 @@ SQL;
         $this->cards->moveCards($p2_cards, 'hand', $trade['other_player']);
         $this->notifyPlayerHand($trade['current_player'], $p2_cards);
         $this->notifyPlayerHand($trade['other_player'], $p1_cards);
+        $players = self::loadPlayersBasicInfos();
+        self::notifyAllPlayers('message', clienttranslate('${player_name} agreed to ${current_name}\'s trade'), [
+            'player_name' => $players[$trade['other_player']]['player_name'],
+            'current_name' => $players[$trade['current_player']]['player_name'],
+        ]);
         $this->gamestate->nextState('endTradeOtherPlayer');
     }
 
@@ -2910,6 +2956,11 @@ SQL;
         $this->cards->moveCards($r_ids, 'hand', $current_player_id);
         $this->notifyPlayerHand($current_player_id);
         $this->notifyTileCards($player_tile['id']);
+        self::notifyAllPlayers('message', clienttranslate('${player_name} picked up ${card_count} card${card_s} in their tile'), [
+            'player_name' => self::getActivePlayerName(),
+            'card_count' => count($r_ids),
+            'card_s' => count($r_ids) == 1 ? '' : 's'
+        ]);
         $this->endAction(0);
     }
 
