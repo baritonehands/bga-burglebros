@@ -2468,6 +2468,21 @@ SQL;
         return $tokens;
     }
 
+    function notifyGuardMovement($floor, $movement, $has_alarms, $has_event=FALSE) {
+        $msg = "Guard on floor $floor is moving $movement spaces";
+        if ($has_alarms || $has_event) {
+            $msg .= ' including ';
+            if ($has_alarms && $has_event) {
+                $msg .= 'alarms and an event card';
+            } else if ($has_alarms) {
+                $msg .= 'alarms';
+            } else if ($has_event) {
+                $msg .= 'an event card';
+            }
+        }
+        self::notifyAllPlayers('message', self::_($msg), []);
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -2654,7 +2669,6 @@ SQL;
         $tile = $this->handleSelectTileChoice($selected);
         $motion_exit = self::getGameStateValue('motionTileExitChoice');
         if ($tile['type'] == 'motion' && $motion_exit > 0) {
-            self::notifyAllPlayers('message', "Motion exit to $motion_exit", array());
             self::setGameStateValue('tileChoice', $motion_exit);
             $this->gamestate->nextState('tileChoice');
         } else {
@@ -3185,7 +3199,9 @@ SQL;
                 if ($other_floor != $floor) {
                     $guard_token = array_values($this->tokens->getCardsOfType('guard', $other_floor))[0];;
                     if ($guard_token['location'] == 'tile') {
-                        $movement = self::getGameStateValue("patrolDieCount$other_floor") + count($this->getFloorAlarmTiles($other_floor));
+                        $alarms = count($this->getFloorAlarmTiles($other_floor));
+                        $movement = self::getGameStateValue("patrolDieCount$other_floor") + $alarms;
+                        $this->notifyGuardMovement($other_floor, $movement, $alarms > 0, TRUE);
                         $this->moveGuard($other_floor, $movement);
                     }
                 }
@@ -3201,19 +3217,24 @@ SQL;
                 $crow = array_values($this->tokens->getCardsOfType('crow'))[0];
                 $this->moveToken($crow['id'], 'deck');
             } else {
-                $movement = self::getGameStateValue("patrolDieCount$floor") + count($this->getFloorAlarmTiles($floor));
+                $alarms = count($this->getFloorAlarmTiles($floor));
+                $movement = self::getGameStateValue("patrolDieCount$floor") + $alarms;
+                $has_event = FALSE;
                 $daydreaming = $this->getActiveEvent('daydreaming');
                 if ($daydreaming) {
                     $movement--;
                     $this->cards->moveCard($daydreaming['id'], 'events_discard');
                     $this->notifyPlayerHand($current_player_id, array($daydreaming['id']));
+                    $has_event = TRUE;
                 }
                 $espresso = $this->getActiveEvent('espresso');
                 if ($espresso) {
                     $movement++;
                     $this->cards->moveCard($espresso['id'], 'events_discard');
                     $this->notifyPlayerHand($current_player_id, array($espresso['id']));
+                    $has_event = TRUE;
                 }
+                $this->notifyGuardMovement($floor, $movement, $alarms > 0, $has_event);
                 $this->moveGuard($floor, $movement);
             }
         }

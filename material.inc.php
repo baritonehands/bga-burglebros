@@ -126,22 +126,22 @@ $this->patrol_types = array(
 );
 
 $this->patrol_names = array(
-  array('name'=>'a1'),
-  array('name'=>'b1'),
-  array('name'=>'c1'),
-  array('name'=>'d1'),
-  array('name'=>'a2'),
-  array('name'=>'b2'),
-  array('name'=>'c2'),
-  array('name'=>'d2'),
-  array('name'=>'a3'),
-  array('name'=>'b3'),
-  array('name'=>'c3'),
-  array('name'=>'d3'),
-  array('name'=>'a4'),
-  array('name'=>'b4'),
-  array('name'=>'c4'),
-  array('name'=>'d4'),
+  array('name'=>'A1'),
+  array('name'=>'B1'),
+  array('name'=>'C1'),
+  array('name'=>'D1'),
+  array('name'=>'A2'),
+  array('name'=>'B2'),
+  array('name'=>'C2'),
+  array('name'=>'D2'),
+  array('name'=>'A3'),
+  array('name'=>'B3'),
+  array('name'=>'C3'),
+  array('name'=>'D3'),
+  array('name'=>'A4'),
+  array('name'=>'B4'),
+  array('name'=>'C4'),
+  array('name'=>'D4'),
 );
 
 $this->patrol_info = array(
