@@ -1229,6 +1229,11 @@ SQL;
                 $this->notifyTileCards($safe_tile['id']);
             }
             $this->notifyPlayerHand($current_player_id);
+            
+            $msg = '${player_name} '."cracked the safe on floor $floor";
+            self::notifyAllPlayers('message', clienttranslate($msg), [
+                'player_name' => self::getCurrentPlayerName()
+            ]);
 
             $safe_token = array_values($this->tokens->getCardsOfType('crack', $floor))[0];
             if ($safe_token['location'] == 'tile') {
@@ -2151,6 +2156,9 @@ SQL;
                 $to_move = array_values($this->getPlacedTokens(array('hack'), 'card'))[0][0];
             }
             $this->moveToken($to_move, 'deck');
+            self::notifyAllPlayers('message', clienttranslate('${player_name} used a hack token'), [
+                'player_name' => self::getCurrentPlayerName()
+            ]);
             
         } elseif($selected == 2) { // Extra action
             if (!$this->canUseExtraAction($player_id, $tile)) {
@@ -2159,6 +2167,9 @@ SQL;
             $gemstone_penalty = $this->getGemstonePenalty($player_id, $tile, TRUE);
             // Take an extra 1 (or 2 for gemstone). Another 1 is always taken
             self::incGameStateValue('actionsRemaining', -1 - $gemstone_penalty);
+            self::notifyAllPlayers('message', clienttranslate('${player_name} used an extra action'), [
+                'player_name' => self::getCurrentPlayerName()
+            ]);
         }
         return $tile;
     }
@@ -2185,6 +2196,13 @@ SQL;
         }
 
         $this->handleTilePeek($to_peek);
+        $tile_name = $this->patrol_names[$to_peek['location_arg']]['name'];
+        // TODO: Add tile type?
+        $msg = '${player_name} '."peeked tile $tile_name on floor $floor";
+        $players = self::loadPlayersBasicInfos();
+        self::notifyAllPlayers('message', clienttranslate($msg), [
+            'player_name' => $players[$current_player_id]['player_name']
+        ]);
         $this->flipTile( $floor, $to_peek['location_arg'] );
     }
 
@@ -2262,6 +2280,11 @@ SQL;
             'token' => $safe_token,
             'floor' => $floor
         ));
+        
+        $msg = '${player_name} '."added a die to the safe on floor $floor";
+        self::notifyAllPlayers('message', clienttranslate($msg), [
+            'player_name' => self::getCurrentPlayerName()
+        ]);
     }
 
     function createTrade($player1, $player2) {
@@ -2631,6 +2654,9 @@ SQL;
             throw new BgaUserException(self::_("Only 6 hack tokens can be added to this tile"));
         }
         $this->pickTokensForTile('hack', $player_token['location_arg']);
+        self::notifyAllPlayers('message', clienttranslate('${player_name} added a hack token'), [
+            'player_name' => self::getCurrentPlayerName()
+        ]);
         $this->endAction();
     }
 
@@ -2659,6 +2685,11 @@ SQL;
         } else {
             $this->cards->moveCard($card['id'], 'tools_discard');
             $this->notifyPlayerHand($current_player_id, array($card['id']));
+            $type = $this->getCardType($card);
+            self::notifyAllPlayers('message', clienttranslate('${player_name} played the ${card_type} card'), [
+                'player_name' => self::getCurrentPlayerName(),
+                'card_type' => $type
+            ]);
             
             $this->gamestate->nextState('endAction');
         }
@@ -2678,6 +2709,9 @@ SQL;
                 $this->gamestate->nextState('endTurn');    
             } elseif($card['type'] == 0) {
                 $type = $this->getCardType($card);
+                self::notifyAllPlayers('message', clienttranslate('${player_name} used their character action'), [
+                    'player_name' => self::getCurrentPlayerName()
+                ]);
                 self::setGameStateValue('characterAbilityUsed', 1);
                 if (in_array($type, array('hacker2', 'spotter1', 'spotter2'))) {
                     $this->endAction(); // Spent action
@@ -2690,6 +2724,11 @@ SQL;
                     $this->endAction(0); // Free action
                 }
             } else {
+                $card_type = $this->getCardType($card);
+                self::notifyAllPlayers('message', clienttranslate('${player_name} played the ${card_type} card'), [
+                    'player_name' => self::getCurrentPlayerName(),
+                    'card_type' => $card_type
+                ]);
                 $this->endAction(0);
             }
         }
@@ -2747,6 +2786,9 @@ SQL;
                 throw new BgaUserException(self::_('You already have a hack token'));
             }
             $this->pickTokens('hack', 'card', $character['id']);
+            self::notifyAllPlayers('message', clienttranslate('${player_name} used their character action'), [
+                'player_name' => self::getCurrentPlayerName()
+            ]);
             $this->endAction();
         } else if($type == 'juicer2') {
             $player_tile = $this->getPlayerTile($current_player_id);
@@ -2767,10 +2809,16 @@ SQL;
                 $this->nextPatrol($player_tile['location'][5]);
             }
             self::setGameStateValue('characterAbilityUsed', 1);
+            self::notifyAllPlayers('message', clienttranslate('${player_name} used their character action'), [
+                'player_name' => self::getCurrentPlayerName()
+            ]);
         } else if($type == 'raven2') {
             $crow = array_values($this->tokens->getCardsOfType('crow'))[0];
             $player_tile = $this->getPlayerTile($current_player_id);
             $this->moveToken($crow['id'], 'tile', $player_tile['id']);
+            self::notifyAllPlayers('message', clienttranslate('${player_name} used their character action'), [
+                'player_name' => self::getCurrentPlayerName()
+            ]);
         } else if($type == 'rigger2') {
             $stealth = $this->getPlayerStealth($current_player_id);
             if ($stealth <= 0) {
@@ -2778,6 +2826,9 @@ SQL;
             }
             $this->decrementPlayerStealth($current_player_id);
             self::setGameStateValue('drawToolsPlayer', $current_player_id);
+            self::notifyAllPlayers('message', clienttranslate('${player_name} used their character action'), [
+                'player_name' => self::getCurrentPlayerName()
+            ]);
             $this->endAction(0);
         } else if($type == 'rook1') {
             self::setGameStateValue('playerChoice', 2); // Rook 1
@@ -2856,6 +2907,11 @@ SQL;
                 throw new BgaUserException(self::_('Card does not belong to trading player'));
             }
         }
+        $players = self::loadPlayersBasicInfos();
+        self::notifyAllPlayers('message', clienttranslate('${player_name} proposed a trade to ${other_name}'), [
+            'player_name' => $players[$trade['current_player']]['player_name'],
+            'other_name' => $players[$trade['other_player']]['player_name'],
+        ]);
 
         $this->createTradeCards($trade['id'], $trade['current_player'], $p1_ids);
         $this->createTradeCards($trade['id'], $trade['other_player'], $p2_ids);
@@ -2889,6 +2945,9 @@ SQL;
         self::checkAction('cancelTrade');
         $state = $this->gamestate->state();
         if ($state['name'] == 'confirmTrade') {
+            self::notifyAllPlayers('message', clienttranslate('${player_name} cancelled the trade'), [
+                'player_name' => self::getActivePlayerName()
+            ]);
             $this->gamestate->nextState('endTradeOtherPlayer');
         } else {
             $this->deleteTrade();
@@ -2978,6 +3037,9 @@ SQL;
             throw new BgaUserException(self::_('Tile does not contain the cat token'));
         }
         $this->moveTokens(array_keys($cat_tokens), 'deck');
+        self::notifyAllPlayers('message', clienttranslate('${player_name} picked up the cat token'), [
+            'player_name' => self::getActivePlayerName()
+        ]);
         $this->endAction(0);
     }
 
@@ -3029,6 +3091,9 @@ SQL;
             throw new BgaUserException(self::_('All safes have not been opened yet'));
         }
         $this->moveToken($player_token['id'], 'roof');
+        self::notifyAllPlayers('message', clienttranslate('${player_name} escaped to the roof'), [
+            'player_name' => self::getActivePlayerName()
+        ]);
 
         if ($this->allPlayersEscaped()) {
             if ($this->checkWin()) {
@@ -3236,6 +3301,9 @@ SQL;
             $this->decrementPlayerStealth($current_player_id);
         }
         self::setGameStateValue('acrobatEnteredGuardTile', 0);
+        self::notifyAllPlayers('message', clienttranslate('${player_name} ended their turn'), [
+            'player_name' => self::getActivePlayerName()
+        ]);
         $this->gamestate->nextState( 'moveGuard' );
     }
 
@@ -3353,6 +3421,9 @@ SQL;
                 $this->notifyRoll($rolls, 'persian-kitty');
                 if (isset($rolls[1]) || isset($rolls[2])) {
                     $this->moveCatToken($player_id);
+                    self::notifyAllPlayers('message', clienttranslate('${player_name} must pick up the cat token before escaping'), [
+                        'player_name' => self::getActivePlayerName()
+                    ]);
                 }
             }
         }
