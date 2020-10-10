@@ -604,7 +604,8 @@ SQL;
     function flipTile($floor, $location_arg) {
         self::DbQuery("UPDATE tile SET flipped=1 WHERE card_location='floor$floor' and card_location_arg=$location_arg");
         self::notifyAllPlayers('tileFlipped', '', array(
-            'tile' => $this->findTileOnFloor($floor, $location_arg)
+            'tile' => $this->findTileOnFloor($floor, $location_arg),
+            'floor' => $floor
         ));
     }
 
@@ -3428,6 +3429,11 @@ SQL;
                 }
             }
         }
+
+        $player_tile = $this->getPlayerTile($player_id);
+        self::notifyAllPlayers('showFloor', '', [
+            'floor' => $player_tile['location'][5]
+        ]);
 
         $this->gamestate->nextState( 'playerTurn' );
     }

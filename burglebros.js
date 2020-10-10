@@ -197,7 +197,6 @@ function (dojo, declare) {
                 
                 break;
            */
-            case 'playerTurn':
             case 'endTurn':
             case 'tileChoice':
                 this.showFloor(this.currentFloor());
@@ -257,11 +256,7 @@ function (dojo, declare) {
                 
                 break;
            */
-            case 'playerTurn':
-                this.showFloor(this.currentFloor());
-                break;
-           
-           
+                      
             case 'dummmy':
                 break;
             }               
@@ -1411,6 +1406,7 @@ function (dojo, declare) {
             dojo.subscribe('safeDieIncreased', this, 'notif_safeDieIncreased');
             dojo.subscribe('patrolDieIncreased', this, 'notif_patrolDieIncreased');
             dojo.subscribe('tileCards', this, 'notif_tileCards');
+            dojo.subscribe('showFloor', this, 'notif_showFloor');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -1497,10 +1493,12 @@ function (dojo, declare) {
 
         notif_safeDieIncreased: function(notif) {
             this.createSafeToken(notif.args.token, notif.args.die_num);
+            this.showFloor(notif.args.floor);
         },
 
         notif_patrolDieIncreased: function(notif) {
             this.createPatrolToken(notif.args.token, notif.args.die_num);
+            this.showFloor(notif.args.floor);
         },
 
         notif_tileCards: function(notif) {
@@ -1510,6 +1508,10 @@ function (dojo, declare) {
             if (token) {
                 this.createCardToken(tile_id, token.type, token.count);
             }
+        },
+
+        notif_showFloor: function(notif) {
+            this.showFloor(notif.args.floor);
         }
    });             
 });
