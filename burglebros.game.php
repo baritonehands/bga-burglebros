@@ -179,10 +179,11 @@ class burglebros extends Table
             $this->moveCardsOutOfPlay('characters', 'rook2');
             $this->moveCardsOutOfPlay('events', 'freight-elevator');
         }
-        // TODO: Add back cards once implemented
+        // TODO: Add back cards once implemented/fixed
         $this->moveCardsOutOfPlay('tools', 'crystal-ball');
         $this->moveCardsOutOfPlay('tools', 'stethoscope');
         $this->moveCardsOutOfPlay('events', 'squeak');
+        $this->moveCardsOutOfPlay('events', 'jury-rig');
         if ($options[100] == 1) {
             $this->moveCardsOutOfPlay('characters', 'acrobat2');
             $this->moveCardsOutOfPlay('characters', 'hacker2');
