@@ -533,7 +533,9 @@ SQL;
                     $count -= $to_remove;
                     $die_count = self::getGameStateValue("patrolDieCount$floor");
                     if ($die_count < 6) {
+                        $next_count = $die_count + 1;
                         self::setGameStateValue("patrolDieCount$floor", $die_count + 1);
+                        self::notifyAllPlayers('message', clienttranslate("Guard on floor $floor now moves $next_count spaces"), []);
                         self::notifyAllPlayers('patrolDieIncreased', '', array(
                             'die_num' => $die_count + 1,
                             'token' => array_values($this->tokens->getCardsOfType('patrol', $floor))[0],
@@ -1244,7 +1246,9 @@ SQL;
             for ($lower_floor=$floor; $lower_floor >= 1; $lower_floor--) { 
                 $die_count = self::getGameStateValue("patrolDieCount$lower_floor");
                 if ($die_count < 6) {
-                    self::setGameStateValue("patrolDieCount$lower_floor", $die_count + 1);
+                    $next_count = $die_count + 1;
+                    self::setGameStateValue("patrolDieCount$lower_floor", $next_count);
+                    self::notifyAllPlayers('message', clienttranslate("Guard on floor $lower_floor now moves $next_count spaces"), []);
                     self::notifyAllPlayers('patrolDieIncreased', '', array(
                         'die_num' => $die_count + 1,
                         'token' => array_values($this->tokens->getCardsOfType('patrol', $lower_floor))[0],
