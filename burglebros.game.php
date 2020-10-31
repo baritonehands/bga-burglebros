@@ -1485,7 +1485,7 @@ SQL;
         ]);
     }
 
-    function handleTileMovement($tile, $player_tile, $player_token, $flipped_this_turn, $context) {
+    function handleTileMovement($tile, $player_tile, $player_token, $guard_token, $flipped_this_turn, $context) {
         $id = $tile['id'];
         $type = $tile['type'];
         $actions_remaining = !in_array($context, array('action', 'acrobat2')) ? 1 : self::getGameStateValue('actionsRemaining');
@@ -1495,6 +1495,7 @@ SQL;
         $player_id = $player_token['type_arg'];
         $crowbar = $this->tokensInTile('crowbar', $id);
         $rook1_action = $context == 'rook1';
+        $floor = $tile['location'][5];
 
         $action_penalty = $this->getGemstonePenalty($player_id, $tile);
         if ($action_penalty > 0 && $actions_remaining < 2) {
@@ -1531,10 +1532,12 @@ SQL;
             }
         } elseif ($type == 'fingerprint') {
             if (!$crowbar) {
+                $this->setupGuardToken($guard_token, $floor);
                 $tile_choice = $this->hackOrTrigger($tile);
             }
         } elseif ($type == 'laser') {
             if (!$crowbar && !$rook1_action && !$this->getPlayerLoot('mirror', $player_id) && !$this->hackerDoesNotTrigger($tile)) {
+                $this->setupGuardToken($guard_token, $floor);
                 $tile_choice = $actions_remaining >= (2 + $action_penalty) || $this->hackOrTrigger($tile);
             }
         } elseif($type == 'motion') {
@@ -1551,6 +1554,7 @@ SQL;
                 $hand = $this->cards->getPlayerHand($player_id);
                 foreach ($hand as $card_id => $card) {
                     if ($card['type'] == 1 || $card['type'] == 2) {
+                        $this->setupGuardToken($guard_token, $floor);
                         $this->triggerAlarm($tile);
                         break;
                     }
@@ -1558,7 +1562,6 @@ SQL;
             }
         } elseif ($type == 'walkway' && $flipped_this_turn) {
             // Fall down
-            $floor = $tile['location'][5];
             if ($floor > 1) {
                 $lower_tile = $this->findTileOnFloor($floor - 1, $tile['location_arg']);
                 $cancel_move = true;
@@ -1568,11 +1571,15 @@ SQL;
             }
         } elseif ($type == 'thermo' && $this->getPlayerLoot('isotope', $player_id)) {
             if (!$crowbar) {
+                $this->setupGuardToken($guard_token, $floor);
                 $this->triggerAlarm($tile);
             }
         }
 
         if (!$cancel_move) {
+            // Guarantee this is set up if it wasn't already
+            $this->setupGuardToken($guard_token, $floor);
+
             // Handle exit
             $exit_type = $player_tile['type'];
             if ($exit_type == 'motion' && !$rook1_action) {
@@ -2208,6 +2215,13 @@ SQL;
         $this->flipTile( $floor, $to_peek['location_arg'] );
     }
 
+    function setupGuardToken($guard_token, $floor) {
+        if ($guard_token['location'] == 'deck') {
+            $this->setupPatrol($guard_token, $floor);
+            $this->nextPatrol($floor, TRUE);
+        }
+    }
+
     function performMove($tile_id, $context='action', $player_id = null) {
         $current_player_id = $player_id != null ? $player_id : self::getCurrentPlayerId();
         $player_token = $this->getPlayerToken($current_player_id);
@@ -2233,11 +2247,7 @@ SQL;
         if ($flipped_this_turn) {
             $this->handleTilePeek($to_move);
         }
-        if ($guard_token['location'] == 'deck') {
-            $this->setupPatrol($guard_token, $floor);
-            $this->nextPatrol($floor, TRUE);
-        }
-        $move_result = $this->handleTileMovement($to_move, $player_tile, $player_token, $flipped_this_turn, $context);
+        $move_result = $this->handleTileMovement($to_move, $player_tile, $player_token, $guard_token, $flipped_this_turn, $context);
         $this->flipTile( $floor, $to_move['location_arg'] );
         $invisible_suit = self::getGameStateValue('invisibleSuitActive') == 1;
         if ($move_result['perform_move']) {
