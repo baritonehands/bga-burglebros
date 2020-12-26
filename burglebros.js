@@ -499,7 +499,7 @@ function (dojo, declare) {
                 dojo.stopEvent(evt);
                 if (this.checkAction('selectCardChoice')) {
                     this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: 'wall', selected_id: wall.id }, this, function () {
-                        dojo.destroy(div_id);
+                        // dojo.destroy(div_id);
                     }, console.error);
                 }
             });
@@ -1310,7 +1310,7 @@ function (dojo, declare) {
         handleCardSelected: function(control_name, card_id) {	
             if (this.myHand.isSelected(card_id) && this.checkAction('playCard')) {
                 this.ajaxcall('/burglebros/burglebros/playCard.html', { lock: true, id: card_id }, this, console.log, console.error);
-            } else if(!this.myHand.isSelected(card_id)) {
+            } else if (!this.myHand.isSelected(card_id)) {
                 this.handleCancelCardChoice();
             }
         },
@@ -1407,6 +1407,7 @@ function (dojo, declare) {
             dojo.subscribe('patrolDieIncreased', this, 'notif_patrolDieIncreased');
             dojo.subscribe('tileCards', this, 'notif_tileCards');
             dojo.subscribe('showFloor', this, 'notif_showFloor');
+            dojo.subscribe('removeWall', this, 'notif_removeWall');
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -1512,6 +1513,11 @@ function (dojo, declare) {
 
         notif_showFloor: function(notif) {
             this.showFloor(notif.args.floor);
-        }
+        },
+
+        notif_removeWall: function(notif) {
+            this.fadeOutAndDestroy($("wall_" + notif.args.wall_id));
+        },
+
    });             
 });

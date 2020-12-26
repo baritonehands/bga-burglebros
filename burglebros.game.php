@@ -2041,6 +2041,10 @@ SQL;
                         if (($wall['vertical'] == 1 && $vertical) || ($wall['vertical'] == 0 && $horizontal)) {
                             self::DbQuery("DELETE FROM wall WHERE id = '$selected_id'");
                             $this->triggerAlarm($player_tile);
+                            // Notify players to remove wall
+                            self::notifyAllPlayers('removeWall', '', array(
+                                'wall_id' => $selected_id,
+                            ));
                             $exit = TRUE;
                         }
                     }
