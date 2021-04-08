@@ -2501,7 +2501,7 @@ SQL;
             $player_tile = $this->getPlayerTile($current_player_id);
             $found = FALSE;
             for ($floor=1; $floor <= 3; $floor++) {
-                if ($floor != $player_tile['location'][5]) {   
+                if (abs($floor - $player_tile['location'][5]) == 1) {   
                     $tiles = $this->getTiles($floor);
                     foreach ($tiles as $tile) {
                         if ($tile['type'] == 'safe' && $tile['location_arg'] == $player_tile['location_arg'] && !$this->tokensInTile('open', $tile['id'])) {
@@ -3172,11 +3172,11 @@ SQL;
         $args['card'] = $card;
         $args['card_name'] = $card_name;
         $args['choice_description'] = $this->getCardChoiceDescription($card);
-        if($card_name == 'peterman2') {
+        if ($card_name == 'peterman2') {
             $player_tile = $this->getPlayerTile($current_player_id);
             $peterman2_detail = [];
             for ($floor=1; $floor <= 3; $floor++) {
-                if ($floor != $player_tile['location'][5]) {   
+                if (abs($floor - $player_tile['location'][5]) == 1) {   
                     $peterman2_detail[$floor] = FALSE;
                     $tiles = $this->getTiles($floor);
                     foreach ($tiles as $tile) {
