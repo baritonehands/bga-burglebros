@@ -147,6 +147,7 @@ class burglebros extends Table
                 $index++;
             }
         }
+        shuffle($values);
         $sql = "INSERT INTO tile (card_type,card_type_arg,card_location,safe_die) VALUES ";
         self::DbQuery($sql.implode($values, ','));
 
