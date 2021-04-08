@@ -1322,6 +1322,7 @@ function (dojo, declare) {
         },
 
         handleCardChoiceButton: function(id, callback) {
+            callback = typeof callback == 'object' ? null : callback;
             if (this.checkAction('selectCardChoice')) {
                 this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: 'button', selected_id: id }, this, callback || console.log, console.error);
             }
