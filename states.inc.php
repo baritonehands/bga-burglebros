@@ -194,7 +194,7 @@ $machinestates = array(
         'description' => '',
         'type' => 'game',
         'action' => 'stEndAction',
-        'transitions' => array( 'nextAction' => 9, 'drawTools' => 22 )
+        'transitions' => array( 'nextAction' => 9, 'drawTools' => 22, 'endTurn' => 10 )
     ),
 
     22 => array(
@@ -204,7 +204,7 @@ $machinestates = array(
         'type' => 'activeplayer',
         'args' => 'argDrawToolsAndDiscard',
         'possibleactions' => array( 'discardTool' ),
-        'transitions' => array( 'drawToolsOtherPlayer' => 23, 'nextAction' => '9' )
+        'transitions' => array( 'drawToolsOtherPlayer' => 23, 'nextAction' => 9, 'endTurn' => 10 )
     ),
 
     23 => array(

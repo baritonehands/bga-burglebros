@@ -57,6 +57,7 @@ class burglebros extends Table
             'drawToolsPlayer' => 31,
             'drawToolsNextPlayer' => 32,
             'stealthDepleted' => 33,
+            'playerPass' => 34,
 
             // Options
             'characterAssignment' => 100
@@ -129,6 +130,7 @@ class burglebros extends Table
         self::setGameStateInitialValue( 'drawToolsPlayer', 0 );
         self::setGameStateInitialValue( 'drawToolsNextPlayer', 0 );
         self::setGameStateInitialValue( 'stealthDepleted', 0 );
+        self::setGameStateInitialValue( 'playerPass', 0 );
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -184,7 +186,7 @@ class burglebros extends Table
         $this->moveCardsOutOfPlay('tools', 'crystal-ball');
         $this->moveCardsOutOfPlay('tools', 'stethoscope');
         $this->moveCardsOutOfPlay('events', 'squeak');
-        $this->moveCardsOutOfPlay('events', 'jury-rig');
+        // $this->moveCardsOutOfPlay('events', 'jury-rig');
         if ($options[100] == 1) {
             $this->moveCardsOutOfPlay('characters', 'acrobat2');
             $this->moveCardsOutOfPlay('characters', 'hacker2');
@@ -2801,8 +2803,7 @@ SQL;
             }
             self::setGameStateValue('cardChoice', $character['id']);
             $this->gamestate->nextState('cardChoice');
-        } else if($type == 'hacker2') {
-            
+        } else if($type == 'hacker2') {   
             if (count($this->tokens->getCardsOfTypeInLocation('hack', null, 'card', $character['id'])) > 0) {
                 throw new BgaUserException(self::_('You already have a hack token'));
             }
@@ -3009,7 +3010,11 @@ SQL;
         if ($next_player != $current_player_id) {
             $this->gamestate->nextState('drawToolsOtherPlayer');
         } else {
-            $this->gamestate->nextState('nextAction');
+            if (self::getGameStateValue('playerPass') == 0) {
+                $this->gamestate->nextState('nextAction');
+            } else {
+                $this->gamestate->nextState('endTurn');
+            }
         }
     }
 
@@ -3066,6 +3071,7 @@ SQL;
 
     function pass() {
         self::checkAction('pass');
+        self::setGameStateValue('playerPass', 1);
         $current_player_id = self::getCurrentPlayerId();
         $actions_remaining = self::getGameStateValue('actionsRemaining');
         $trigger_action_count = $this->getPlayerLoot( 'stamp', $current_player_id) ? 1 : 2;
@@ -3084,12 +3090,14 @@ SQL;
             
             if (self::getGameStateValue('stealthDepleted')) {
                 $this->gamestate->nextState('gameOver');
-            } else if ($event_result['card_choice']) {
+            } elseif ($event_result['card_choice']) {
                 self::setGameStateValue('cardChoice', $event_card['id']);
                 $this->gamestate->nextState('cardChoice');
             } elseif ($event_result['tile_choice']) {
                 self::setGameStateValue('tileChoice', $event_result['tile_choice']);
                 $this->gamestate->nextState('tileChoice');
+            } elseif (self::getGameStateValue('drawToolsPlayer') > 0) {
+                $this->gamestate->nextState('endAction');
             } else {
                 $this->gamestate->nextState('endTurn');
             }
@@ -3284,14 +3292,15 @@ SQL;
         $current_player_id = self::getCurrentPlayerId();
         $draw_tools_player_id = self::getGameStateValue('drawToolsPlayer');
         $draw_two = $this->showRiggerToolSelection();
+        $next_state = self::getGameStateValue('playerPass') == 1 ? 'endTurn' : 'nextAction';
         if ($draw_tools_player_id == 0) {
-            $this->gamestate->nextState('nextAction');
-        } else if($draw_tools_player_id != 0 && !$draw_two) {
+            $this->gamestate->nextState($next_state);
+        } else if ($draw_tools_player_id != 0 && !$draw_two) {
             self::setGameStateValue('drawToolsPlayer', 0);
             $this->reshuffleDeckIfEmpty('tools');
             $this->cards->pickCard('tools_deck', $current_player_id);
             $this->notifyPlayerHand($current_player_id);
-            $this->gamestate->nextState('nextAction');
+            $this->gamestate->nextState($next_state);
         } else {
             self::setGameStateValue('drawToolsPlayer', 0);
             if ($draw_tools_player_id != $current_player_id) {
@@ -3317,6 +3326,7 @@ SQL;
         }
         self::setGameStateValue('invisibleSuitActive', 0);
         self::setGameStateValue('characterAbilityUsed', 0);
+        self::setGameStateValue('playerPass', 0);
         self::setGameStateValue('firstAction', 1);
         if (self::getGameStateValue('acrobatEnteredGuardTile')) {
             $this->decrementPlayerStealth($current_player_id);
