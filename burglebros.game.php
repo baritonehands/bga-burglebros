@@ -2302,8 +2302,8 @@ SQL;
             'floor' => $floor
         ));
         
-        $msg = '${player_name} '."added a die to the safe on floor $floor";
-        self::notifyAllPlayers('message', clienttranslate($msg), [
+        $msg = clienttranslate('${player_name} '."added a die to the safe on floor $floor");
+        self::notifyAllPlayers('message', $msg, [
             'player_name' => self::getCurrentPlayerName()
         ]);
     }
