@@ -76,7 +76,9 @@
 .stockitem_selected {
     border-color: red;
 }
-
+#myhand_wrap, #board_wrap, .player_hand {
+    text-align: center;
+}
 #myhand .stockitem, .player_hand .stockitem, #trade_dialog .stockitem {
     background-size: 240px;
 }
@@ -84,6 +86,7 @@
 .floor_container {
     display: flex;
     flex-direction: row;
+    justify-content: center;
 }
 
 .floor {

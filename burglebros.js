@@ -76,6 +76,7 @@ function (dojo, declare) {
                 hand.create( this, $(handDivId), this.cardwidth, this.cardheight);
                 hand.image_items_per_row = 2;
                 hand.onItemCreate = dojo.hitch(this, 'createCardZone', hand);
+                hand.centerItems = true;
                 if (me) {
                     hand.setSelectionMode(1);
                     hand.setSelectionAppearance('class');
