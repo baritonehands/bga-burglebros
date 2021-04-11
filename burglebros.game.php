@@ -1970,7 +1970,11 @@ SQL;
 
     function validateSelection($expected_type, $selected_type) {
         if ($expected_type != $selected_type) {
-            throw new BgaUserException(self::_("Invalid selection. Expected: $expected_type."));
+            if ($expected_type == 'button') {
+                throw new BgaUserException(self::_("Finish first the action you started (use buttons in the status bar)"));
+            } else {
+                throw new BgaUserException(self::_("Invalid selection. Expected: $expected_type."));
+            }
         }
     }
 
