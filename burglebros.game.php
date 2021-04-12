@@ -185,7 +185,7 @@ class burglebros extends Table
         // TODO: Add back cards once implemented/fixed
         $this->moveCardsOutOfPlay('tools', 'crystal-ball');
         $this->moveCardsOutOfPlay('tools', 'stethoscope');
-        $this->moveCardsOutOfPlay('events', 'squeak');
+        // $this->moveCardsOutOfPlay('events', 'squeak');
         // $this->moveCardsOutOfPlay('events', 'jury-rig');
         if ($options[100] == 1) {
             $this->moveCardsOutOfPlay('characters', 'acrobat2');
@@ -1919,6 +1919,22 @@ SQL;
             
             $this->performGuardMovementEffects($guard_token, $patrol_token['location_arg']);
             $this->nextPatrol($floor);
+        } elseif ($type == 'squeak') {
+            // Guard moves 1 tile towards the closest player
+            $tile = $this->getPlayerTile($player_id);
+            $floor = $tile['location'][5];
+            $guard_token = array_values($this->tokens->getCardsOfType('guard', $floor))[0];
+            $guard_tile = $this->tiles->getCard($guard_token['location_arg']);
+            $shortest_path = null;
+
+            $players = self::loadPlayersBasicInfos();
+            foreach ($players as $player_id => $player) {
+                $player_token = $this->getPlayerToken($player_id);
+                $player_tile = $this->getPlayerTile($player_id, $player_token);
+                $path = $this->findShortestPathClockwise($floor, $guard_tile['location_arg'], $player_tile['location_arg']);
+                $shortest_path = $shortest_path && count($path) >= count($shortest_path) ? $shortest_path : $path;
+            }
+            $this->performGuardMovementEffects($guard_token, $shortest_path[1]);;
         } else {
             // It will be handled in the appropriate place
             $this->cards->moveCard($card['id'], 'hand', $player_id);
