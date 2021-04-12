@@ -72,10 +72,30 @@
     border-radius: 8px;
     border: 1px solid #3A5A6E;
 }
-
 .stockitem_selected {
     border-color: red;
 }
+.hidden {
+    display: none !important;
+}
+.hidden_animated {
+    text-align: center; 
+    overflow: hidden;
+    max-height: 0px;
+    opacity: 0; /* handle whiteblock add and remove class with opacity transition */
+    padding: 0px !important;
+    margin: 0px !important;     /* reset whiteblock margin and padding */
+    transition: all 0.8s;
+}
+.dnd_card {
+    cursor: move;
+    display: inline-flex;
+    width: 180px !important;
+    height: 180px !important;
+    background-size: 360px !important;
+    margin: 10px;
+}
+
 #myhand_wrap, #board_wrap, .player_hand {
     text-align: center;
 }

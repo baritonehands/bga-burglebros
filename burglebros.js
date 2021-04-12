@@ -184,7 +184,7 @@ function (dojo, declare) {
         //
         onEnteringState: function( stateName, args )
         {
-            console.log( 'Entering state: '+stateName );
+            console.log( 'Entering state: '+stateName, args.args );
             
             switch( stateName )
             {
@@ -206,6 +206,10 @@ function (dojo, declare) {
             case 'cardChoice':
                 if (this.isCurrentPlayerActive() && args.args.spotter_card && (this.isCardChoice('spotter1') || this.isCardChoice('spotter2'))) {
                     this.spotterChoice(args.args.spotter_card);
+                }
+                // Crystal Ball, player can choose to reorder the 3 upcoming events
+                if (args.args.event_cards) {
+                    this.setupCrystalBallCards(args.args.event_cards);
                 }
                 break;
             
@@ -257,7 +261,11 @@ function (dojo, declare) {
                 
                 break;
            */
-                      
+            case 'cardChoice':
+                this.hideElement('crystal_ball_wrapper');
+                dojo.addClass('crystal_ball_button', 'hidden');
+                this.disconnectAll();
+                break;
             case 'dummmy':
                 break;
             }               
@@ -599,13 +607,15 @@ function (dojo, declare) {
             dojo.destroy('generic_token_' + id);
         },
 
-        createCardToken: function(id, type, count) {
+        createCardToken: function(id, type, count, extra_classes='', draggable=false) {
             var card_type = this.gamedatas.card_types[type];
             dojo.place(this.format_block('jstpl_card_token', {
                 tile_id : id,
                 card_type : card_type.name,
                 card_count : count || 1,
-                token_background : g_gamethemeurl + '/img/tokens.jpg'
+                token_background : g_gamethemeurl + '/img/tokens.jpg',
+                draggable: draggable,
+                extra_classes: extra_classes
             }), 'tile_' + id + '_cards');
         },
 
@@ -689,6 +699,8 @@ function (dojo, declare) {
 
         canCancelCardChoice: function() {
             var type = this.gamedatas.gamestate.args.card['type'];
+            if (this.gamedatas.gamestate.args.card['type_arg'] == 3) // crystal-ball
+                return false;
             return type == 1 || type == 0; // Tools and Characters
         },
 
@@ -1039,12 +1051,15 @@ function (dojo, declare) {
             });
         },
 
-        eventCardHtml: function(card) {
+        eventCardHtml: function(card, card_id='', extra_classes='', draggable=false) {
             var bg_row = Math.floor(card.type_arg / 2) * -100;
             var bg_col = (card.type_arg % 2) * -100;
             return this.format_block('jstpl_event_card', {
                 bg_image: g_gamethemeurl + 'img/events.jpg',
-                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
+                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%',
+                card_id: card_id,
+                draggable: draggable,
+                extra_classes: extra_classes,
             });
         },
 
@@ -1152,6 +1167,72 @@ function (dojo, declare) {
                     });
                 }
             });
+        },
+
+        setupCrystalBallCards: function(event_cards) {
+            this.elementDragged = null;
+            for (var i in event_cards) {
+                var card = event_cards[i];
+                dojo.place( this.eventCardHtml(card, card.id, 'dnd_card', true), 'crystal_ball_cards' );
+                this.addCardTooltip(card, 'event_card_dialog_' + card.id);
+            }
+            if (this.isCurrentPlayerActive()) {
+                dojo.removeClass('crystal_ball_button', 'hidden');
+                this.connectClass('dnd_card', 'dragstart', 'handleDragStart');
+                this.connectClass('dnd_card', 'dragend', 'handleDragEnd');
+                this.connectClass('dnd_card', 'drop', 'handleDrop');
+                this.connectClass('dnd_card', 'dragover', 'handleDragOver');
+                this.connectClass('dnd_card', 'dragenter', 'handleDragEnter');
+                this.connectClass('dnd_card', 'dragleave', 'handleDragLeave');
+                this.connect($('crystal_ball_button'), 'onclick', 'handleCrystalBallCardChoiceButton');
+            }
+            this.displayElement('crystal_ball_wrapper');
+        },
+        handleDragStart(e) {
+            e.target.style.opacity = '0.4';
+            this.elem_dragged = e.target;
+            e.dataTransfer.effectAllowed = 'move';
+        },
+        handleDragEnd(e) {
+            // console.log('handleDragEnd');
+            e.preventDefault();
+            e.target.style.opacity = '1';
+        },
+        handleDrop(e) {
+            // console.log('handleDrop');
+            e.stopPropagation();
+            if (e.target !== this.elem_dragged) {
+                var id_dropped = e.target.id.split('_').pop();
+                var index_dragged = Array.from(this.elem_dragged.parentNode.children).indexOf(this.elem_dragged);
+                var index_dropped = Array.from(e.target.parentNode.children).indexOf(e.target);
+                if (index_dropped < index_dragged) {
+                    e.target.parentNode.insertBefore(this.elem_dragged, e.target);
+                } else {
+                    e.target.parentNode.insertBefore(this.elem_dragged, e.target.nextSibling);
+                }
+            }
+            return false;
+        },
+        handleDragEnter(e) {
+            // console.log('handleDragEnter');
+            e.preventDefault();
+        },
+        handleDragOver(e) {
+            // console.log('handleDragOver');
+            e.preventDefault();
+        },
+        handleDragLeave(e) {
+            // console.log('handleDragLeave');
+            e.preventDefault();
+        },
+
+        displayElement: function(id) {
+            $(id).style.maxHeight = '1500px';
+            $(id).style.opacity = 1;
+        },
+        hideElement: function(id) {
+            $(id).style.maxHeight = '0px';
+            $(id).style.opacity = 0;
         },
 
         ///////////////////////////////////////////////////
@@ -1320,6 +1401,12 @@ function (dojo, declare) {
             if (this.checkAction('cancelCardChoice')) {
                 this.ajaxcall('/burglebros/burglebros/cancelCardChoice.html', { lock: true }, this, console.log, console.error);
             }
+        },
+
+        handleCrystalBallCardChoiceButton: function() {
+            var ids = [];
+            dojo.forEach( $('crystal_ball_cards').children, (node) => ids.push(node.id.split("_").pop()) );
+            this.handleCardChoiceButton(ids.join(";"), null);
         },
 
         handleCardChoiceButton: function(id, callback) {

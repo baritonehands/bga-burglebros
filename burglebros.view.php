@@ -105,6 +105,8 @@
         }
         // this will make our My Hand text translatable
         $this->tpl['MY_HAND'] = self::_("My hand");
+        $this->tpl['CRYSTAL_BALL_TITLE'] = self::_("Reorder by drag and drop the 3 upcoming events (leftmost will be the first to happen)");
+        $this->tpl['CRYSTAL_BALL_BTN_LABEL'] = self::_("Confirm event order");
 
         /*********** Do not change anything below this line  ************/
   	}

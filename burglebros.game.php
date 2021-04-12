@@ -183,7 +183,7 @@ class burglebros extends Table
             $this->moveCardsOutOfPlay('events', 'freight-elevator');
         }
         // TODO: Add back cards once implemented/fixed
-        $this->moveCardsOutOfPlay('tools', 'crystal-ball');
+        // $this->moveCardsOutOfPlay('tools', 'crystal-ball');
         $this->moveCardsOutOfPlay('tools', 'stethoscope');
         // $this->moveCardsOutOfPlay('events', 'squeak');
         // $this->moveCardsOutOfPlay('events', 'jury-rig');
@@ -1680,9 +1680,7 @@ SQL;
     function handleToolEffect($player_id, $card) {
         $type = $this->getCardType($card);
         $choice = FALSE;
-        if ($type == 'crystal-ball') {
-            // TODO: implement
-        } elseif ($type == 'emp') {
+        if ($type == 'emp') {
             self::setGameStateValue('empPlayer', $player_id);
             $this->clearTileTokens('alarm');
         } elseif($type == 'invisible-suit') {
@@ -1994,7 +1992,8 @@ SQL;
         }
     }
 
-    function handleSelectCardChoice($card, $selected_type, $selected_id) {
+    function handleSelectCardChoice($card, $selected_type, $selected_ids) {
+        $selected_id = count($selected_ids) == 1 ? $selected_ids[0] : $selected_ids;
         $type = $this->getCardType($card);
         $tile_choice = FALSE;
         $discard = TRUE;
@@ -2164,6 +2163,10 @@ SQL;
             $existing = $this->tokensInTile('hack', $tile['id']);
             $nbr = $existing <= 3 ? 3 : 6 - $existing;
             $this->pickTokensForTile('hack', $tile['id'], $nbr);
+        } elseif ($type == 'crystal-ball') {
+            foreach ($selected_id as $card_id) {
+                $this->cards->insertCardOnExtremePosition($card_id, 'events_deck', true);
+            }
         }
         if ($card['type'] != 0) {
             if ($discard) {
@@ -3221,6 +3224,8 @@ SQL;
             $args['spotter_card'] = $this->cards->getCardOnTop("patrol$floor".'_deck');
         } else if($card_name == 'spotter2') {
             $args['spotter_card'] = $this->cards->getCardOnTop("events_deck");
+        } else if($card_name == 'crystal-ball') {
+            $args['event_cards'] = $this->cards->getCardsOnTop(3, "events_deck");
         }
         return $args;
     }

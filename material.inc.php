@@ -63,7 +63,7 @@ $this->card_info = array(
   1 => array(
     array('name'=>'blueprints', 'choice_description' => self::_('any tile to peek')),
     array('name'=>'crowbar', 'choice_description' => self::_('an adjacent tile to disable')),
-    array('name'=>'crystal-ball'),
+    array('name'=>'crystal-ball', 'choice_description' => self::_('to reorder the 3 upcoming events')),
     array('name'=>'donuts', 'choice_description' => self::_('any guard to lose all movement for one turn')),
     array('name'=>'dynamite', 'choice_description' => self::_('an adjacent wall to remove')),
     array('name'=>'emp'),
