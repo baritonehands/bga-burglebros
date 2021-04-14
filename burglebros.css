@@ -104,6 +104,9 @@
 #myhand .stockitem, .player_hand .stockitem, #trade_dialog .stockitem {
     background-size: 240px;
 }
+.spectatorMode #myhand_wrap {
+    display: none;
+}
 
 .floor_container {
     display: flex;
