@@ -211,6 +211,10 @@ function (dojo, declare) {
                 if (args.args.event_cards) {
                     this.setupCrystalBallCards(args.args.event_cards);
                 }
+                // Stethoscope, player can reroll one die
+                if (this.isCurrentPlayerActive() && args.args.rolls) {
+                    this.setupStethoscope(args.args.rolls);
+                }
                 break;
             
             case 'proposeTrade':
@@ -251,19 +255,12 @@ function (dojo, declare) {
             
             switch( stateName )
             {
-            
-            /* Example:
-            
-            case 'myGameState':
-            
-                // Hide the HTML block we are displaying only during this game state
-                dojo.style( 'my_html_block_id', 'display', 'none' );
-                
-                break;
-           */
             case 'cardChoice':
                 this.hideElement('crystal_ball_wrapper');
                 dojo.addClass('crystal_ball_button', 'hidden');
+                dojo.query("#maintitlebar_content .icon_die").forEach( (el) => this.fadeOutAndDestroy(el) );
+                if ($("dice_choice"))
+                    this.fadeOutAndDestroy($("dice_choice"));
                 this.disconnectAll();
                 break;
             case 'dummmy':
@@ -282,18 +279,6 @@ function (dojo, declare) {
             {            
                 switch( stateName )
                 {
-/*               
-                 Example:
- 
-                 case 'myGameState':
-                    
-                    // Add 3 action buttons in the action status bar:
-                    
-                    this.addActionButton( 'button_1_id', _('Button 1 label'), 'onMyMethodToCall1' ); 
-                    this.addActionButton( 'button_2_id', _('Button 2 label'), 'onMyMethodToCall2' ); 
-                    this.addActionButton( 'button_3_id', _('Button 3 label'), 'onMyMethodToCall3' ); 
-                    break;
-*/
                     case 'playerTurn':
                         if (this.canEscape()) {
                             this.addActionButton( 'button_escape', _('Escape'), dojo.hitch(this, 'handleEscape') );
@@ -1169,6 +1154,29 @@ function (dojo, declare) {
             });
         },
 
+        setupStethoscope: function(rolls) {
+            for (id in rolls) {
+                dojo.place(this.format_block('jstpl_die', {
+                    die_id : 'die_' + id + '_' + rolls[id].type_arg,
+                    die_value : rolls[id].type_arg,
+                }), 'maintitlebar_content');
+                this.connect($('die_' + id + '_' + rolls[id].type_arg), 'onclick', 'selectDie');
+            }
+            dojo.place( '<div style="display:block;position:relative;width:100%;" id="dice_choice" class="hidden_animated"></div>', 'maintitlebar_content')
+            for (var i = 1; i <= 6; i++) {
+                dojo.place(this.format_block('jstpl_die', {
+                    die_id : 'alternative_die_' + i,
+                    die_value : i,
+                }), 'dice_choice');
+                this.connect($('alternative_die_' + i), 'onclick', 'handleMultipleIdCardChoiceButton'); // zzz
+            }
+        },
+        selectDie: function(e) {
+            dojo.query('.icon_die.selected').removeClass('selected');
+            dojo.addClass(e.target, 'selected');
+            this.displayElement('dice_choice');
+        },
+
         setupCrystalBallCards: function(event_cards) {
             this.elementDragged = null;
             for (var i in event_cards) {
@@ -1184,7 +1192,7 @@ function (dojo, declare) {
                 this.connectClass('dnd_card', 'dragover', 'handleDragOver');
                 this.connectClass('dnd_card', 'dragenter', 'handleDragEnter');
                 this.connectClass('dnd_card', 'dragleave', 'handleDragLeave');
-                this.connect($('crystal_ball_button'), 'onclick', 'handleCrystalBallCardChoiceButton');
+                this.connect($('crystal_ball_button'), 'onclick', 'handleMultipleIdCardChoiceButton');
             }
             this.displayElement('crystal_ball_wrapper');
         },
@@ -1403,9 +1411,15 @@ function (dojo, declare) {
             }
         },
 
-        handleCrystalBallCardChoiceButton: function() {
+        handleMultipleIdCardChoiceButton: function(e) {
             var ids = [];
-            dojo.forEach( $('crystal_ball_cards').children, (node) => ids.push(node.id.split("_").pop()) );
+            if (this.isCardChoice('crystal-ball')) {
+                dojo.forEach( $('crystal_ball_cards').children, (node) => ids.push(node.id.split("_").pop()) );                
+            } else if (this.isCardChoice('stethoscope')) {
+                // Push old value first then new value
+                ids.push( dojo.query('.icon_die.selected')[0].id.split('_').pop() );
+                ids.push( e.target.id.split('_').pop() );
+            }
             this.handleCardChoiceButton(ids.join(";"), null);
         },
 

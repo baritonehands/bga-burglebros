@@ -71,7 +71,7 @@ $this->card_info = array(
     array('name'=>'makeup-kit'),
     array('name'=>'rollerskates'),
     array('name'=>'smoke-bomb'),
-    array('name'=>'stethoscope'),
+    array('name'=>'stethoscope', 'choice_description' => self::_('if you want to reroll one die using the Stethoscope')),
     array('name'=>'thermal-bomb', 'choice_description' => self::_('up or down to create stairs')),
     array('name'=>'virus', 'choice_description' => self::_('a computer to add hack tokens')),
   ),

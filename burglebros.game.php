@@ -58,6 +58,7 @@ class burglebros extends Table
             'drawToolsNextPlayer' => 32,
             'stealthDepleted' => 33,
             'playerPass' => 34,
+            'dropLoot' => 35,
 
             // Options
             'characterAssignment' => 100
@@ -131,6 +132,7 @@ class burglebros extends Table
         self::setGameStateInitialValue( 'drawToolsNextPlayer', 0 );
         self::setGameStateInitialValue( 'stealthDepleted', 0 );
         self::setGameStateInitialValue( 'playerPass', 0 );
+        self::setGameStateInitialValue( 'dropLoot', 0 );
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
@@ -160,13 +162,14 @@ class burglebros extends Table
         for ($floor=1; $floor <= 3; $floor++) { 
             $tokens [] = array('type' => 'guard', 'type_arg' => $floor, 'nbr' => 1);
             $tokens [] = array('type' => 'patrol', 'type_arg' => $floor, 'nbr' => 1);
-            $tokens [] = array('type' => 'crack', 'type_arg' => $floor, 'nbr' => 1);
+            $tokens [] = array('type' => 'crack', 'type_arg' => $floor, 'nbr' => 1);    # when a first die is added on the safe
         }
         $tokens [] = array('type' => 'hack', 'type_arg' => 0, 'nbr' => 19);
-        $tokens [] = array('type' => 'safe', 'type_arg' => 0, 'nbr' => 22);
+        $tokens [] = array('type' => 'safe', 'type_arg' => 0, 'nbr' => 22); # when a tile is validated by a safe roll
+        // $tokens [] = array('type' => 'die', 'type_arg' => 0, 'nbr' => 21);  # store die values when rolling (handle stethoscope)
         $tokens [] = array('type' => 'stealth', 'type_arg' => 0, 'nbr' => 22);
         $tokens [] = array('type' => 'alarm', 'type_arg' => 0, 'nbr' => 9);
-        $tokens [] = array('type' => 'open', 'type_arg' => 0, 'nbr' => 6);
+        $tokens [] = array('type' => 'open', 'type_arg' => 0, 'nbr' => 6);  # when a safe or keypad tile is opened
         $tokens [] = array('type' => 'keypad', 'type_arg' => 0, 'nbr' => 3);
         $tokens [] = array('type' => 'stairs', 'type_arg' => 0, 'nbr' => 3);
         $tokens [] = array('type' => 'thermal', 'type_arg' => 0, 'nbr' => 2);
@@ -184,7 +187,7 @@ class burglebros extends Table
         }
         // TODO: Add back cards once implemented/fixed
         // $this->moveCardsOutOfPlay('tools', 'crystal-ball');
-        $this->moveCardsOutOfPlay('tools', 'stethoscope');
+        // $this->moveCardsOutOfPlay('tools', 'stethoscope');
         // $this->moveCardsOutOfPlay('events', 'squeak');
         // $this->moveCardsOutOfPlay('events', 'jury-rig');
         if ($options[100] == 1) {
@@ -1189,12 +1192,56 @@ SQL;
                 throw new BgaUserException(self::_("The player holding the keycard must be present"));
             }
         }
-
-        $tiles = $this->getTiles($floor);
-        $placed_tokens = $this->getPlacedTokens(array('safe'));
         $rolls = $this->rollDice($dice_count);
         $this->notifyRoll($rolls, 'safe');
 
+        // If player owns the stethoscope (and not the bust), can choose to reroll a die
+        $stethoscope = $this->getPlayerTool('stethoscope', $current_player_id);
+        $bust = $this->getPlayerLoot('bust', $current_player_id);
+        if ($stethoscope && !$bust) {
+            // Store die values to get them back on next state zz
+            $sql_values = [];
+            foreach ($rolls as $value => $nbr) {
+                for ($i=1; $i <= $nbr; $i++) { 
+                    $sql_values[] = "('die', $value, 'stethoscope', 0)";
+                }
+            }
+            $sql = "INSERT INTO token (card_type, card_type_arg, card_location, card_location_arg) VALUES ".implode(', ', $sql_values);
+            self::DbQuery($sql);
+            self::setGameStateValue('cardChoice', $stethoscope['id']);
+            $drop_loot = $drop_loot ? 1 : 0;
+            self::setGameStateValue('dropLoot', $drop_loot);
+            $this->gamestate->nextState('cardChoice');
+            return true;
+        } else {
+            $this->applyDieRoll($rolls, $safe_tile, $drop_loot);
+        }
+    }
+
+    function applyDieRoll($rolls=null, $safe_tile=null, $drop_loot=null) {
+        if ($rolls === null) {
+            $tokens = $this->tokens->getCardsInLocation('stethoscope');
+            $rolls = array();
+            foreach ($tokens as $id => $token) {
+                $value = $token['type_arg'];
+                $rolls[$value] = isset($rolls[$value]) ? $rolls[$value] + 1 : 1;
+            }
+            // var_dump($rolls);
+            // die('stop');
+            self::DbQuery("DELETE FROM token WHERE card_location='stethoscope'");
+        }
+        if ($safe_tile === null) {
+            $current_player_id = self::getCurrentPlayerId();
+            $player_token = $this->getPlayerToken($current_player_id);
+            $safe_tile = $this->getPlayerTile($current_player_id, $player_token);
+        }
+        if ($drop_loot === null) {
+            $drop_loot = self::getGameStateValue('dropLoot');
+            self::setGameStateValue('dropLoot', 0);
+        }
+        $floor = $safe_tile['location'][5];
+        $tiles = $this->getTiles($floor);
+        $placed_tokens = $this->getPlacedTokens(array('safe'));
         $safe_row = floor($safe_tile['location_arg'] / 4);
         $safe_col = $safe_tile['location_arg'] % 4;
         $cracked_count = 0;
@@ -1237,8 +1284,8 @@ SQL;
             }
             $this->notifyPlayerHand($current_player_id);
             
-            $msg = '${player_name} '."cracked the safe on floor $floor";
-            self::notifyAllPlayers('message', clienttranslate($msg), [
+            $msg = '${player_name} '.clienttranslate("cracked the safe on floor $floor");
+            self::notifyAllPlayers('message', $msg, [
                 'player_name' => self::getCurrentPlayerName()
             ]);
 
@@ -1697,6 +1744,8 @@ SQL;
         } elseif ($type == 'smoke-bomb') {
             $tile = $this->getPlayerTile($player_id);
             $this->pickTokensForTile('stealth', $tile['id'], 3);
+        } elseif ($type == 'stethoscope') {
+            throw new BgaUserException(self::_("You must roll dice before using the stethoscope"));
         } else {
             $choice = TRUE;
         }
@@ -1962,6 +2011,15 @@ SQL;
         return null;
     }
 
+    function getPlayerTool($name, $player_id=null) {
+        $type_arg = $this->getCardTypeForName(1, $name);
+        $cards = $this->cards->getCardsOfTypeInLocation(1, $type_arg, 'hand', $player_id);
+        if (count($cards) > 0) {
+            return array_values($cards)[0];
+        }
+        return null;
+    }
+
     function getPlayerCharacter($player_id, $name=null) {
         $type_arg = null;
         if($name != null) {
@@ -2167,6 +2225,15 @@ SQL;
             foreach ($selected_id as $card_id) {
                 $this->cards->insertCardOnExtremePosition($card_id, 'events_deck', true);
             }
+        } elseif ($type == 'stethoscope') {
+            [$old_value, $new_value] = $selected_id;
+            self::DbQuery("UPDATE token SET card_type_arg=$new_value WHERE card_type='die' AND card_type_arg=$old_value LIMIT 1");
+            self::notifyAllPlayers('message', clienttranslate('Stethoscope: ${player_name} changed one die from ${old_value} to ${new_value}'), [
+                'player_name' => self::getCurrentPlayerName(),
+                'old_value' => $old_value,
+                'new_value' => $new_value
+            ]);
+            $this->applyDieRoll();
         }
         if ($card['type'] != 0) {
             if ($discard) {
@@ -2679,8 +2746,8 @@ SQL;
         $player_token = $this->getPlayerToken($current_player_id);
         $player_tile = $this->getPlayerTile($current_player_id, $player_token);
 
-        $this->performSafeDiceRoll($player_tile);
-        $this->endAction();
+        if (!$this->performSafeDiceRoll($player_tile))
+            $this->endAction();
     }
 
     function hack() {
@@ -2785,9 +2852,13 @@ SQL;
         $card = $this->cards->getCard(self::getGameStateValue('cardChoice'));
         if ($card['type'] == 2) {
             throw new BgaUserException(self::_('You may not cancel event effects'));
+        } elseif ($this->getCardType($card) == 'stethoscope') {
+            $this->applyDieRoll();
+            $this->endAction();
+        } else {
+            // Don't run normal action decrease logic
+            $this->gamestate->nextState('nextAction');
         }
-        // Don't run normal action decrease logic
-        $this->gamestate->nextState('nextAction');
     }
 
     function selectTileChoice($selected) {
@@ -3222,10 +3293,12 @@ SQL;
             $player_tile = $this->getPlayerTile($current_player_id);
             $floor = $player_tile['location'][5];
             $args['spotter_card'] = $this->cards->getCardOnTop("patrol$floor".'_deck');
-        } else if($card_name == 'spotter2') {
+        } else if ($card_name == 'spotter2') {
             $args['spotter_card'] = $this->cards->getCardOnTop("events_deck");
-        } else if($card_name == 'crystal-ball') {
+        } else if ($card_name == 'crystal-ball') {
             $args['event_cards'] = $this->cards->getCardsOnTop(3, "events_deck");
+        } else if ($card_name == 'stethoscope') {
+            $args['rolls'] = $this->tokens->getCardsInLocation("stethoscope");
         }
         return $args;
     }

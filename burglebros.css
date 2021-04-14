@@ -447,3 +447,43 @@
 #draw_tools_stock .stockitem_selected {
     border-color: red !important;
 }
+
+/* Dice */
+.icon_die {
+    top: 33%; /* center vertically */
+    left: 9%; /* center horizontally */
+    background-image: url(img/dice.png);
+    background-repeat: no-repeat;
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    background-size: 50px;
+}
+#maintitlebar_content .icon_die {
+    cursor: pointer;
+}
+.icon_die.selected {
+    filter: drop-shadow(2px 2px 0 lime) drop-shadow(-1px -1px 0 lime) drop-shadow(2px -2px 0 lime) drop-shadow(-2px 2px 0 lime);
+}
+.icon_die_3D {
+    background-position: 0% 0%;
+    /*filter: drop-shadow(3px 3px 0 lime) drop-shadow(-2px -2px 0 lime) drop-shadow(2px -2px 0 lime) drop-shadow(-2px 2px 0 lime);*/
+}
+.icon_die_1 {
+    background-position: 0% 16.5%;
+}
+.icon_die_2 {
+    background-position: 0% 33%;
+}
+.icon_die_3 {
+    background-position: 0% 50%;
+}
+.icon_die_4 {
+    background-position: 0% 66.5%;
+}
+.icon_die_5 {
+    background-position: 0% 83%;
+}
+.icon_die_6 {
+    background-position: 0% 99.6%;
+}

@@ -190,6 +190,7 @@ var jstpl_draw_tools_dialog = '<div id="draw_tools_dialog" class="dialog">\n' +
 '    </div>\n' +
 '</div>';
 
+var jstpl_die = '<div class="icon_die icon_die_${die_value}" id="${die_id}"></div>';
 </script>  
 
 {OVERALL_GAME_FOOTER}
