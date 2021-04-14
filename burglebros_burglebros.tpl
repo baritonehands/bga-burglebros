@@ -127,7 +127,7 @@ var jstpl_patrol_die = '<div id="patrol_token_${token_id}" class="token die patr
 
 var jstpl_safe_die = '<div id="crack_token_${token_id}" class="token die safe">${die_num}</div>';
 
-var jstpl_event_card = '<div id="event_card_dialog_${card_id}" class="card ${extra_classes}" draggable="${draggable}" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>'
+var jstpl_event_card = '<div id="event_card_dialog${card_id}" class="card ${extra_classes}" draggable="${draggable}" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>'
 
 var jstpl_trade_dialog = '<div id="trade_dialog" class="dialog">\n' +
 '    <div class="dialog-content">\n' +

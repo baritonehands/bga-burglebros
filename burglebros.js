@@ -1182,7 +1182,7 @@ function (dojo, declare) {
             for (var i in event_cards) {
                 var card = event_cards[i];
                 dojo.place( this.eventCardHtml(card, card.id, 'dnd_card', true), 'crystal_ball_cards' );
-                this.addCardTooltip(card, 'event_card_dialog_' + card.id);
+                this.addCardTooltip(card, 'event_card_dialog' + card.id);
             }
             if (this.isCurrentPlayerActive()) {
                 dojo.removeClass('crystal_ball_button', 'hidden');
