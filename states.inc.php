@@ -113,8 +113,8 @@ $machinestates = array(
 
     13 => array(
         'name' => 'cardChoice',
-        'description' => clienttranslate('${card_name}: ${actplayer} must choose ${choice_description}'),
-        'descriptionmyturn' => clienttranslate('${card_name}: ${you} must choose ${choice_description}'),
+        'description' => clienttranslate('${card_name_displayed}: ${actplayer} must choose ${choice_description}'),
+        'descriptionmyturn' => clienttranslate('${card_name_displayed}: ${you} must choose ${choice_description}'),
         'type' => 'activeplayer',
         'args' => 'argCardChoice',
         'updateGameProgression' => true,

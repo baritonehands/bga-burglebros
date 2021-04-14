@@ -3273,6 +3273,15 @@ SQL;
         $card_name = $this->getCardType($card);
         $args['card'] = $card;
         $args['card_name'] = $card_name;
+        // Remove last character if 1, replace last char if 2 by Advanced and replace '-'' by space
+        if (substr($card_name, -1) == '1') {
+            $card_name_displayed = substr($card_name, 0, -1);
+        } elseif (substr($card_name, -1) == '2') {
+            $card_name_displayed = substr($card_name, 0, -1).clienttranslate(" Advanced");
+        } else {
+            $card_name_displayed = str_replace('-', ' ', $card_name);
+        }
+        $args['card_name_displayed'] = ucfirst($card_name_displayed);
         $args['choice_description'] = $this->getCardChoiceDescription($card);
         if ($card_name == 'peterman2') {
             $player_tile = $this->getPlayerTile($current_player_id);
