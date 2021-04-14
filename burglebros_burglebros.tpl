@@ -30,12 +30,16 @@
     <div id="myhand">
     </div>
 </div>
-
-<div id="crystal_ball_wrapper" class="hidden_animated whiteblock">
-    <h3>{CRYSTAL_BALL_TITLE}</h3>
-    <div id="crystal_ball_cards">
+<div id="temp_display" class="hidden_animated whiteblock">
+    <div id="spotter_card_wrapper" class="hidden">
+        <h3>{SPOTTER_TITLE}</h3>
+        <div id="spotter_card"></div>
     </div>
-    <a id="crystal_ball_button" class="action-button bgabutton bgabutton_blue hidden">{CRYSTAL_BALL_BTN_LABEL}</a>
+    <div id="crystal_ball_wrapper" class="hidden">
+        <h3>{CRYSTAL_BALL_TITLE}</h3>
+        <div id="crystal_ball_cards">
+        </div>
+    </div>
 </div>
 
 <div id="debug">

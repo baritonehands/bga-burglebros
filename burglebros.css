@@ -89,6 +89,8 @@
 }
 .dnd_card {
     cursor: move;
+}
+.dnd_card, #spotter_card #event_card_dialog.card {
     display: inline-flex;
     width: 180px !important;
     height: 180px !important;
@@ -250,6 +252,7 @@
     height: 360px;
     background-size: 720px;
     border-radius: 16px;
+    margin: auto;
 }
 
 .patrol-discard-container {

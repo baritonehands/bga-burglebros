@@ -204,8 +204,19 @@ function (dojo, declare) {
                 break;
             
             case 'cardChoice':
-                if (this.isCurrentPlayerActive() && args.args.spotter_card && (this.isCardChoice('spotter1') || this.isCardChoice('spotter2'))) {
-                    this.spotterChoice(args.args.spotter_card);
+                if (args.args.spotter_card && (this.isCardChoice('spotter1') || this.isCardChoice('spotter2'))) {
+                    var card = args.args.spotter_card;
+                    if (card.type == 3) {
+                        dojo.place( this.eventCardHtml(card), 'spotter_card' );
+                    } else {
+                        var cardType = parseInt(card.type, 10);
+                        var cardIndex = parseInt(card.type_arg, 10) - 1;
+                        var id = ((cardType - 4) * 16) + cardIndex;
+                        dojo.place( this.patrolCardHtml(card, id, true), 'spotter_card' );
+                    }
+                    this.addCardTooltip(card, 'event_card_dialog');
+                    this.displayElement('temp_display');
+                    dojo.removeClass('spotter_card_wrapper', 'hidden');
                 }
                 // Crystal Ball, player can choose to reorder the 3 upcoming events
                 if (args.args.event_cards) {
@@ -256,9 +267,11 @@ function (dojo, declare) {
             switch( stateName )
             {
             case 'cardChoice':
-                this.hideElement('crystal_ball_wrapper');
-                dojo.addClass('crystal_ball_button', 'hidden');
+                this.hideElement('temp_display');
+                dojo.addClass('crystal_ball_wrapper', 'hidden');
+                dojo.addClass('spotter_card_wrapper', 'hidden');
                 dojo.query("#maintitlebar_content .icon_die").forEach( (el) => this.fadeOutAndDestroy(el) );
+                $('spotter_card').innerHTML = '';
                 if ($("dice_choice"))
                     this.fadeOutAndDestroy($("dice_choice"));
                 this.disconnectAll();
@@ -336,6 +349,11 @@ function (dojo, declare) {
                             if (floor > 1) {
                                 this.addActionButton('button_acrobat_down', _('Move Down'), dojo.hitch(this, 'handleCardChoiceButton', floor - 1));
                             }
+                        } else if(this.isCardChoice('crystal-ball')) {
+                            this.addActionButton('crystal_ball_button', _('Confirm event order'), 'handleMultipleIdCardChoiceButton');
+                        } else if(this.isCardChoice('spotter') || this.isCardChoice('spotter2')) {
+                            this.addActionButton('top', _('Keep on top'), dojo.hitch(this, 'handleCardChoiceButton', 1));
+                            this.addActionButton('bottom', _('Put on bottom'), dojo.hitch(this, 'handleCardChoiceButton', 2), null, null, 'gray');
                         }
                         if (this.canCancelCardChoice()) {
                             this.addActionButton('button_cancel', _('Cancel'), 'handleCancelCardChoice');
@@ -1079,45 +1097,6 @@ function (dojo, declare) {
             });
         },
 
-        spotterChoice: function(card) {
-            var dialog = new ebg.popindialog();
-            dialog.create( 'spotterChoiceDialog' );
-            dialog.setTitle( _("Top or Bottom?") );
-            
-            var html = this.format_block('jstpl_spotter_dialog', {});
-            
-            dialog.setContent( html ); // Must be set before calling show() so that the size of the content is defined before positioning the dialog
-
-            if (card.type == 3) {
-                dojo.place( this.eventCardHtml(card), 'spotter_card' );
-            } else {
-                var cardType = parseInt(card.type, 10);
-                var cardIndex = parseInt(card.type_arg, 10) - 1;
-                var id = ((cardType - 4) * 16) + cardIndex;
-
-                dojo.place( this.patrolCardHtml(card, id, true), 'spotter_card' );
-            }
-            
-            dialog.show();
-            
-            // Now that the dialog has been displayed, you can connect your method to some dialog elements
-            // Example, if you have an "OK" button in the HTML of your dialog:
-            var closeCallback = function(evt) {
-                evt.preventDefault();
-                this.handleCardChoiceButton(1, function() {
-                    dialog.destroy();
-                });
-            };
-            dialog.replaceCloseCallback(dojo.hitch(this, closeCallback));
-            dojo.connect( $('spotter_top_button'), 'onclick', this, closeCallback);
-            dojo.connect( $('spotter_bottom_button'), 'onclick', this, function(evt) {
-                evt.preventDefault();
-                this.handleCardChoiceButton(2, function() {
-                    dialog.destroy();
-                });
-            });
-        },
-
         drawToolsAndDiscard: function(cards) {
             var dialog = new ebg.popindialog();
             dialog.create( 'drawToolsAndDiscardDialog' );
@@ -1185,16 +1164,15 @@ function (dojo, declare) {
                 this.addCardTooltip(card, 'event_card_dialog' + card.id);
             }
             if (this.isCurrentPlayerActive()) {
-                dojo.removeClass('crystal_ball_button', 'hidden');
                 this.connectClass('dnd_card', 'dragstart', 'handleDragStart');
                 this.connectClass('dnd_card', 'dragend', 'handleDragEnd');
                 this.connectClass('dnd_card', 'drop', 'handleDrop');
                 this.connectClass('dnd_card', 'dragover', 'handleDragOver');
                 this.connectClass('dnd_card', 'dragenter', 'handleDragEnter');
                 this.connectClass('dnd_card', 'dragleave', 'handleDragLeave');
-                this.connect($('crystal_ball_button'), 'onclick', 'handleMultipleIdCardChoiceButton');
             }
-            this.displayElement('crystal_ball_wrapper');
+            this.displayElement('temp_display');
+            dojo.removeClass('crystal_ball_wrapper', 'hidden');
         },
         handleDragStart(e) {
             e.target.style.opacity = '0.4';
