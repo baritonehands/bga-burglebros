@@ -164,7 +164,7 @@ function (dojo, declare) {
 
             for (var card_id in gamedatas.card_tokens) {
                 var token = gamedatas.card_tokens[card_id];
-                this.createCardToken(card_id, token.type, token.count);
+                this.createCardToken(card_id, token.type, token.count, '', false);
             }
 
             this.showFloor(this.currentFloor());
@@ -610,7 +610,7 @@ function (dojo, declare) {
             dojo.destroy('generic_token_' + id);
         },
 
-        createCardToken: function(id, type, count, extra_classes='', draggable=false) {
+        createCardToken: function(id, type, count, extra_classes, draggable) {
             var card_type = this.gamedatas.card_types[type];
             dojo.place(this.format_block('jstpl_card_token', {
                 tile_id : id,
@@ -1588,7 +1588,7 @@ function (dojo, declare) {
             var token = notif.args.tokens[tile_id];
             this.destroyCardToken(tile_id);
             if (token) {
-                this.createCardToken(tile_id, token.type, token.count);
+                this.createCardToken(tile_id, token.type, token.count, '', false);
             }
         },
 
