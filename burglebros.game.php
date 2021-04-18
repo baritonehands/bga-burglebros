@@ -3420,7 +3420,12 @@ SQL;
         } else if ($draw_tools_player_id != 0 && !$draw_two) {
             self::setGameStateValue('drawToolsPlayer', 0);
             $this->reshuffleDeckIfEmpty('tools');
-            $this->cards->pickCard('tools_deck', $current_player_id);
+            $card = $this->cards->pickCard('tools_deck', $current_player_id);
+            $card_name = $this->getCardType($card);
+            self::notifyAllPlayers('message', clienttranslate('${player_name} draws ${card_name}'), [
+                'player_name' => self::getActivePlayerName(),
+                'card_name' => $this->getDisplayedCardName($card_name),
+            ]);
             $this->notifyPlayerHand($current_player_id);
             $this->gamestate->nextState($next_state);
         } else {
