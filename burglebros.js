@@ -1385,6 +1385,7 @@ function (dojo, declare) {
 
         handleCancelCardChoice: function() {
             if (this.checkAction('cancelCardChoice')) {
+                this.myHand.unselectAll();
                 this.ajaxcall('/burglebros/burglebros/cancelCardChoice.html', { lock: true }, this, console.log, console.error);
             }
         },
