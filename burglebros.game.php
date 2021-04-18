@@ -445,7 +445,17 @@ class burglebros extends Table
         $info = $this->card_info[$card['type']];
         return $info[$card['type_arg'] - 1]['name'];
     }
-
+    function getDisplayedCardName($card_name) {
+        // Remove last character if 1, replace last char if 2 by Advanced and replace '-'' by space
+        if (substr($card_name, -1) == '1') {
+            $card_name_displayed = substr($card_name, 0, -1);
+        } elseif (substr($card_name, -1) == '2') {
+            $card_name_displayed = substr($card_name, 0, -1).clienttranslate(" Advanced");
+        } else {
+            $card_name_displayed = str_replace('-', ' ', $card_name);
+        }
+        return ucfirst($card_name_displayed);
+    }
     function getCardChoiceDescription($card) {
         $info = $this->card_info[$card['type']];
         return $info[$card['type_arg'] - 1]['choice_description'];
@@ -1199,7 +1209,7 @@ SQL;
         $stethoscope = $this->getPlayerTool('stethoscope', $current_player_id);
         $bust = $this->getPlayerLoot('bust', $current_player_id);
         if ($stethoscope && !$bust) {
-            // Store die values to get them back on next state zz
+            // Store die values to get them back on next state
             $sql_values = [];
             foreach ($rolls as $value => $nbr) {
                 for ($i=1; $i <= $nbr; $i++) { 
@@ -1219,6 +1229,7 @@ SQL;
     }
 
     function applyDieRoll($rolls=null, $safe_tile=null, $drop_loot=null) {
+        $current_player_id = self::getCurrentPlayerId();
         if ($rolls === null) {
             $tokens = $this->tokens->getCardsInLocation('stethoscope');
             $rolls = array();
@@ -1231,7 +1242,6 @@ SQL;
             self::DbQuery("DELETE FROM token WHERE card_location='stethoscope'");
         }
         if ($safe_tile === null) {
-            $current_player_id = self::getCurrentPlayerId();
             $player_token = $this->getPlayerToken($current_player_id);
             $safe_tile = $this->getPlayerTile($current_player_id, $player_token);
         }
@@ -2222,9 +2232,16 @@ SQL;
             $nbr = $existing <= 3 ? 3 : 6 - $existing;
             $this->pickTokensForTile('hack', $tile['id'], $nbr);
         } elseif ($type == 'crystal-ball') {
+            $card_names_displayed = [];
             foreach ($selected_id as $card_id) {
                 $this->cards->insertCardOnExtremePosition($card_id, 'events_deck', true);
+                $card = $this->cards->getCard($card_id);
+                $card_names_displayed[] = $this->getDisplayedCardName($this->getCardType($card));
             }
+            self::notifyAllPlayers('message', clienttranslate('Crystal Ball: ${player_name} changed order of upcoming events to ${card_names_displayed}'), [
+                'player_name' => self::getCurrentPlayerName(),
+                'card_names_displayed' => implode(', ', $card_names_displayed),
+            ]);
         } elseif ($type == 'stethoscope') {
             [$old_value, $new_value] = $selected_id;
             self::DbQuery("UPDATE token SET card_type_arg=$new_value WHERE card_type='die' AND card_type_arg=$old_value LIMIT 1");
@@ -2801,7 +2818,7 @@ SQL;
             $type = $this->getCardType($card);
             self::notifyAllPlayers('message', clienttranslate('${player_name} played the ${card_type} card'), [
                 'player_name' => self::getCurrentPlayerName(),
-                'card_type' => $type
+                'card_type' => $this->getDisplayedCardName($type)
             ]);
             
             $this->gamestate->nextState('endAction');
@@ -2838,9 +2855,12 @@ SQL;
                 }
             } else {
                 $card_type = $this->getCardType($card);
+                $this->cards->moveCard($card['id'], 'tools_discard');
+                $current_player_id = self::getCurrentPlayerId();
+                $this->notifyPlayerHand($current_player_id, array($card['id']));
                 self::notifyAllPlayers('message', clienttranslate('${player_name} played the ${card_type} card'), [
                     'player_name' => self::getCurrentPlayerName(),
-                    'card_type' => $card_type
+                    'card_type' => $this->getDisplayedCardName($card_type)
                 ]);
                 $this->endAction(0);
             }
@@ -3273,15 +3293,7 @@ SQL;
         $card_name = $this->getCardType($card);
         $args['card'] = $card;
         $args['card_name'] = $card_name;
-        // Remove last character if 1, replace last char if 2 by Advanced and replace '-'' by space
-        if (substr($card_name, -1) == '1') {
-            $card_name_displayed = substr($card_name, 0, -1);
-        } elseif (substr($card_name, -1) == '2') {
-            $card_name_displayed = substr($card_name, 0, -1).clienttranslate(" Advanced");
-        } else {
-            $card_name_displayed = str_replace('-', ' ', $card_name);
-        }
-        $args['card_name_displayed'] = ucfirst($card_name_displayed);
+        $args['card_name_displayed'] = $this->getDisplayedCardName($card_name);
         $args['choice_description'] = $this->getCardChoiceDescription($card);
         if ($card_name == 'peterman2') {
             $player_tile = $this->getPlayerTile($current_player_id);

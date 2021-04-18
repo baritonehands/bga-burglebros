@@ -87,15 +87,26 @@
     margin: 0px !important;     /* reset whiteblock margin and padding */
     transition: all 0.8s;
 }
-.dnd_card {
-    cursor: move;
+.crystal_ball_card {
+    cursor: pointer;
 }
-.dnd_card, #spotter_card #event_card_dialog.card {
+.crystal_ball_card.selected {
+    border: 1px solid red;
+}
+.crystal_ball_card, #spotter_card #event_card_dialog.card {
     display: inline-flex;
     width: 180px !important;
     height: 180px !important;
     background-size: 360px !important;
     margin: 10px;
+}
+.vertical_arrow {
+    cursor: pointer;
+    display: inline-flex;
+    bottom: 95px;
+    position: relative;
+    font-size: 1.5rem;
+    color: #606060;
 }
 
 #myhand_wrap, #board_wrap, .player_hand {

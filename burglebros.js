@@ -164,7 +164,7 @@ function (dojo, declare) {
 
             for (var card_id in gamedatas.card_tokens) {
                 var token = gamedatas.card_tokens[card_id];
-                this.createCardToken(card_id, token.type, token.count, '', false);
+                this.createCardToken(card_id, token.type, token.count, '');
             }
 
             this.showFloor(this.currentFloor());
@@ -270,6 +270,7 @@ function (dojo, declare) {
                 this.hideElement('temp_display');
                 dojo.addClass('crystal_ball_wrapper', 'hidden');
                 dojo.addClass('spotter_card_wrapper', 'hidden');
+                $('crystal_ball_cards').innerHTML = '';
                 dojo.query("#maintitlebar_content .icon_die").forEach( (el) => this.fadeOutAndDestroy(el) );
                 $('spotter_card').innerHTML = '';
                 if ($("dice_choice"))
@@ -610,14 +611,13 @@ function (dojo, declare) {
             dojo.destroy('generic_token_' + id);
         },
 
-        createCardToken: function(id, type, count, extra_classes, draggable) {
+        createCardToken: function(id, type, count, extra_classes) {
             var card_type = this.gamedatas.card_types[type];
             dojo.place(this.format_block('jstpl_card_token', {
                 tile_id : id,
                 card_type : card_type.name,
                 card_count : count || 1,
                 token_background : g_gamethemeurl + '/img/tokens.jpg',
-                draggable: draggable,
                 extra_classes: extra_classes
             }), 'tile_' + id + '_cards');
         },
@@ -1054,16 +1054,16 @@ function (dojo, declare) {
             });
         },
 
-        eventCardHtml: function(card, card_id='', extra_classes='', draggable=false) {
+        eventCardHtml: function(card, card_id='', extra_classes='') {
             var bg_row = Math.floor(card.type_arg / 2) * -100;
             var bg_col = (card.type_arg % 2) * -100;
             return this.format_block('jstpl_event_card', {
                 bg_image: g_gamethemeurl + 'img/events.jpg',
                 bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%',
                 card_id: card_id,
-                draggable: draggable,
                 extra_classes: extra_classes,
             });
+
         },
 
         patrolCardHtml: function(card, bg_id, discards) {
@@ -1147,7 +1147,7 @@ function (dojo, declare) {
                     die_id : 'alternative_die_' + i,
                     die_value : i,
                 }), 'dice_choice');
-                this.connect($('alternative_die_' + i), 'onclick', 'handleMultipleIdCardChoiceButton'); // zzz
+                this.connect($('alternative_die_' + i), 'onclick', 'handleMultipleIdCardChoiceButton');
             }
         },
         selectDie: function(e) {
@@ -1160,58 +1160,37 @@ function (dojo, declare) {
             this.elementDragged = null;
             for (var i in event_cards) {
                 var card = event_cards[i];
-                dojo.place( this.eventCardHtml(card, card.id, 'dnd_card', true), 'crystal_ball_cards' );
+                dojo.place( this.eventCardHtml(card, '_' + card.id, 'crystal_ball_card', true), 'crystal_ball_cards' );
                 this.addCardTooltip(card, 'event_card_dialog' + card.id);
             }
             if (this.isCurrentPlayerActive()) {
-                this.connectClass('dnd_card', 'dragstart', 'handleDragStart');
-                this.connectClass('dnd_card', 'dragend', 'handleDragEnd');
-                this.connectClass('dnd_card', 'drop', 'handleDrop');
-                this.connectClass('dnd_card', 'dragover', 'handleDragOver');
-                this.connectClass('dnd_card', 'dragenter', 'handleDragEnter');
-                this.connectClass('dnd_card', 'dragleave', 'handleDragLeave');
+                this.connectClass('crystal_ball_card', 'onclick', 'toggleCardSelection');
             }
             this.displayElement('temp_display');
             dojo.removeClass('crystal_ball_wrapper', 'hidden');
         },
-        handleDragStart(e) {
-            e.target.style.opacity = '0.4';
-            this.elem_dragged = e.target;
-            e.dataTransfer.effectAllowed = 'move';
-        },
-        handleDragEnd(e) {
-            // console.log('handleDragEnd');
-            e.preventDefault();
-            e.target.style.opacity = '1';
-        },
-        handleDrop(e) {
-            // console.log('handleDrop');
-            e.stopPropagation();
-            if (e.target !== this.elem_dragged) {
-                var id_dropped = e.target.id.split('_').pop();
-                var index_dragged = Array.from(this.elem_dragged.parentNode.children).indexOf(this.elem_dragged);
-                var index_dropped = Array.from(e.target.parentNode.children).indexOf(e.target);
-                if (index_dropped < index_dragged) {
-                    e.target.parentNode.insertBefore(this.elem_dragged, e.target);
-                } else {
-                    e.target.parentNode.insertBefore(this.elem_dragged, e.target.nextSibling);
-                }
+        toggleCardSelection (e) {
+            var is_toggle = dojo.hasClass(e.target, 'selected');
+            dojo.query('#crystal_ball_cards .selected').removeClass('selected');
+            dojo.query('#crystal_ball_cards .vertical_arrow').forEach( (node) => dojo.destroy(node) );
+            if ( !is_toggle ) {
+                dojo.addClass(e.target, 'selected');
+                var index = Array.from(e.target.parentNode.children).indexOf(e.target);
+                if (index < 2 )
+                    dojo.place( '<div id="move_after" class="vertical_arrow">&#x25B6;</div>', e.target, 'after' );
+                if (index > 0)
+                    dojo.place( '<div id="move_before" class="vertical_arrow">&#x25C0;</div>', e.target, 'before' );
+                this.connectClass('vertical_arrow', 'onclick', 'moveEventCard');
             }
-            return false;
         },
-        handleDragEnter(e) {
-            // console.log('handleDragEnter');
-            e.preventDefault();
+        moveEventCard(e) {
+            var container = e.target.parentNode;
+            var previous_card = e.target.previousElementSibling;
+            var next_card = e.target.nextElementSibling;
+            container.insertBefore(next_card, previous_card);
+            dojo.query('#crystal_ball_cards .vertical_arrow').forEach( (node) => dojo.destroy(node) );
+            dojo.query('#crystal_ball_cards .selected').removeClass('selected');
         },
-        handleDragOver(e) {
-            // console.log('handleDragOver');
-            e.preventDefault();
-        },
-        handleDragLeave(e) {
-            // console.log('handleDragLeave');
-            e.preventDefault();
-        },
-
         displayElement: function(id) {
             $(id).style.maxHeight = '1500px';
             $(id).style.opacity = 1;
@@ -1375,7 +1354,7 @@ function (dojo, declare) {
             }
         },
 
-        handleCardSelected: function(control_name, card_id) {	
+        handleCardSelected: function(control_name, card_id) {
             if (this.myHand.isSelected(card_id) && this.checkAction('playCard')) {
                 this.ajaxcall('/burglebros/burglebros/playCard.html', { lock: true, id: card_id }, this, console.log, console.error);
             } else if (!this.myHand.isSelected(card_id)) {
@@ -1393,7 +1372,7 @@ function (dojo, declare) {
         handleMultipleIdCardChoiceButton: function(e) {
             var ids = [];
             if (this.isCardChoice('crystal-ball')) {
-                dojo.forEach( $('crystal_ball_cards').children, (node) => ids.push(node.id.split("_").pop()) );                
+                dojo.query('#crystal_ball_cards .crystal_ball_card').forEach( (node) => ids.push(node.id.split("_").pop()) );
             } else if (this.isCardChoice('stethoscope')) {
                 // Push old value first then new value
                 ids.push( dojo.query('.icon_die.selected')[0].id.split('_').pop() );
@@ -1589,7 +1568,7 @@ function (dojo, declare) {
             var token = notif.args.tokens[tile_id];
             this.destroyCardToken(tile_id);
             if (token) {
-                this.createCardToken(tile_id, token.type, token.count, '', false);
+                this.createCardToken(tile_id, token.type, token.count, '');
             }
         },
 
