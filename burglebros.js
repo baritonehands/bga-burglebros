@@ -370,7 +370,8 @@ function (dojo, declare) {
                         }
                         break;
                     case 'playerChoice':
-                        this.addActionButton('button_cancel', _('Cancel'), 'handleCancelPlayerChoice');
+                        if (args.context !== "squeak")  // cannot cancel Squeak event
+                            this.addActionButton('button_cancel', _('Cancel'), 'handleCancelPlayerChoice');
                         break;
                     case 'proposeTrade':
                     case 'confirmTrade':

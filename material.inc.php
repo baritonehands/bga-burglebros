@@ -203,7 +203,7 @@ $this->token_types = array(
   array('name' => 'crowbar', 'color' => '#74B189')
 );
 
-$this->player_choices = array('none', 'trade', 'rook1', 'rook2');
+$this->player_choices = array('none', 'trade', 'rook1', 'rook2', 'squeak');
 
 $this->special_choices = array('none', 'rook1');
 
