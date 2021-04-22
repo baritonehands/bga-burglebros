@@ -393,10 +393,11 @@ class burglebros extends Table
 
     function getPeekableTiles($player_tile, $variant='peek') {
         $peekable = array();
+        $walls = $this->getWalls();
         for ($floor=1; $floor <= 3; $floor++) { 
             $tiles = $this->getTiles($floor);
             foreach ($tiles as $tile) {
-                if($tile['id'] != $player_tile['id'] && $tile['type'] == 'back' && $this->isTileAdjacent($tile, $player_tile, null, $variant)) {
+                if($tile['id'] != $player_tile['id'] && $tile['type'] == 'back' && $this->isTileAdjacent($tile, $player_tile, $walls, $variant)) {
                     $peekable [] = $tile;
                 }
             }
