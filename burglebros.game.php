@@ -138,12 +138,20 @@ class burglebros extends Table
         
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
-        //self::initStat( 'table', 'table_teststat1', 0 );    // Init a table statistics
-        //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
+        self::initStat( "table", "turns_number", 0 );
+        self::initStat( "table", "tiles_unflipped", 0 );
+        self::initStat( "table", "event_cards", 0 );
+        self::initStat( "table", "alarm_triggered", 0 );
+
+        self::initStat( "player", "turns_number", 0 );
+        self::initStat( "player", "tools_drawn", 0 );
+        self::initStat( "player", "tools_used", 0 );
+        self::initStat( "player", "stealth_remaining", 0 );
+        self::initStat( "player", "trade_confirmed", 0 );
+        self::initStat( "player", "special_ability_use", 0 );
 
         $this->createDecks($this->card_types, $this->card_info);
         $this->createDecks($this->patrol_types, $this->patrol_info);
-
         
         $index = 1;
         $values = array();
@@ -1725,6 +1733,7 @@ SQL;
         $this->moveToken($patrol_token['id'], 'tile', $tile['id']);
         $this->pickTokensForTile('alarm', $tile['id']);
         self::notifyAllPlayers('message', clienttranslate( 'An alarm was triggered' ), array());
+        self::incStat(1, 'alarm_triggered');
     }
 
     function handleToolEffectDebug($name) {
@@ -2084,6 +2093,12 @@ SQL;
     function handleSelectCardChoice($card, $selected_type, $selected_ids) {
         $selected_id = count($selected_ids) == 1 ? $selected_ids[0] : $selected_ids;
         $type = $this->getCardType($card);
+        $current_player_id = self::getCurrentPlayerId();
+        if ($card['type'] == 0) {
+            self::incStat(1, 'special_ability_use', $current_player_id);
+        } elseif ($card['type'] == 1) {
+            self::incStat(1, 'tools_used', $current_player_id);
+        }
         $tile_choice = FALSE;
         $discard = TRUE;
         if($type == 'acrobat1') {
@@ -3112,6 +3127,8 @@ SQL;
             'player_name' => $players[$trade['other_player']]['player_name'],
             'current_name' => $players[$trade['current_player']]['player_name'],
         ]);
+        self::incStat(1, 'trade_confirmed', $players[$trade['other_player']]['player_id']);
+        self::incStat(1, 'trade_confirmed', $players[$trade['current_player']]['player_id']);
         $this->gamestate->nextState('endTradeOtherPlayer');
     }
 
@@ -3236,6 +3253,7 @@ SQL;
         if ($actions_remaining >= $trigger_action_count) {
             $count = $this->cards->countCardInLocation('events_discard');
             $event_card = $this->cards->pickCardForLocation('events_deck', 'events_discard', $count + 1);
+            self::incStat(1, 'event_cards');
             if ($event_card) {
                 $type = $this->getCardType($event_card);
                 self::notifyAllPlayers('eventCard', self::_("Event Card: $type"), array(
@@ -3464,6 +3482,7 @@ SQL;
             $this->reshuffleDeckIfEmpty('tools');
             $card = $this->cards->pickCard('tools_deck', $current_player_id);
             $card_name = $this->getCardType($card);
+            self::incStat( 1, 'tools_drawn', $current_player_id );
             self::notifyAllPlayers('message', clienttranslate('${player_name} draws ${card_name}'), [
                 'player_name' => self::getActivePlayerName(),
                 'card_name' => $this->getDisplayedCardName($card_name),
@@ -3633,6 +3652,9 @@ SQL;
             'floor' => $player_tile['location'][5]
         ]);
 
+        self::incStat( 1, 'turns_number' );
+        self::incStat( 1, 'turns_number', $player_id );
+
         $this->gamestate->nextState( 'playerTurn' );
     }
 
@@ -3653,6 +3675,17 @@ SQL;
         $this->gamestate->changeActivePlayer( self::getGameStateValue('drawToolsNextPlayer') );
         self::setGameStateValue('drawToolsNextPlayer', 0);
         $this->gamestate->nextState( 'nextAction' );
+    }
+
+    function stGameOver() {
+        $tiles_unflipped = self::getCollectionFromDB("SELECT card_id FROM tile WHERE flipped=0");
+        self::setStat( count($tiles_unflipped), 'tiles_unflipped' );
+        $sql = "SELECT player_id id, player_score score, player_stealth_tokens stealth_tokens FROM player ";
+        $players = self::getCollectionFromDb( $sql );
+        foreach ($players as $player_id => $player) {
+            self::setStat( $player['stealth_tokens'], 'stealth_remaining', $player_id );
+        }
+        $this->gamestate->nextState( 'endGame' );   
     }
 
 //////////////////////////////////////////////////////////////////////////////

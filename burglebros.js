@@ -841,6 +841,8 @@ function (dojo, declare) {
 
         addCardTooltip: function(card, divId) {
             var typeInfo = this.gamedatas.card_types[card.type];
+            if (typeInfo === undefined)    // patrol card
+                return false;
             var index = card.type == 0 ? card.type_arg - 1 : card.type_arg;
             var bg_row = Math.floor(index / 2) * -100;
             var bg_col = (index % 2) * -100;

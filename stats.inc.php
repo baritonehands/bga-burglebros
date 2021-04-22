@@ -51,45 +51,40 @@ $stats_type = array(
 
     // Statistics global to table
     "table" => array(
-
         "turns_number" => array("id"=> 10,
                     "name" => totranslate("Number of turns"),
                     "type" => "int" ),
-
-/*
-        Examples:
-
-
-        "table_teststat1" => array(   "id"=> 10,
-                                "name" => totranslate("table test stat 1"), 
-                                "type" => "int" ),
-                                
-        "table_teststat2" => array(   "id"=> 11,
-                                "name" => totranslate("table test stat 2"), 
-                                "type" => "float" )
-*/  
+        "tiles_unflipped" => array("id"=> 11,
+                    "name" => totranslate("Tiles unflipped"),
+                    "type" => "int" ),
+        "event_cards" => array("id"=> 12,
+                    "name" => totranslate("Event cards drawn"),
+                    "type" => "int" ),
+        "alarm_triggered" => array("id"=> 13,
+                    "name" => totranslate("Alarms triggered"),
+                    "type" => "int" ),
     ),
     
     // Statistics existing for each player
     "player" => array(
-
         "turns_number" => array("id"=> 10,
                     "name" => totranslate("Number of turns"),
                     "type" => "int" ),
-    
-/*
-        Examples:    
-        
-        
-        "player_teststat1" => array(   "id"=> 10,
-                                "name" => totranslate("player test stat 1"), 
-                                "type" => "int" ),
-                                
-        "player_teststat2" => array(   "id"=> 11,
-                                "name" => totranslate("player test stat 2"), 
-                                "type" => "float" )
 
-*/    
+        "tools_drawn" => array("id"=> 14,
+                    "name" => totranslate("Tools drawn"),
+                    "type" => "int" ),    
+        "tools_used" => array("id"=> 15,
+                    "name" => totranslate("Tools used"),
+                    "type" => "int" ),
+        "stealth_remaining" => array("id"=> 16,
+                    "name" => totranslate("Stealth remaining"),
+                    "type" => "int" ),
+        "trade_confirmed" => array("id"=> 17,
+                    "name" => totranslate("Trade confirmed"),
+                    "type" => "int" ),
+        "special_ability_use" => array("id"=> 18,
+                    "name" => totranslate("Use of special ability"),
+                    "type" => "int" ),
     )
-
 );
