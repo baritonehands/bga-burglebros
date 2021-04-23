@@ -93,12 +93,17 @@
 .crystal_ball_card.selected {
     border: 1px solid red;
 }
-.crystal_ball_card, #spotter_card #event_card_dialog.card {
+.crystal_ball_card, #spotter_card #event_card_dialog.card, #spotter_card #patrol_tooltip_l.card {
     display: inline-flex;
     width: 180px !important;
     height: 180px !important;
-    background-size: 360px !important;
     margin: 10px;
+}
+.crystal_ball_card, #spotter_card #event_card_dialog.card {
+    background-size: 360px !important;
+}
+#spotter_card #patrol_tooltip_l.card {
+    background-size: 720px !important;
 }
 .vertical_arrow {
     cursor: pointer;

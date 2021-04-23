@@ -212,7 +212,7 @@ function (dojo, declare) {
                         var cardType = parseInt(card.type, 10);
                         var cardIndex = parseInt(card.type_arg, 10) - 1;
                         var id = ((cardType - 4) * 16) + cardIndex;
-                        dojo.place( this.patrolCardHtml(card, id, true), 'spotter_card' );
+                        dojo.place( this.patrolCardHtml(card, id, false), 'spotter_card' );
                     }
                     this.addCardTooltip(card, 'event_card_dialog');
                     this.displayElement('temp_display');
@@ -352,7 +352,7 @@ function (dojo, declare) {
                             }
                         } else if(this.isCardChoice('crystal-ball')) {
                             this.addActionButton('crystal_ball_button', _('Confirm event order'), 'handleMultipleIdCardChoiceButton');
-                        } else if(this.isCardChoice('spotter') || this.isCardChoice('spotter2')) {
+                        } else if(this.isCardChoice('spotter1') || this.isCardChoice('spotter2')) {
                             this.addActionButton('top', _('Keep on top'), dojo.hitch(this, 'handleCardChoiceButton', 1));
                             this.addActionButton('bottom', _('Put on bottom'), dojo.hitch(this, 'handleCardChoiceButton', 2), null, null, 'gray');
                         }
@@ -703,8 +703,9 @@ function (dojo, declare) {
 
         canCancelCardChoice: function() {
             var type = this.gamedatas.gamestate.args.card['type'];
-            if (this.gamedatas.gamestate.args.card['type_arg'] == 3) // crystal-ball
-                return false;
+            var type_arg = this.gamedatas.gamestate.args.card['type_arg'];
+            if (type_arg == 3 || type_arg == 17 || type_arg == 18) // crystal-ball or spotter1 or spotter2
+                return false;   // cannot cancel when player has seen some top cards of the deck
             return type == 1 || type == 0; // Tools and Characters
         },
 
