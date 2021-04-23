@@ -199,8 +199,9 @@ $this->token_types = array(
   array('name' => 'stairs', 'color' => '#86939D'),
   array('name' => 'stealth', 'color' => '#568F9F'),
   array('name' => 'thermal', 'color' => '#74B189'),
+  array('name' => 'alarm', 'color' => '#DDA860'),
+  array('name' => 'crowbar', 'color' => '#74B189'),
   array('name' => 'keypad', 'color' => '#DDA860'),
-  array('name' => 'crowbar', 'color' => '#74B189')
 );
 
 $this->player_choices = array('none', 'trade', 'rook1', 'rook2', 'squeak');
