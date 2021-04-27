@@ -50,9 +50,9 @@ function (dojo, declare) {
         
         setup: function( gamedatas )
         {
-            console.log( "Starting game setup" );
+            console.log( "Starting game setup", gamedatas );
             
-            // TODO: Set up your game interface here, according to "gamedatas"
+            // Set up your game interface here, according to "gamedatas"
             window.gamedatas = gamedatas;
             window.app = this;
 

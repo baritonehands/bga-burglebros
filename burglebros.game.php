@@ -150,7 +150,8 @@ class burglebros extends Table
         self::initStat( "player", "trade_confirmed", 0 );
         self::initStat( "player", "special_ability_use", 0 );
 
-        $this->createDecks($this->card_types, $this->card_info);
+        $option_characters_advanced = $options[100] == 2;
+        $this->createDecks($this->card_types, $this->card_info, $option_characters_advanced);
         $this->createDecks($this->patrol_types, $this->patrol_info);
         
         $index = 1;
@@ -198,22 +199,6 @@ class burglebros extends Table
             $this->moveCardsOutOfPlay('events', 'dead-drop');
             $this->moveCardsOutOfPlay('events', 'jump-the-gun');
         }
-        // TODO: Add back cards once implemented/fixed
-        // $this->moveCardsOutOfPlay('tools', 'crystal-ball');
-        // $this->moveCardsOutOfPlay('tools', 'stethoscope');
-        // $this->moveCardsOutOfPlay('events', 'squeak');
-        // $this->moveCardsOutOfPlay('events', 'jury-rig');
-        if ($options[100] == 1) {
-            $this->moveCardsOutOfPlay('characters', 'acrobat2');
-            $this->moveCardsOutOfPlay('characters', 'hacker2');
-            $this->moveCardsOutOfPlay('characters', 'hawk2');
-            $this->moveCardsOutOfPlay('characters', 'juicer2');
-            $this->moveCardsOutOfPlay('characters', 'peterman2');
-            $this->moveCardsOutOfPlay('characters', 'raven2');
-            $this->moveCardsOutOfPlay('characters', 'rigger2');
-            $this->moveCardsOutOfPlay('characters', 'rook2');
-            $this->moveCardsOutOfPlay('characters', 'spotter2'); 
-        }
 
         foreach ($players as $player_id => $player) {
             $player_token = array('type' => 'player', 'type_arg' => $player_id, 'nbr' => 1);
@@ -222,8 +207,13 @@ class burglebros extends Table
             $type = $this->getCardType($character);
             $name = substr($type, 0, -1);
             $nbr = substr($type, -1);
-            $this->moveCardsOutOfPlay('characters', $name.($nbr == 1 ? 2 : 1));
-            if ($this->getCardType($character) == 'rigger1') {
+            // $this->moveCardsOutOfPlay('characters', $name.($nbr == 1 ? 2 : 1));
+            if ($option_characters_advanced) {
+                // Move advanced card to player hand so they can choose on the next state
+                $type_arg = $character['type_arg'] % 2 == 0 ? $character['type_arg'] - 1: $character['type_arg'] + 1;
+                $advanced_character_id = key($this->cards->getCardsOfType(0, $type_arg));
+                $this->cards->moveCard($advanced_character_id, 'hand', $player_id);
+            } elseif ($this->getCardType($character) == 'rigger1') {
                 $type_arg = $this->getCardTypeForName(1, 'dynamite');
                 $dynamite = array_values($this->cards->getCardsOfType(1, $type_arg))[0];
                 $this->cards->moveCard($dynamite['id'], 'hand', $player_id);
@@ -364,11 +354,13 @@ class burglebros extends Table
         $this->gamestate->nextState();
     }
 
-    function createDecks($types, $info) {
+    function createDecks($types, $info, $characters_advanced = true) {
         // Create cards
         foreach ( $types as $type => $desc ) {
             $cards = array ();
             foreach ( $info[$type] as $index => $value ) {
+                if (!$characters_advanced && substr($value['name'], -1) == '2')
+                    continue;
                 $nbr = isset($value['nbr']) ? $value['nbr'] : 1;
                 $cards [] = array('type' => $type, 'type_arg' => $index + 1, 'nbr' => $nbr);
             }
@@ -2092,11 +2084,11 @@ SQL;
 
     function handleSelectCardChoice($card, $selected_type, $selected_ids) {
         $selected_id = count($selected_ids) == 1 ? $selected_ids[0] : $selected_ids;
-        $type = $this->getCardType($card);
+        $type = $card ? $this->getCardType($card) : null;
         $current_player_id = self::getCurrentPlayerId();
-        if ($card['type'] == 0) {
+        if ($card && $card['type'] == 0) {
             self::incStat(1, 'special_ability_use', $current_player_id);
-        } elseif ($card['type'] == 1) {
+        } elseif ($card && $card['type'] == 1) {
             self::incStat(1, 'tools_used', $current_player_id);
         }
         $tile_choice = FALSE;
@@ -2858,35 +2850,48 @@ SQL;
             throw new BgaUserException(self::_("Card is not in your hand"));
         }
 
-        if ($card['type'] != 1) {
-            throw new BgaUserException(self::_("Card is not a tool"));
-        }
-
-        $bust = $this->getPlayerLoot('bust', $current_player_id);
-        if ($bust) {
-            throw new BgaUserException(self::_("You may not use tools while holding the Bust"));
-        }
-
-        $choice = $this->handleToolEffect($current_player_id, $card);
-        if ($choice) {
-            self::setGameStateValue('cardChoice', $card['id']);
-            $this->gamestate->nextState('cardChoice');
+        if ($card['type'] == 0) {
+            // Advanced characters, player chose a side zzz
+            // var_dump($card_id);
+            $character = $this->cards->getCard($card_id);
+            $type_arg = $character['type_arg'] % 2 == 0 ? $character['type_arg'] - 1: $character['type_arg'] + 1;
+            $other_side_id = key($this->cards->getCardsOfType(0, $type_arg));
+            $this->cards->moveCard($other_side_id, 'characters_deck');
+            $this->notifyPlayerHand($current_player_id, array($other_side_id));
+            $this->gamestate->setPlayerNonMultiactive($current_player_id, 'chooseCharacter');
         } else {
-            $this->cards->moveCard($card['id'], 'tools_discard');
-            $this->notifyPlayerHand($current_player_id, array($card['id']));
-            $type = $this->getCardType($card);
-            self::notifyAllPlayers('message', clienttranslate('${player_name} played the ${card_type} card'), [
-                'player_name' => self::getCurrentPlayerName(),
-                'card_type' => $this->getDisplayedCardName($type)
-            ]);
-            
-            $this->gamestate->nextState('endAction');
+            // Player wants to use a tool
+            if ($card['type'] != 1) {
+                throw new BgaUserException(self::_("Card is not a tool"));
+            }
+
+            $bust = $this->getPlayerLoot('bust', $current_player_id);
+            if ($bust) {
+                throw new BgaUserException(self::_("You may not use tools while holding the Bust"));
+            }
+
+            $choice = $this->handleToolEffect($current_player_id, $card);
+            if ($choice) {
+                self::setGameStateValue('cardChoice', $card['id']);
+                $this->gamestate->nextState('cardChoice');
+            } else {
+                $this->cards->moveCard($card['id'], 'tools_discard');
+                $this->notifyPlayerHand($current_player_id, array($card['id']));
+                $type = $this->getCardType($card);
+                self::notifyAllPlayers('message', clienttranslate('${player_name} played the ${card_type} card'), [
+                    'player_name' => self::getCurrentPlayerName(),
+                    'card_type' => $this->getDisplayedCardName($type)
+                ]);
+                
+                $this->gamestate->nextState('endAction');
+            }
         }
     }
 
     function selectCardChoice($type, $id) {
         self::checkAction('selectCardChoice');
-        $card = $this->cards->getCard(self::getGameStateValue('cardChoice'));
+        $card_choice = self::getGameStateValue('cardChoice');
+        $card = $card_choice > 0 ? $this->cards->getCard($card_choice) : null;
         $tile_choice = $this->handleSelectCardChoice($card, $type, $id);
         if (self::getGameStateValue('stealthDepleted')) {
             $this->gamestate->nextState('gameOver');
@@ -3324,22 +3329,15 @@ SQL;
         game state.
     */
 
-    /*
-    
-    Example for game state "MyGameState":
-    
-    function argMyGameState()
-    {
-        // Get some values from the current game situation in database...
-    
-        // return values:
+    function argChooseCharacter() {
+        // Return both side of each characters for each player
+        $cards = $this->cards->getCardsOfTypeInLocation(0, null, 'hand');
         return array(
-            'variable1' => $value1,
-            'variable2' => $value2,
-            ...
+            'cards' => $cards,
+            'floor' => 1
         );
-    }    
-    */
+    }
+
     function argStartingTile() {
         return array(
             'floor' => 1
@@ -3470,6 +3468,14 @@ SQL;
         $this->gamestate->nextState( 'some_gamestate_transition' );
     }    
     */
+    function stChooseCharacter() {
+        // Move on if the game only use basic characters
+        if ($this->gamestate->table_globals[100] == 1) {
+            $this->gamestate->nextState('');
+        }
+        $this->gamestate->setAllPlayersMultiactive();
+    }
+
     function stEndAction() {
         $current_player_id = self::getCurrentPlayerId();
         $draw_tools_player_id = self::getGameStateValue('drawToolsPlayer');

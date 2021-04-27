@@ -58,10 +58,20 @@ $machinestates = array(
         'description' => '',
         'type' => 'manager',
         'action' => 'stGameSetup',
-        'transitions' => array( '' => 8 )
+        'transitions' => array( '' => 7 )
     ),
     
     // Note: ID=2 => your first state
+    7 => array(
+        'name' => 'chooseCharacter',
+        'description' => clienttranslate('Other players must choose a character side'),
+        'descriptionmyturn' => clienttranslate('${you} must click on the character card you want to keep'),
+        'type' => 'multipleactiveplayer',
+        'action' => 'stChooseCharacter',
+        'args' => 'argChooseCharacter',
+        'possibleactions' => array( 'playCard' ),
+        'transitions' => array( 'chooseCharacter' => 8 )
+    ),
 
     8 => array(
         'name' => 'startingTile',
