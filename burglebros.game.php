@@ -258,6 +258,7 @@ class burglebros extends Table
   
         $result = array_merge($result, $this->gatherCardData('card', $this->card_types, $this->card_info));
         $result = array_merge($result, $this->gatherCardData('patrol', $this->patrol_types, $this->patrol_info));
+        $result['card_info'] = $this->card_info;
 
         $tiles = array();
         $index = 0;
@@ -860,7 +861,7 @@ SQL;
             $this->pickTokens('stealth', 'player', $player_id, -$amount);
         }
         self::notifyAllPlayers('message', clienttranslate( '${player_name} ${action} one stealth' ), array(
-            'action' => $amount < 0 ? 'gained' : 'lost',
+            'action' => $amount < 0 ? clienttranslate('gains') : clienttranslate('loses'),
             'player_name' => $players[$player_id]['player_name']
         ));
     }
@@ -2353,10 +2354,11 @@ SQL;
         $this->handleTilePeek($to_peek);
         $tile_name = $this->patrol_names[$to_peek['location_arg']]['name'];
         // TODO: Add tile type?
-        $msg = '${player_name} '."peeked tile $tile_name on floor $floor";
         $players = self::loadPlayersBasicInfos();
-        self::notifyAllPlayers('message', clienttranslate($msg), [
-            'player_name' => $players[$current_player_id]['player_name']
+        self::notifyAllPlayers('message', clienttranslate('${player_name} peeked tile ${tile_name} on floor ${floor}'), [
+            'player_name' => $players[$current_player_id]['player_name'],
+            'tile_name' => $tile_name,
+            'floor' => $floor,
         ]);
         $this->flipTile( $floor, $to_peek['location_arg'] );
     }
@@ -2439,9 +2441,9 @@ SQL;
             'floor' => $floor
         ));
         
-        $msg = clienttranslate('${player_name} '."added a die to the safe on floor $floor");
-        self::notifyAllPlayers('message', $msg, [
-            'player_name' => self::getCurrentPlayerName()
+        self::notifyAllPlayers('message', clienttranslate('${player_name} added a die to the safe on floor ${floor}'), [
+            'player_name' => self::getCurrentPlayerName(),
+            'floor' => $floor
         ]);
     }
 

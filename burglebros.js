@@ -847,10 +847,16 @@ function (dojo, declare) {
             var index = card.type == 0 ? card.type_arg - 1 : card.type_arg;
             var bg_row = Math.floor(index / 2) * -100;
             var bg_col = (index % 2) * -100;
-            var tooltipHtml = this.format_block('jstpl_card_tooltip', {
+            var card_info = this.gamedatas.card_info[card.type][card.type_arg - 1];
+            var jstpl = card.type == 0 ? 'jstpl_card_tooltip' : 'jstpl_event_card_tooltip'
+            var tooltipHtml = this.format_block(jstpl, {
                 id : card.id, 
                 bg_image: g_gamethemeurl + 'img/' + typeInfo.name + '.jpg',
-                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
+                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%',
+                card_subhead: _(card_info.subhead),
+                card_title: _(card_info.title),
+                card_ability: _(card_info.ability),
+                card_tooltip: _(card_info.tooltip)
             });
             this.addTooltipHtml(divId, tooltipHtml);
         },

@@ -267,11 +267,49 @@
 }
 
 .tile.tooltip, .card.tooltip, #event_card_dialog.card {
+    display: inline-block;
     width: 360px;
     height: 360px;
     background-size: 720px;
     border-radius: 16px;
-    margin: auto;
+    /*margin: auto;*/
+}
+.tooltip_text {
+    display: inline-block;
+    width: 340px;
+    vertical-align: top;
+    margin: 20px 5px 10px 5px;
+    text-align: left;
+}
+.tooltip_container {
+    width: 720px;
+    background-color: white;
+}
+.tooltip_subhead {
+    font-size: 180%;
+    text-transform: uppercase;
+    color: #868686;
+    margin: 0px 0;
+}
+.tooltip_title {
+    font-weight: bold;
+    font-size: 200%;
+    text-transform: uppercase;
+    margin: 0px 0;
+}
+.tooltip_ability {
+    font-weight: bold;
+    font-size: 150%;
+    margin-top: 20px;
+}
+.tooltip_message {
+    display: inline-block;
+    font-size: 150%;
+    /*vertical-align: top;*/
+    /*width: 200px;*/
+/*    margin-left: 10px;
+    margin-right: 5px;
+    text-align: left;*/
 }
 
 .patrol-discard-container {
