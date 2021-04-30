@@ -30,6 +30,17 @@
     <div id="myhand">
     </div>
 </div>
+<div id="temp_display" class="hidden_animated whiteblock">
+    <div id="spotter_card_wrapper" class="hidden">
+        <h3>{SPOTTER_TITLE}</h3>
+        <div id="spotter_card"></div>
+    </div>
+    <div id="crystal_ball_wrapper" class="hidden">
+        <h3>{CRYSTAL_BALL_TITLE}</h3>
+        <div id="crystal_ball_cards">
+        </div>
+    </div>
+</div>
 
 <div id="debug">
 </div>
@@ -100,8 +111,26 @@ var jstpl_tile_tooltip = '<div id="tile_${id}_tooltip" class="tile tooltip" styl
 
 var jstpl_tile_preview = '<div id="tile_${id}_preview" class="tile-preview ${tile_type}" style="left: ${preview_col}px; top: ${preview_row}px;"></div>'
 
-var jstpl_card_tooltip = '<div id="card_${id}_tooltip" class="card tooltip" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>';
-
+var jstpl_card_tooltip = '<div class="tooltip_container">\
+                                <div id="card_${id}_tooltip" class="card tooltip" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>\
+                                <div class="tooltip_text">\
+                                    <div class="tooltip_subhead">${card_subhead}</div>\
+                                    <div class="tooltip_title">${card_title}</div>\
+                                    <hr/>\
+                                    <div class="tooltip_ability">${card_ability}:</div>\
+                                    <div class="tooltip_message">${card_tooltip}</div>\
+                                </div>\
+                            </div>\
+                        </div>';
+var jstpl_event_card_tooltip = '<div class="tooltip_container">\
+                                <div id="card_${id}_tooltip" class="card tooltip" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>\
+                                <div class="tooltip_text">\
+                                    <div class="tooltip_title">${card_title}</div>\
+                                    <hr/>\
+                                    <div class="tooltip_message">${card_tooltip}</div>\
+                                </div>\
+                            </div>\
+                        </div>';
 var jstpl_patrol_tooltip = '<div id="patrol_tooltip_${patrol_floor}" class="card tooltip" style="background-image: url(${bg_image}); background-position: ${bg_position}; background-size: 1440px;">${patrol_discards}</div>';
 
 var jstpl_patrol_tooltip_discard = '<div class="patrol-discard" style="left: ${discard_left}px; top: ${discard_top}px; background-image: url(${bg_image});"></div>'
@@ -120,7 +149,7 @@ var jstpl_patrol_die = '<div id="patrol_token_${token_id}" class="token die patr
 
 var jstpl_safe_die = '<div id="crack_token_${token_id}" class="token die safe">${die_num}</div>';
 
-var jstpl_event_card = '<div id="event_card_dialog" class="card" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>'
+var jstpl_event_card = '<div id="event_card_dialog${card_id}" class="card ${extra_classes}" style="background-image: url(${bg_image}); background-position: ${bg_position};"></div>'
 
 var jstpl_trade_dialog = '<div id="trade_dialog" class="dialog">\n' +
 '    <div class="dialog-content">\n' +
@@ -183,6 +212,7 @@ var jstpl_draw_tools_dialog = '<div id="draw_tools_dialog" class="dialog">\n' +
 '    </div>\n' +
 '</div>';
 
+var jstpl_die = '<div class="icon_die icon_die_${die_value}" id="${die_id}"></div>';
 </script>  
 
 {OVERALL_GAME_FOOTER}

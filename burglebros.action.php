@@ -94,7 +94,9 @@
     public function selectCardChoice() {
       self::setAjaxMode();
       $selected_type = self::getArg( "selected_type", AT_alphanum, true );
-      $selected_id = self::getArg( "selected_id", AT_alphanum, true );
+      // $selected_id = self::getArg( "selected_id", AT_alphanum, true );
+      $selected_id = self::getArg( "selected_id", AT_numberlist, true );
+      $selected_id = explode( ';', $selected_id );
       $this->game->selectCardChoice($selected_type, $selected_id);
       self::ajaxResponse();
     }

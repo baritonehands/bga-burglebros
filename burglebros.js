@@ -50,9 +50,9 @@ function (dojo, declare) {
         
         setup: function( gamedatas )
         {
-            console.log( "Starting game setup" );
+            console.log( "Starting game setup", gamedatas );
             
-            // TODO: Set up your game interface here, according to "gamedatas"
+            // Set up your game interface here, according to "gamedatas"
             window.gamedatas = gamedatas;
             window.app = this;
 
@@ -76,6 +76,7 @@ function (dojo, declare) {
                 hand.create( this, $(handDivId), this.cardwidth, this.cardheight);
                 hand.image_items_per_row = 2;
                 hand.onItemCreate = dojo.hitch(this, 'createCardZone', hand);
+                hand.centerItems = true;
                 if (me) {
                     hand.setSelectionMode(1);
                     hand.setSelectionAppearance('class');
@@ -163,7 +164,7 @@ function (dojo, declare) {
 
             for (var card_id in gamedatas.card_tokens) {
                 var token = gamedatas.card_tokens[card_id];
-                this.createCardToken(card_id, token.type, token.count);
+                this.createCardToken(card_id, token.type, token.count, '');
             }
 
             this.showFloor(this.currentFloor());
@@ -183,7 +184,7 @@ function (dojo, declare) {
         //
         onEnteringState: function( stateName, args )
         {
-            console.log( 'Entering state: '+stateName );
+            console.log( 'Entering state: '+stateName, args.args );
             
             switch( stateName )
             {
@@ -203,8 +204,27 @@ function (dojo, declare) {
                 break;
             
             case 'cardChoice':
-                if (this.isCurrentPlayerActive() && args.args.spotter_card && (this.isCardChoice('spotter1') || this.isCardChoice('spotter2'))) {
-                    this.spotterChoice(args.args.spotter_card);
+                if (args.args.spotter_card && (this.isCardChoice('spotter1') || this.isCardChoice('spotter2'))) {
+                    var card = args.args.spotter_card;
+                    if (card.type == 3) {
+                        dojo.place( this.eventCardHtml(card), 'spotter_card' );
+                    } else {
+                        var cardType = parseInt(card.type, 10);
+                        var cardIndex = parseInt(card.type_arg, 10) - 1;
+                        var id = ((cardType - 4) * 16) + cardIndex;
+                        dojo.place( this.patrolCardHtml(card, id, false), 'spotter_card' );
+                    }
+                    this.addCardTooltip(card, 'event_card_dialog');
+                    this.displayElement('temp_display');
+                    dojo.removeClass('spotter_card_wrapper', 'hidden');
+                }
+                // Crystal Ball, player can choose to reorder the 3 upcoming events
+                if (args.args.event_cards) {
+                    this.setupCrystalBallCards(args.args.event_cards);
+                }
+                // Stethoscope, player can reroll one die
+                if (this.isCurrentPlayerActive() && args.args.rolls) {
+                    this.setupStethoscope(args.args.rolls);
                 }
                 break;
             
@@ -246,17 +266,17 @@ function (dojo, declare) {
             
             switch( stateName )
             {
-            
-            /* Example:
-            
-            case 'myGameState':
-            
-                // Hide the HTML block we are displaying only during this game state
-                dojo.style( 'my_html_block_id', 'display', 'none' );
-                
+            case 'cardChoice':
+                this.hideElement('temp_display');
+                dojo.addClass('crystal_ball_wrapper', 'hidden');
+                dojo.addClass('spotter_card_wrapper', 'hidden');
+                $('crystal_ball_cards').innerHTML = '';
+                dojo.query("#maintitlebar_content .icon_die").forEach( (el) => this.fadeOutAndDestroy(el) );
+                $('spotter_card').innerHTML = '';
+                if ($("dice_choice"))
+                    this.fadeOutAndDestroy($("dice_choice"));
+                this.disconnectAll();
                 break;
-           */
-                      
             case 'dummmy':
                 break;
             }               
@@ -273,18 +293,6 @@ function (dojo, declare) {
             {            
                 switch( stateName )
                 {
-/*               
-                 Example:
- 
-                 case 'myGameState':
-                    
-                    // Add 3 action buttons in the action status bar:
-                    
-                    this.addActionButton( 'button_1_id', _('Button 1 label'), 'onMyMethodToCall1' ); 
-                    this.addActionButton( 'button_2_id', _('Button 2 label'), 'onMyMethodToCall2' ); 
-                    this.addActionButton( 'button_3_id', _('Button 3 label'), 'onMyMethodToCall3' ); 
-                    break;
-*/
                     case 'playerTurn':
                         if (this.canEscape()) {
                             this.addActionButton( 'button_escape', _('Escape'), dojo.hitch(this, 'handleEscape') );
@@ -342,6 +350,11 @@ function (dojo, declare) {
                             if (floor > 1) {
                                 this.addActionButton('button_acrobat_down', _('Move Down'), dojo.hitch(this, 'handleCardChoiceButton', floor - 1));
                             }
+                        } else if(this.isCardChoice('crystal-ball')) {
+                            this.addActionButton('crystal_ball_button', _('Confirm event order'), 'handleMultipleIdCardChoiceButton');
+                        } else if(this.isCardChoice('spotter1') || this.isCardChoice('spotter2')) {
+                            this.addActionButton('top', _('Keep on top'), dojo.hitch(this, 'handleCardChoiceButton', 1));
+                            this.addActionButton('bottom', _('Put on bottom'), dojo.hitch(this, 'handleCardChoiceButton', 2), null, null, 'gray');
                         }
                         if (this.canCancelCardChoice()) {
                             this.addActionButton('button_cancel', _('Cancel'), 'handleCancelCardChoice');
@@ -357,7 +370,8 @@ function (dojo, declare) {
                         }
                         break;
                     case 'playerChoice':
-                        this.addActionButton('button_cancel', _('Cancel'), 'handleCancelPlayerChoice');
+                        if (args.context !== "squeak")  // cannot cancel Squeak event
+                            this.addActionButton('button_cancel', _('Cancel'), 'handleCancelPlayerChoice');
                         break;
                     case 'proposeTrade':
                     case 'confirmTrade':
@@ -598,13 +612,14 @@ function (dojo, declare) {
             dojo.destroy('generic_token_' + id);
         },
 
-        createCardToken: function(id, type, count) {
+        createCardToken: function(id, type, count, extra_classes) {
             var card_type = this.gamedatas.card_types[type];
             dojo.place(this.format_block('jstpl_card_token', {
                 tile_id : id,
                 card_type : card_type.name,
                 card_count : count || 1,
-                token_background : g_gamethemeurl + '/img/tokens.jpg'
+                token_background : g_gamethemeurl + '/img/tokens.jpg',
+                extra_classes: extra_classes
             }), 'tile_' + id + '_cards');
         },
 
@@ -688,6 +703,9 @@ function (dojo, declare) {
 
         canCancelCardChoice: function() {
             var type = this.gamedatas.gamestate.args.card['type'];
+            var type_arg = this.gamedatas.gamestate.args.card['type_arg'];
+            if (type_arg == 3 || type_arg == 17 || type_arg == 18) // crystal-ball or spotter1 or spotter2
+                return false;   // cannot cancel when player has seen some top cards of the deck
             return type == 1 || type == 0; // Tools and Characters
         },
 
@@ -824,13 +842,21 @@ function (dojo, declare) {
 
         addCardTooltip: function(card, divId) {
             var typeInfo = this.gamedatas.card_types[card.type];
+            if (typeInfo === undefined)    // patrol card
+                return false;
             var index = card.type == 0 ? card.type_arg - 1 : card.type_arg;
             var bg_row = Math.floor(index / 2) * -100;
             var bg_col = (index % 2) * -100;
-            var tooltipHtml = this.format_block('jstpl_card_tooltip', {
+            var card_info = this.gamedatas.card_info[card.type][card.type_arg - 1];
+            var jstpl = card.type == 0 ? 'jstpl_card_tooltip' : 'jstpl_event_card_tooltip'
+            var tooltipHtml = this.format_block(jstpl, {
                 id : card.id, 
                 bg_image: g_gamethemeurl + 'img/' + typeInfo.name + '.jpg',
-                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
+                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%',
+                card_subhead: _(card_info.subhead),
+                card_title: _(card_info.title),
+                card_ability: _(card_info.ability),
+                card_tooltip: _(card_info.tooltip)
             });
             this.addTooltipHtml(divId, tooltipHtml);
         },
@@ -1038,13 +1064,16 @@ function (dojo, declare) {
             });
         },
 
-        eventCardHtml: function(card) {
+        eventCardHtml: function(card, card_id='', extra_classes='') {
             var bg_row = Math.floor(card.type_arg / 2) * -100;
             var bg_col = (card.type_arg % 2) * -100;
             return this.format_block('jstpl_event_card', {
                 bg_image: g_gamethemeurl + 'img/events.jpg',
-                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
+                bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%',
+                card_id: card_id,
+                extra_classes: extra_classes,
             });
+
         },
 
         patrolCardHtml: function(card, bg_id, discards) {
@@ -1075,45 +1104,6 @@ function (dojo, declare) {
                 patrol_discards: discardHtml,
                 bg_image: g_gamethemeurl + 'img/patrol.jpg',
                 bg_position: bg_col.toString() + '% ' + bg_row.toString() + '%'
-            });
-        },
-
-        spotterChoice: function(card) {
-            var dialog = new ebg.popindialog();
-            dialog.create( 'spotterChoiceDialog' );
-            dialog.setTitle( _("Top or Bottom?") );
-            
-            var html = this.format_block('jstpl_spotter_dialog', {});
-            
-            dialog.setContent( html ); // Must be set before calling show() so that the size of the content is defined before positioning the dialog
-
-            if (card.type == 3) {
-                dojo.place( this.eventCardHtml(card), 'spotter_card' );
-            } else {
-                var cardType = parseInt(card.type, 10);
-                var cardIndex = parseInt(card.type_arg, 10) - 1;
-                var id = ((cardType - 4) * 16) + cardIndex;
-
-                dojo.place( this.patrolCardHtml(card, id, true), 'spotter_card' );
-            }
-            
-            dialog.show();
-            
-            // Now that the dialog has been displayed, you can connect your method to some dialog elements
-            // Example, if you have an "OK" button in the HTML of your dialog:
-            var closeCallback = function(evt) {
-                evt.preventDefault();
-                this.handleCardChoiceButton(1, function() {
-                    dialog.destroy();
-                });
-            };
-            dialog.replaceCloseCallback(dojo.hitch(this, closeCallback));
-            dojo.connect( $('spotter_top_button'), 'onclick', this, closeCallback);
-            dojo.connect( $('spotter_bottom_button'), 'onclick', this, function(evt) {
-                evt.preventDefault();
-                this.handleCardChoiceButton(2, function() {
-                    dialog.destroy();
-                });
             });
         },
 
@@ -1151,6 +1141,73 @@ function (dojo, declare) {
                     });
                 }
             });
+        },
+
+        setupStethoscope: function(rolls) {
+            for (id in rolls) {
+                dojo.place(this.format_block('jstpl_die', {
+                    die_id : 'die_' + id + '_' + rolls[id].type_arg,
+                    die_value : rolls[id].type_arg,
+                }), 'maintitlebar_content');
+                this.connect($('die_' + id + '_' + rolls[id].type_arg), 'onclick', 'selectDie');
+            }
+            dojo.place( '<div style="display:block;position:relative;width:100%;" id="dice_choice" class="hidden_animated"></div>', 'maintitlebar_content')
+            for (var i = 1; i <= 6; i++) {
+                dojo.place(this.format_block('jstpl_die', {
+                    die_id : 'alternative_die_' + i,
+                    die_value : i,
+                }), 'dice_choice');
+                this.connect($('alternative_die_' + i), 'onclick', 'handleMultipleIdCardChoiceButton');
+            }
+        },
+        selectDie: function(e) {
+            dojo.query('.icon_die.selected').removeClass('selected');
+            dojo.addClass(e.target, 'selected');
+            this.displayElement('dice_choice');
+        },
+
+        setupCrystalBallCards: function(event_cards) {
+            this.elementDragged = null;
+            for (var i in event_cards) {
+                var card = event_cards[i];
+                dojo.place( this.eventCardHtml(card, '_' + card.id, 'crystal_ball_card', true), 'crystal_ball_cards' );
+                this.addCardTooltip(card, 'event_card_dialog' + card.id);
+            }
+            if (this.isCurrentPlayerActive()) {
+                this.connectClass('crystal_ball_card', 'onclick', 'toggleCardSelection');
+            }
+            this.displayElement('temp_display');
+            dojo.removeClass('crystal_ball_wrapper', 'hidden');
+        },
+        toggleCardSelection (e) {
+            var is_toggle = dojo.hasClass(e.target, 'selected');
+            dojo.query('#crystal_ball_cards .selected').removeClass('selected');
+            dojo.query('#crystal_ball_cards .vertical_arrow').forEach( (node) => dojo.destroy(node) );
+            if ( !is_toggle ) {
+                dojo.addClass(e.target, 'selected');
+                var index = Array.from(e.target.parentNode.children).indexOf(e.target);
+                if (index < 2 )
+                    dojo.place( '<div id="move_after" class="vertical_arrow">&#x25B6;</div>', e.target, 'after' );
+                if (index > 0)
+                    dojo.place( '<div id="move_before" class="vertical_arrow">&#x25C0;</div>', e.target, 'before' );
+                this.connectClass('vertical_arrow', 'onclick', 'moveEventCard');
+            }
+        },
+        moveEventCard(e) {
+            var container = e.target.parentNode;
+            var previous_card = e.target.previousElementSibling;
+            var next_card = e.target.nextElementSibling;
+            container.insertBefore(next_card, previous_card);
+            dojo.query('#crystal_ball_cards .vertical_arrow').forEach( (node) => dojo.destroy(node) );
+            dojo.query('#crystal_ball_cards .selected').removeClass('selected');
+        },
+        displayElement: function(id) {
+            $(id).style.maxHeight = '1500px';
+            $(id).style.opacity = 1;
+        },
+        hideElement: function(id) {
+            $(id).style.maxHeight = '0px';
+            $(id).style.opacity = 0;
         },
 
         ///////////////////////////////////////////////////
@@ -1307,7 +1364,7 @@ function (dojo, declare) {
             }
         },
 
-        handleCardSelected: function(control_name, card_id) {	
+        handleCardSelected: function(control_name, card_id) {
             if (this.myHand.isSelected(card_id) && this.checkAction('playCard')) {
                 this.ajaxcall('/burglebros/burglebros/playCard.html', { lock: true, id: card_id }, this, console.log, console.error);
             } else if (!this.myHand.isSelected(card_id)) {
@@ -1317,11 +1374,25 @@ function (dojo, declare) {
 
         handleCancelCardChoice: function() {
             if (this.checkAction('cancelCardChoice')) {
+                this.myHand.unselectAll();
                 this.ajaxcall('/burglebros/burglebros/cancelCardChoice.html', { lock: true }, this, console.log, console.error);
             }
         },
 
+        handleMultipleIdCardChoiceButton: function(e) {
+            var ids = [];
+            if (this.isCardChoice('crystal-ball')) {
+                dojo.query('#crystal_ball_cards .crystal_ball_card').forEach( (node) => ids.push(node.id.split("_").pop()) );
+            } else if (this.isCardChoice('stethoscope')) {
+                // Push old value first then new value
+                ids.push( dojo.query('.icon_die.selected')[0].id.split('_').pop() );
+                ids.push( e.target.id.split('_').pop() );
+            }
+            this.handleCardChoiceButton(ids.join(";"), null);
+        },
+
         handleCardChoiceButton: function(id, callback) {
+            callback = typeof callback == 'object' ? null : callback;
             if (this.checkAction('selectCardChoice')) {
                 this.ajaxcall('/burglebros/burglebros/selectCardChoice.html', { lock: true, selected_type: 'button', selected_id: id }, this, callback || console.log, console.error);
             }
@@ -1507,7 +1578,7 @@ function (dojo, declare) {
             var token = notif.args.tokens[tile_id];
             this.destroyCardToken(tile_id);
             if (token) {
-                this.createCardToken(tile_id, token.type, token.count);
+                this.createCardToken(tile_id, token.type, token.count, '');
             }
         },
 
