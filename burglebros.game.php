@@ -2135,7 +2135,7 @@ SQL;
             if (count($guard_token) == 0) {
                 throw new BgaUserException(self::_('Tile does not contain a guard'));
             }
-            $this->cards->moveCard($card['id'], 'tile', $tile['id']);
+            $this->cards->moveCard($card['id'], 'tile', $tile['id']); // zztodo
             $this->notifyTileCards($tile['id']);
             $discard = FALSE;
         } elseif($type == 'dynamite') {
@@ -2853,8 +2853,7 @@ SQL;
         }
 
         if ($card['type'] == 0) {
-            // Advanced characters, player chose a side zzz
-            // var_dump($card_id);
+            // Advanced characters, player chose a side
             $character = $this->cards->getCard($card_id);
             $type_arg = $character['type_arg'] % 2 == 0 ? $character['type_arg'] - 1: $character['type_arg'] + 1;
             $other_side_id = key($this->cards->getCardsOfType(0, $type_arg));
@@ -2921,7 +2920,8 @@ SQL;
                 }
             } else {
                 $card_type = $this->getCardType($card);
-                $this->cards->moveCard($card['id'], 'tools_discard');
+                // Move card is in handleSelectCardChoice
+                // $this->cards->moveCard($card['id'], 'tools_discard');
                 $current_player_id = self::getCurrentPlayerId();
                 $this->notifyPlayerHand($current_player_id, array($card['id']));
                 self::notifyAllPlayers('message', clienttranslate('${player_name} played the ${card_type} card'), [
