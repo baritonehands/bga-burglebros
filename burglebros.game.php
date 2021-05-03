@@ -2005,7 +2005,7 @@ SQL;
                 return count($path) == $shortest_path_length;
             });
             if (count($paths) == 1) {
-                $tile_id = $paths[1][1];
+                $tile_id = $paths[0][1];
                 $this->performGuardMovementEffects($guard_token, $tile_id);
                 $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
                 if ($tile_id == $patrol_token['location_arg'])
