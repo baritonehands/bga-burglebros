@@ -2135,7 +2135,7 @@ SQL;
             if (count($guard_token) == 0) {
                 throw new BgaUserException(self::_('Tile does not contain a guard'));
             }
-            $this->cards->moveCard($card['id'], 'tile', $tile['id']); // zztodo
+            $this->cards->moveCard($card['id'], 'tile', $tile['id']);
             $this->notifyTileCards($tile['id']);
             $discard = FALSE;
         } elseif($type == 'dynamite') {
@@ -3219,6 +3219,19 @@ SQL;
         self::checkAction('confirmTakeCards');
         $current_player_id = self::getCurrentPlayerId();
         $player_tile = $this->getPlayerTile($current_player_id);
+        // If player already has the gold bar, they cannot pick the other one
+        $hand = $this->cards->getPlayerHand($current_player_id);
+        foreach ($hand as $card_id => $card) {
+            if ($this->getCardType($card) == 'gold-bar') {
+                foreach ($r_ids as $card_id) {
+                    $new_card = $this->cards->getCard($card_id);
+                    if ($this->getCardType($new_card) == 'gold-bar') {
+                        throw new BgaUserException(self::_('You cannot hold the two gold bars, another player has to pick it up'));
+                    }
+                }        
+                break;
+            }
+        }
         $this->cards->moveCards($l_ids, 'tile', $player_tile['id']);
         $this->cards->moveCards($r_ids, 'hand', $current_player_id);
         $this->notifyPlayerHand($current_player_id);
