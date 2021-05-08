@@ -2005,11 +2005,14 @@ SQL;
                 return count($path) == $shortest_path_length;
             });
             if (count($paths) == 1) {
-                $tile_id = $paths[0][1];
-                $this->performGuardMovementEffects($guard_token, $tile_id);
-                $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
-                if ($tile_id == $patrol_token['location_arg'])
-                    $this->nextPatrol($floor);
+                // If Guard and player are on the same tile, do not move
+                if (count($paths[0]) > 1) {
+                    $tile_id = $paths[0][1];
+                    $this->performGuardMovementEffects($guard_token, $tile_id);
+                    $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
+                    if ($tile_id == $patrol_token['location_arg'])
+                        $this->nextPatrol($floor);                    
+                }
             } else {
                 $player_choice = 4;
                 self::setGameStateValue('playerChoiceArg', $shortest_path_length);
@@ -2547,10 +2550,14 @@ SQL;
             $path = $this->findShortestPathClockwise($floor, $guard_tile['location_arg'], $selected_player_tile['location_arg']);
             if (count($path) > self::getGameStateValue("playerChoiceArg"))
                 throw new BgaUserException(self::_("You must choose one of the closest players"));
-            $this->performGuardMovementEffects($guard_token, $path[1]);
-            $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
-            if ($path[1] == $patrol_token['location_arg'])
-                $this->nextPatrol($floor);
+            // If guard and players are on the same tile, do not move players
+            if (count($path) > 1) {
+                $this->performGuardMovementEffects($guard_token, $path[1]);
+                $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
+                // If squeak move led the guard to his final destination, draw a new patrol card
+                if ($path[1] == $patrol_token['location_arg'])
+                    $this->nextPatrol($floor);                
+            }
             $this->endAction();
         }
     }
