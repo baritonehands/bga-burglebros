@@ -2730,6 +2730,35 @@ SQL;
         self::notifyAllPlayers('message', self::_($msg), []);
     }
 
+    /* DEBUG */
+    public function loadDebug() {
+        // These are the id's from the BGAtable I need to debug.
+        $ids = [
+            84352255,
+            84352018,
+            86211654,
+        ];
+
+        // Id of the first player in BGA Studio
+        $sid = 2318199;
+        
+        foreach ($ids as $id) {
+            // basic tables
+            self::DbQuery("UPDATE player SET player_id=$sid WHERE player_id=$id" );
+            self::DbQuery("UPDATE global SET global_value=$sid WHERE global_value=$id" );
+            self::DbQuery("UPDATE stats SET stats_player_id=$sid WHERE stats_player_id=$id" );
+
+            // 'other' game specific tables. example:
+            // tables specific to your schema that use player_ids
+            self::DbQuery("UPDATE card SET card_location_arg='$sid' WHERE card_location_arg ='$id'" );
+            self::DbQuery("UPDATE token SET card_location_arg='$sid' WHERE card_location_arg ='$id'" );
+            self::DbQuery("UPDATE token SET card_type_arg='$sid' WHERE card_type_arg ='$id'" );
+            
+            ++$sid;
+        }
+        var_dump("done with last id: $sid");
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
