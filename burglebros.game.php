@@ -2265,10 +2265,10 @@ SQL;
             $this->pickTokensForTile('hack', $tile['id'], $nbr);
         } elseif ($type == 'crystal-ball') {
             $card_names_displayed = [];
-            foreach ($selected_id as $card_id) {
-                $this->cards->insertCardOnExtremePosition($card_id, 'events_deck', true);
-                $card = $this->cards->getCard($card_id);
-                $card_names_displayed[] = $this->getDisplayedCardName($this->getCardType($card));
+            foreach (array_reverse($selected_id) as $event_card_id) {
+                $this->cards->insertCardOnExtremePosition($event_card_id, 'events_deck', true);
+                $event_card = $this->cards->getCard($event_card_id);
+                $card_names_displayed[] = $this->getDisplayedCardName($this->getCardType($event_card));
             }
             self::notifyAllPlayers('message', clienttranslate('Crystal Ball: ${player_name} changed order of upcoming events to ${card_names_displayed}'), [
                 'player_name' => self::getCurrentPlayerName(),
