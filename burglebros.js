@@ -690,7 +690,8 @@ function (dojo, declare) {
         canRollSafeDice: function() {
             return this.gamedatas.gamestate.args.tile.type === 'safe' &&
                 this.actionsRemaining() >= 1 &&
-                !this.tileContainsToken('open');
+                !this.tileContainsToken('open') && 
+                this.tileContainsToken('crack');
         },
 
         canHack: function() {
@@ -749,7 +750,7 @@ function (dojo, declare) {
 
         tileContainsToken: function(name) {
             var tokens = this.gamedatas.gamestate.args.tile_tokens;
-            for(var tokenId in this.gamedatas.gamestate.args.tile_tokens) {
+            for(var tokenId in tokens) {
                 if (tokens[tokenId].type == name) {
                     return true;
                 }
