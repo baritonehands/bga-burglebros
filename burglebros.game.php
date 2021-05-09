@@ -2432,6 +2432,10 @@ SQL;
             throw new BgaUserException(self::_("Safe is already open"));
         }
         $floor = $tile['location'][5];
+        $die_num = self::getGameStateValue("safeDieCount$floor");
+        if ($die_num == 6) {
+            throw new BgaUserException(self::_("You cannot add more than 6 die on a safe"));   
+        }
         $safe_token = array_values($this->tokens->getCardsOfType('crack', $floor))[0];
         if ($safe_token['location'] != 'tile') {
             $this->moveToken($safe_token['id'], 'tile', $tile['id']);
