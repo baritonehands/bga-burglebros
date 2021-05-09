@@ -2898,6 +2898,12 @@ SQL;
             $type_arg = $character['type_arg'] % 2 == 0 ? $character['type_arg'] - 1: $character['type_arg'] + 1;
             $other_side_id = key($this->cards->getCardsOfType(0, $type_arg));
             $this->cards->moveCard($other_side_id, 'characters_deck');
+            if ($this->getCardType($character) == 'rigger1') {
+                $type_arg = $this->getCardTypeForName(1, 'dynamite');
+                $dynamite = array_values($this->cards->getCardsOfType(1, $type_arg))[0];
+                $this->cards->moveCard($dynamite['id'], 'hand', $current_player_id);
+            }
+            // Update player hand and discard the other character card
             $this->notifyPlayerHand($current_player_id, array($other_side_id));
             $this->gamestate->setPlayerNonMultiactive($current_player_id, 'chooseCharacter');
         } else {
