@@ -2743,15 +2743,22 @@ SQL;
 
     /* DEBUG */
     public function loadDebug() {
-        // These are the id's from the BGAtable I need to debug.
-        $ids = [
-            84352255,
-            84352018,
-            86211654,
-        ];
-
         // Id of the first player in BGA Studio
         $sid = 2318199;
+
+        // Check if this id exists in current player's table, else use these to replace
+        $players = self::loadPlayersBasicInfos();
+        if ( !in_array($sid, array_keys($players)) ) {
+            $ids = array_keys($players);
+        } else {
+            // These are the id's from the BGAtable I need to debug.
+            $ids = [
+                85300953,
+                86195160,
+                86204663,
+                87300416
+            ];
+        }
         
         foreach ($ids as $id) {
             // basic tables
