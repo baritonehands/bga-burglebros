@@ -691,7 +691,7 @@ function (dojo, declare) {
             return this.gamedatas.gamestate.args.tile.type === 'safe' &&
                 this.actionsRemaining() >= 1 &&
                 !this.tileContainsToken('open') && 
-                this.tileContainsToken('crack');
+                (this.tileContainsToken('crack') || this.gamedatas.gamestate.args.character.name == 'peterman1');
         },
 
         canHack: function() {
