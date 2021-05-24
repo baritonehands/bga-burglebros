@@ -324,7 +324,7 @@ function (dojo, declare) {
                     case 'cardChoice':
                         if (this.isCardChoice('thermal-bomb')) {
                             var floor = this.currentFloor();
-                            if (floor < 3) {
+                            if (floor <= 3) {
                                 this.addActionButton('button_up', _('Up'), dojo.hitch(this, 'handleCardChoiceButton', floor + 1));
                             }
                             if (floor > 1) {

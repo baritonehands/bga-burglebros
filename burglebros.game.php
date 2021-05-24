@@ -420,7 +420,13 @@ class burglebros extends Table
     }
 
     function canEscape($player_tile) {
-        return $player_tile['type'] == 'stairs' && $player_tile['location'][5] == '3' && $this->openSafes() == 3;
+        $thermal_to_roof = FALSE;
+        if ($player_tile['location'][5] == '3' && $this->tokensInTile('thermal', $player_tile['id'])) {
+            $tile_below = $this->findTileOnFloor(2, $player_tile['location_arg']);
+            $thermal_to_roof = $this->tokensInTile('thermal', $tile_below['id']) == null;
+        }
+        return ($player_tile['type'] == 'stairs' || $thermal_to_roof) &&
+            $player_tile['location'][5] == '3' && $this->openSafes() == 3;
     }
 
     function gatherCurrentData($current_player_id) {
@@ -2252,8 +2258,11 @@ SQL;
             $this->validateSelection('button', $selected_type);
             $tile = $this->getPlayerTile(self::getCurrentPlayerId());
             $this->pickTokensForTile('thermal', $tile['id']);
-            $other_tile = $this->findTileOnFloor($selected_id, $tile['location_arg']);
-            $this->pickTokensForTile('thermal', $other_tile['id']);
+            // Can make thermal bomb go to roof
+            if ($selected_id != 4) {
+                $other_tile = $this->findTileOnFloor($selected_id, $tile['location_arg']);
+                $this->pickTokensForTile('thermal', $other_tile['id']);
+            }
             $this->triggerAlarm($tile);
         } elseif ($type == 'virus') {
             $this->validateSelection('tile', $selected_type);
