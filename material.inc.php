@@ -19,19 +19,6 @@
  *
  */
 
-
-/*
-
-Example:
-
-$this->card_types = array(
-    1 => array( "card_name" => ...,
-                ...
-              )
-);
-
-*/
-
 $this->card_types = array(
   0 => array( 'name' => clienttranslate('characters'),'nametr' => self::_('characters') ),
   1 => array( 'name' => clienttranslate('tools'),'nametr' => self::_('tools') ),

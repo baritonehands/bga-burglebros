@@ -2005,11 +2005,14 @@ SQL;
                 return count($path) == $shortest_path_length;
             });
             if (count($paths) == 1) {
-                $tile_id = $paths[1][1];
-                $this->performGuardMovementEffects($guard_token, $tile_id);
-                $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
-                if ($tile_id == $patrol_token['location_arg'])
-                    $this->nextPatrol($floor);
+                // If Guard and player are on the same tile, do not move
+                if (count($paths[0]) > 1) {
+                    $tile_id = $paths[0][1];
+                    $this->performGuardMovementEffects($guard_token, $tile_id);
+                    $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
+                    if ($tile_id == $patrol_token['location_arg'])
+                        $this->nextPatrol($floor);                    
+                }
             } else {
                 $player_choice = 4;
                 self::setGameStateValue('playerChoiceArg', $shortest_path_length);
@@ -2262,10 +2265,10 @@ SQL;
             $this->pickTokensForTile('hack', $tile['id'], $nbr);
         } elseif ($type == 'crystal-ball') {
             $card_names_displayed = [];
-            foreach ($selected_id as $card_id) {
-                $this->cards->insertCardOnExtremePosition($card_id, 'events_deck', true);
-                $card = $this->cards->getCard($card_id);
-                $card_names_displayed[] = $this->getDisplayedCardName($this->getCardType($card));
+            foreach (array_reverse($selected_id) as $event_card_id) {
+                $this->cards->insertCardOnExtremePosition($event_card_id, 'events_deck', true);
+                $event_card = $this->cards->getCard($event_card_id);
+                $card_names_displayed[] = $this->getDisplayedCardName($this->getCardType($event_card));
             }
             self::notifyAllPlayers('message', clienttranslate('Crystal Ball: ${player_name} changed order of upcoming events to ${card_names_displayed}'), [
                 'player_name' => self::getCurrentPlayerName(),
@@ -2429,6 +2432,10 @@ SQL;
             throw new BgaUserException(self::_("Safe is already open"));
         }
         $floor = $tile['location'][5];
+        $die_num = self::getGameStateValue("safeDieCount$floor");
+        if ($die_num == 6) {
+            throw new BgaUserException(self::_("You cannot add more than 6 die on a safe"));   
+        }
         $safe_token = array_values($this->tokens->getCardsOfType('crack', $floor))[0];
         if ($safe_token['location'] != 'tile') {
             $this->moveToken($safe_token['id'], 'tile', $tile['id']);
@@ -2547,10 +2554,14 @@ SQL;
             $path = $this->findShortestPathClockwise($floor, $guard_tile['location_arg'], $selected_player_tile['location_arg']);
             if (count($path) > self::getGameStateValue("playerChoiceArg"))
                 throw new BgaUserException(self::_("You must choose one of the closest players"));
-            $this->performGuardMovementEffects($guard_token, $path[1]);
-            $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
-            if ($path[1] == $patrol_token['location_arg'])
-                $this->nextPatrol($floor);
+            // If guard and players are on the same tile, do not move players
+            if (count($path) > 1) {
+                $this->performGuardMovementEffects($guard_token, $path[1]);
+                $patrol_token = array_values($this->tokens->getCardsOfType('patrol', $floor))[0];
+                // If squeak move led the guard to his final destination, draw a new patrol card
+                if ($path[1] == $patrol_token['location_arg'])
+                    $this->nextPatrol($floor);                
+            }
             $this->endAction();
         }
     }
@@ -2730,6 +2741,42 @@ SQL;
         self::notifyAllPlayers('message', self::_($msg), []);
     }
 
+    /* DEBUG */
+    public function loadDebug() {
+        // Id of the first player in BGA Studio
+        $sid = 2318199;
+
+        // Check if this id exists in current player's table, else use these to replace
+        $players = self::loadPlayersBasicInfos();
+        if ( !in_array($sid, array_keys($players)) ) {
+            $ids = array_keys($players);
+        } else {
+            // These are the id's from the BGAtable I need to debug.
+            $ids = [
+                85300953,
+                86195160,
+                86204663,
+                87300416
+            ];
+        }
+        
+        foreach ($ids as $id) {
+            // basic tables
+            self::DbQuery("UPDATE player SET player_id=$sid WHERE player_id=$id" );
+            self::DbQuery("UPDATE global SET global_value=$sid WHERE global_value=$id" );
+            self::DbQuery("UPDATE stats SET stats_player_id=$sid WHERE stats_player_id=$id" );
+
+            // 'other' game specific tables. example:
+            // tables specific to your schema that use player_ids
+            self::DbQuery("UPDATE card SET card_location_arg='$sid' WHERE card_location_arg ='$id'" );
+            self::DbQuery("UPDATE token SET card_location_arg='$sid' WHERE card_location_arg ='$id'" );
+            self::DbQuery("UPDATE token SET card_type_arg='$sid' WHERE card_type_arg ='$id'" );
+            
+            ++$sid;
+        }
+        var_dump("done with last id: $sid");
+    }
+
 //////////////////////////////////////////////////////////////////////////////
 //////////// Player actions
 //////////// 
@@ -2853,12 +2900,17 @@ SQL;
         }
 
         if ($card['type'] == 0) {
-            // Advanced characters, player chose a side zzz
-            // var_dump($card_id);
+            // Advanced characters, player chose a side
             $character = $this->cards->getCard($card_id);
             $type_arg = $character['type_arg'] % 2 == 0 ? $character['type_arg'] - 1: $character['type_arg'] + 1;
             $other_side_id = key($this->cards->getCardsOfType(0, $type_arg));
             $this->cards->moveCard($other_side_id, 'characters_deck');
+            if ($this->getCardType($character) == 'rigger1') {
+                $type_arg = $this->getCardTypeForName(1, 'dynamite');
+                $dynamite = array_values($this->cards->getCardsOfType(1, $type_arg))[0];
+                $this->cards->moveCard($dynamite['id'], 'hand', $current_player_id);
+            }
+            // Update player hand and discard the other character card
             $this->notifyPlayerHand($current_player_id, array($other_side_id));
             $this->gamestate->setPlayerNonMultiactive($current_player_id, 'chooseCharacter');
         } else {
@@ -2921,7 +2973,8 @@ SQL;
                 }
             } else {
                 $card_type = $this->getCardType($card);
-                $this->cards->moveCard($card['id'], 'tools_discard');
+                // Move card is in handleSelectCardChoice
+                // $this->cards->moveCard($card['id'], 'tools_discard');
                 $current_player_id = self::getCurrentPlayerId();
                 $this->notifyPlayerHand($current_player_id, array($card['id']));
                 self::notifyAllPlayers('message', clienttranslate('${player_name} played the ${card_type} card'), [
@@ -3219,6 +3272,19 @@ SQL;
         self::checkAction('confirmTakeCards');
         $current_player_id = self::getCurrentPlayerId();
         $player_tile = $this->getPlayerTile($current_player_id);
+        // If player already has the gold bar, they cannot pick the other one
+        $hand = $this->cards->getPlayerHand($current_player_id);
+        foreach ($hand as $card_id => $card) {
+            if ($this->getCardType($card) == 'gold-bar') {
+                foreach ($r_ids as $card_id) {
+                    $new_card = $this->cards->getCard($card_id);
+                    if ($this->getCardType($new_card) == 'gold-bar') {
+                        throw new BgaUserException(self::_('You cannot hold the two gold bars, another player has to pick it up'));
+                    }
+                }        
+                break;
+            }
+        }
         $this->cards->moveCards($l_ids, 'tile', $player_tile['id']);
         $this->cards->moveCards($r_ids, 'hand', $current_player_id);
         $this->notifyPlayerHand($current_player_id);
