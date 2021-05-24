@@ -727,6 +727,7 @@ SQL;
     }
 
     function atriumIsAdjacent($to, $from) {
+        // Same tile position (location_arg) but one floor up or down
         return $from['type'] == 'atrium' &&
             $to['location_arg'] == $from['location_arg'] &&
             ($to['location'][5] + 1 == $from['location'][5] || $to['location'][5] - 1 == $from['location'][5]);
@@ -827,7 +828,7 @@ SQL;
         foreach ($path as $tile_id) {
             if ($tile_id != $guard_token['location_arg']) {
                 $movement--;
-                if ($this->tokensInTile('crow', $tile_id)) {
+                if ($this->tokensInTile('crow', $tile_id) && $this->getPlayerCharacter(null, 'raven1')) {
                     $movement--;
                 }
                 $this->performGuardMovementEffects($guard_token, $tile_id);
